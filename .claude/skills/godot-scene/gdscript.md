@@ -1,0 +1,591 @@
+# GDScript Syntax Reference
+
+## Language Notes
+
+- Indentation-based; a script file defines a class.
+- GDScript is its own language (not Python).
+
+## Identifiers
+
+- Letters/digits/_; cannot start with a digit; case-sensitive.
+- Unicode letters per UAX#31 are allowed; no emoji or confusable characters.
+
+## Types
+
+**Basic:** `null`, `bool`, `int`, `float`, `String`, `StringName`, `NodePath`
+
+**Vector:** `Vector2`, `Vector2i`, `Vector3`, `Vector3i`, `Vector4`, `Vector4i`
+
+**Transform:** `Transform2D`, `Transform3D`, `Basis`, `Quaternion`
+
+**Geometry:** `Rect2`, `Rect2i`, `AABB`, `Plane`
+
+**Other:** `Color`, `RID`, `Object`, `Callable`, `Signal`
+
+**Containers:** `Array`, `Array[Type]`, `Dictionary`, `Dictionary[K, V]`
+
+**Packed:** `PackedByteArray`, `PackedInt32Array`, `PackedInt64Array`, `PackedFloat32Array`,
+`PackedFloat64Array`, `PackedStringArray`, `PackedVector2Array`, `PackedVector3Array`,
+`PackedVector4Array`, `PackedColorArray`
+
+**Variant:** Means untyped; not a real type for inference by default.
+
+**Value vs reference:** Built-in types are value types; `Object`, `Array`, `Dictionary`, and packed
+arrays are reference types (use `duplicate()` to copy).
+
+## Keywords
+
+```
+if elif else match when for while break continue pass return
+class class_name extends is in as not and or
+func signal var const enum static
+self super await preload yield breakpoint assert
+true false null void
+PI TAU INF NAN
+```
+
+## Operators (by precedence)
+
+```
+()                           # Grouping
+x.attr  x["key"]  x()        # Attribute, subscript, call
+await x                      # Await
+**                           # Power
+~ + -                        # Unary (bitwise NOT, positive, negative)
+* / %                        # Multiply, divide, modulo
++ -                          # Add, subtract
+<< >>                        # Bit shift
+&                            # Bitwise AND
+^                            # Bitwise XOR
+|                            # Bitwise OR
+< > <= >= == !=              # Comparison
+in  not in  is  is not       # Containment, type check
+not  !                       # Boolean NOT (alias)
+and  &&                      # Boolean AND (alias)
+or   ||                      # Boolean OR (alias)
+x if cond else y             # Ternary
+as                           # Type cast
+= += -= *= /= **= etc.       # Assignment
+```
+
+Operator notes:
+- `**` is left-associative; ternary is right-associative.
+- `/` does integer division when both operands are `int`.
+- `%` only works on `int`; use `fmod()` for floats. Use `posmod()`/`fposmod()` for math-style remainders.
+- Assignment is not allowed inside expressions.
+- `==`/`!=` can compare different types but may cause runtime errors. Use `is_same()` for strict comparison, `is_equal_approx()` for floats.
+
+## Literals
+
+```
+null, true, false
+45, 0x8f51, 0b101010, 3.14, 1_000_000, 3.14_159
+"Hello", 'Hi', """Multi""", r"Raw", r'''Raw'''
+&"name"       # StringName
+^"Node/Path"  # NodePath
+$NodePath     # get_node("NodePath")
+%UniqueNode   # get_node("%UniqueNode")
+```
+
+Common escapes: `\n \t \r \a \b \f \v \\ \" \' \uXXXX \UXXXXXX`.
+Raw strings do not process escapes and cannot end with an odd number of `\`.
+
+## Variables & Constants
+
+```gdscript
+var x = 5                    # Variant (no type)
+var y: int = 5               # Explicit type
+var z := 5                   # Inferred with := (literal has clear type)
+const MAX := 100             # Constant
+static var count := 0        # Class-level static
+
+# Type inference only works when the RHS has a concrete type.
+# Variant-returning functions or data access break := inference.
+var bad := abs(speed)                   # ERROR: Cannot infer type from Variant
+var bad2 := clamp(val, 0.0, 1.0)        # ERROR: Same problem
+var bad3 := min(a, b)                   # ERROR: Same problem
+var good: float = abs(speed)            # OK: explicit type annotation
+var also_ok = abs(speed)                # OK: untyped (Variant)
+
+enum State { IDLE, RUN, JUMP }
+enum { ONE = 1, TWO, THREE }
+
+# Named enums are dictionaries with extra methods
+State.IDLE               # 0
+State.keys()             # ["IDLE", "RUN", "JUMP"]
+State.values()           # [0, 1, 2]
+```
+
+Initialization order (members):
+- Default value by type (or `null` for untyped/Objects).
+- Declaration order initializers.
+- `_init()`.
+- Exported values (scenes/resources).
+- `@onready` values.
+- `_ready()`.
+
+## Functions
+
+```gdscript
+func add(a: int, b: int) -> int:
+    return a + b
+
+func greet(name := "World") -> void:  # Default parameter
+    print("Hello, ", name)
+
+func process(items: Array[String]) -> void:  # Typed array
+    for item in items:
+        print(item)
+
+# Lambda (explicit return required)
+var double := func(x): return x * 2
+
+# Lambda capture behavior:
+# - Primitives captured by value at creation time (won't see later changes)
+# - Arrays/dicts/objects captured by reference (content changes shared)
+# - Cannot reassign outer variables (CONFUSABLE_CAPTURE_REASSIGNMENT warning)
+var x = 42
+var arr = []
+var fn = func():
+    print(x)       # Always 42, even if x changed after lambda creation
+    arr.append(1)  # Shared with outer scope
+    x = 99         # Warning: only affects lambda's copy
+
+# Static function
+static func create() -> MyClass:
+    return MyClass.new()
+
+# Function reference (Callable)
+var callback = my_function  # Gets Callable without calling
+callback.call(arg1, arg2)   # Must use .call() to invoke
+
+# Static constructor (called on load)
+static func _static_init() -> void:
+    pass
+
+# Variadic (rest parameter; must be last, no default)
+func sum(...values: Array) -> int:
+    var total := 0
+    for n in values:
+        total += n
+    return total
+```
+
+Variadic notes:
+- Only one rest parameter, and it must be last.
+- Rest parameter cannot be `Array[Type]` (use `Array`).
+- You cannot unpack/rest-spread arguments on call sites (use `callv`).
+
+## Control Flow
+
+```gdscript
+# Conditionals
+if condition:
+    pass
+elif other:
+    pass
+else:
+    pass
+
+# Ternary
+var result = "yes" if condition else "no"
+
+# Match (pattern matching)
+match value:
+    1:
+        print("one")
+    2, 3, 4:
+        print("two to four")
+    [var a, var b]:
+        print(a, b)
+    {"key": var v}:
+        print(v)
+    var x when x > 10:       # Guard clause
+        print("big: ", x)
+    _:
+        print("default")
+
+# Loops
+for i in range(10):          # 0 to 9
+    if i == 5:
+        continue             # Skip iteration
+    if i == 8:
+        break                # Exit loop
+for item in array:
+    pass
+for name: String in names:   # Typed loop variable
+    print(name.to_upper())
+for key in dict:
+    var val = dict[key]
+while condition:
+    pass
+```
+
+## Classes
+
+```gdscript
+class_name MyClass
+extends Node2D
+
+# Abstract class/method (cannot be instantiated or attached to nodes)
+@abstract class Shape:
+    @abstract func draw() -> void  # No body; subclasses must implement
+
+# Unnamed abstract class
+@abstract
+extends Node
+
+signal health_changed(new_value: int)
+signal died
+
+@export var speed: float = 100.0
+@export_range(0, 100) var health: int = 100
+@onready var sprite: Sprite2D = $Sprite2D
+
+var _private := 0
+
+# Property with getter/setter
+var score: int:
+    get:
+        return score       # Direct access inside own getter (no recursion)
+    set(value):
+        score = clamp(value, 0, 100)  # Direct access inside own setter
+        score_changed.emit(score)
+
+# Alternative property syntax (reusing functions)
+var my_prop: get = _get_prop, set = _set_prop
+
+# Setter/getter NOT called: during initialization and inside own accessor
+var x: int = 5  # Setter not called here
+
+func _init() -> void:
+    pass
+
+func _ready() -> void:
+    super._ready()  # Call parent
+    # self.prop is runtime-checked (works for dynamic/child properties)
+    # prop alone is compile-time checked (must exist in current class)
+    print(self.dynamic_prop)  # OK at compile, checked at runtime
+
+func something(p1, p2) -> void:
+    super(p1, p2)   # Call overridden method by name
+
+func other_something(p1, p2) -> void:
+    super.something(p1, p2)
+
+func _process(delta: float) -> void:
+    pass
+
+# Inner class
+class InnerEnemy:
+    var hp := 100
+    func take_damage(amount: int) -> void:
+        hp -= amount
+```
+
+## Node References
+
+```gdscript
+$NodeName                    # Get child node
+$Path/To/Node                # Nested path
+%UniqueNode                  # Scene-unique node (set in editor)
+get_node("Path")             # Equivalent to $
+get_parent()                 # Parent node
+get_tree()                   # SceneTree
+get_node_or_null("Path")     # Returns null if not found
+has_node("Path")             # Check existence
+```
+
+## Signals
+
+```gdscript
+# Define
+signal my_signal
+signal value_changed(new_val: int)
+
+# Emit
+my_signal.emit()
+value_changed.emit(42)
+
+# Connect
+other_node.my_signal.connect(_on_signal)
+other_node.my_signal.connect(func(): print("lambda"))
+
+# Connect with bound arguments
+# _on_signal receives (signal_arg, bound_arg)
+other_node.my_signal.connect(_on_signal.bind("extra_data"))
+
+# Disconnect
+other_node.my_signal.disconnect(_on_signal)
+
+# Await
+await my_signal
+await get_tree().create_timer(1.0).timeout
+var result = await some_async_func()
+```
+
+## Annotations
+
+```gdscript
+@export var visible_in_editor: int
+@export_range(0, 100, 1) var clamped: int
+@export_enum("Low", "Medium", "High") var quality: int
+@export_file("*.png") var texture_path: String
+@export_node_path("Sprite2D") var sprite_path: NodePath
+@export_group("Movement")    # Group following exports
+@export_subgroup("Speed")    # Subgroup
+
+@onready var node := $Child  # Resolved when _ready() runs
+
+@tool  # Script runs in editor (be careful with queue_free!)
+@static_unload # Unload script when no references (for static vars)
+@warning_ignore("unused_parameter")
+
+@icon("res://icon.png")  # Custom class icon
+```
+
+Annotations:
+- Multiple annotations can be stacked; they apply to the next non-annotation line.
+- `@onready` with `@export` is not recommended; `@onready` overwrites exported values
+  and triggers the `ONREADY_WITH_EXPORT` warning.
+
+## Comments & Regions
+
+```gdscript
+# Line comment
+## Documentation comment (for script docs/inspector tooltips)
+
+#region Terrain
+func generate_lakes():
+    pass
+#endregion
+```
+
+Editor highlights markers (case-sensitive):
+- Critical (red): `ALERT`, `ATTENTION`, `CAUTION`, `CRITICAL`, `DANGER`, `SECURITY`
+- Warning (yellow): `BUG`, `DEPRECATED`, `FIXME`, `HACK`, `TASK`, `TODO`, `WARNING`
+- Notice (green): `INFO`, `NOTE`, `NOTICE`, `TEST`
+No space after `#` for `#region`/`#endregion`. Regions can be nested.
+
+## Line Continuation
+
+```gdscript
+var a = 1 + \
+2 + \
+3
+```
+
+## Strings
+
+```gdscript
+# Regular strings
+var s = "Hello\nWorld"       # With escape sequences
+var raw = r"C:\path\file"    # Raw string (no escapes)
+var multi = """
+Line 1
+Line 2
+"""                          # Triple-quoted multiline
+
+# Special literals
+var sname: StringName = &"my_action"  # StringName (interned)
+var npath: NodePath = ^"Path/To/Node" # NodePath literal
+
+# Format strings
+"Hello %s" % name            # Single value
+"x=%d y=%d" % [x, y]         # Multiple values
+"%.2f" % 3.14159             # Float precision
+
+# Common methods
+s.length()                   # String length
+s.to_upper()                 # HELLO
+s.to_lower()                 # hello
+s.strip_edges()              # Trim whitespace
+s.split(",")                 # Split to array
+",".join(["a", "b"])         # Join array
+s.begins_with("He")          # Prefix check
+s.ends_with("ld")            # Suffix check
+s.find("ll")                 # Find substring index
+s.replace("l", "L")          # Replace
+str(42)                      # Convert to string
+int("42")                    # Parse int
+float("3.14")                # Parse float
+```
+
+## Arrays & Dictionaries
+
+```gdscript
+# Arrays
+var arr := [1, 2, 3]
+var typed: Array[int] = [1, 2, 3]
+
+# Cannot assign Array[SubType] to Array[BaseType] directly
+var nodes2d: Array[Node2D] = [Node2D.new()]
+var nodes: Array[Node] = []
+# nodes = nodes2d  # ERROR: incompatible types
+nodes.assign(nodes2d)  # OK: copies contents
+arr.append(4)                # Add to end
+arr.push_front(0)            # Add to start
+arr.insert(2, 99)            # Insert at index
+arr.pop_back()               # Remove and return last
+arr.pop_front()              # Remove and return first
+arr.remove_at(1)             # Remove at index
+arr.erase(2)                 # Remove first occurrence of value
+arr.size()                   # Length
+arr.is_empty()               # Check empty
+arr.has(2)                   # Check contains
+arr.find(2)                  # Find index (-1 if not found)
+arr.sort()                   # Sort in place
+arr.reverse()                # Reverse in place
+arr.duplicate()              # Shallow copy
+arr.shuffle()                # Randomize order
+arr.slice(1, 3)              # Subarray [1:3)
+arr.map(func(x): return x*2) # Transform
+arr.filter(func(x): return x > 0)  # Filter
+arr.reduce(func(a, b): return a + b, 0)  # Reduce
+
+# Dictionaries
+var dict := {"key": "value", "num": 42}
+var typed: Dictionary[String, int] = {"a": 1}
+dict["new_key"] = 100        # Add/update
+dict.get("key", "default")   # Get with default
+dict.has("key")              # Check key exists
+dict.erase("key")            # Remove key
+dict.keys()                  # Array of keys
+dict.values()                # Array of values
+dict.size()                  # Number of entries
+dict.is_empty()              # Check empty
+dict.merge(other_dict)       # Merge in place
+```
+
+Array/dict notes:
+- `Array` == `Array[Variant]`. `Dictionary` == `Dictionary[Variant, Variant]`.
+- Dictionary/array access returns `Variant`, so `:=` inference can fail.
+
+## Memory Management
+
+- **RefCounted**: (Array, Dictionary, Resource) Automatically freed when no references exist.
+- **Object/Node**: Manually managed.
+  - `free()`: Immediate deletion.
+  - `queue_free()`: Safely delete at end of frame (recommended for Nodes).
+- **WeakRef**: `weakref(obj)` creates reference that doesn't prevent freeing.
+- **is_instance_valid(obj)**: Check if object hasn't been freed (for non-RefCounted).
+
+## Type Checking & Casting
+
+```gdscript
+# Type checking
+if node is Sprite2D:
+    print("It's a sprite")
+
+if not enemy is null:
+    enemy.damage(10)
+
+# Safe casting
+var sprite := node as Sprite2D
+if sprite:  # null if cast failed
+    sprite.modulate = Color.RED
+
+# Type of
+var t = typeof(value)        # Returns TYPE_* constant
+if typeof(x) == TYPE_STRING:
+    pass
+```
+
+## Common Patterns
+
+```gdscript
+# Assert (stripped in release builds; expression not evaluated)
+assert(x > 0, "x must be positive")
+assert(do_check(), "msg")  # do_check() NOT called in release!
+
+# Groups
+add_to_group("enemies")
+get_tree().get_nodes_in_group("enemies")
+is_in_group("enemies")
+get_tree().call_group("enemies", "take_damage", 10)
+
+# Scene management
+get_tree().change_scene_to_file("res://level2.tscn")
+get_tree().reload_current_scene()
+get_tree().quit()
+
+# Instantiate scene
+var scene := preload("res://enemy.tscn")  # Compile-time load
+var scene2 := load("res://enemy.tscn")    # Runtime load
+var instance := scene.instantiate()
+add_child(instance)
+
+# Timer
+await get_tree().create_timer(1.0).timeout
+
+# Deferred calls (run after current frame)
+call_deferred("my_method")
+set_deferred("property", value)
+
+# Process modes
+process_mode = Node.PROCESS_MODE_PAUSABLE  # Pause with tree
+process_mode = Node.PROCESS_MODE_ALWAYS    # Ignore pause
+```
+
+## Math Constants & Functions
+
+```gdscript
+PI, TAU, INF, NAN            # Constants
+
+# Basic
+abs(x), sign(x), floor(x), ceil(x), round(x)
+min(a, b), max(a, b), clamp(val, min_val, max_val)
+fmod(x, y), fposmod(x, y)    # Float modulo
+wrap(val, min_val, max_val)  # Wrap around
+snappedf(val, step)          # Snap to step
+
+# Interpolation
+lerp(a, b, t)                # Linear interpolate
+lerpf(a, b, t)               # Float lerp
+inverse_lerp(a, b, val)      # Get t from value
+smoothstep(from, to, val)    # Smooth interpolation
+move_toward(from, to, delta) # Move by delta toward target
+
+# Trigonometry
+sin(x), cos(x), tan(x)
+asin(x), acos(x), atan(x), atan2(y, x)
+deg_to_rad(deg), rad_to_deg(rad)
+
+# Power/exponential
+sqrt(x), pow(base, exp), exp(x), log(x)
+
+# Random
+randf()                      # 0.0 to 1.0
+randi()                      # Random int
+randf_range(from, to)        # Float in range
+randi_range(from, to)        # Int in range
+```
+
+## Input
+
+```gdscript
+# Actions
+Input.is_action_pressed("move_right")      # Held down
+Input.is_action_just_pressed("jump")       # Just pressed this frame
+Input.is_action_just_released("fire")      # Just released
+Input.get_action_strength("accelerate")    # 0.0 to 1.0
+Input.get_axis("move_left", "move_right")  # -1.0 to 1.0
+Input.get_vector("left", "right", "up", "down")  # Vector2
+
+# Direct key/mouse (use actions when possible)
+Input.is_key_pressed(KEY_W)
+Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT)
+Input.get_mouse_position()
+
+# Event handling
+func _input(event: InputEvent) -> void:
+    if event.is_action_pressed("jump"):
+        jump()
+    if event is InputEventMouseButton:
+        if event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+            shoot()
+
+func _unhandled_input(event: InputEvent) -> void:
+    # Called for input not consumed by UI
+    pass
+```

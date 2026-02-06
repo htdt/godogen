@@ -362,6 +362,102 @@ def parse_class(xml_path: Path, config: ConversionConfig) -> str | None:
     return "\n".join(lines)
 
 
+def parse_index_entry(xml_path: Path) -> tuple[str, str, str] | None:
+    """Parse XML for index entry: (name, inherits, brief_description)."""
+    try:
+        tree = ET.parse(xml_path)
+        root = tree.getroot()
+    except ET.ParseError:
+        return None
+
+    name = root.get("name")
+    if not name or should_skip_class(name):
+        return None
+
+    inherits = root.get("inherits", "")
+    brief_elem = root.find("brief_description")
+    brief = first_sentence(brief_elem.text) if brief_elem is not None and brief_elem.text else ""
+
+    return (name, inherits, brief)
+
+
+def convert_directory_split(
+    input_dir: Path,
+    split_dir: Path,
+    config: ConversionConfig,
+    classes_filter: list[str] | None = None,
+) -> None:
+    """Convert XML files to per-class markdown files + a prioritized index."""
+
+    split_dir.mkdir(parents=True, exist_ok=True)
+
+    xml_files = sorted(input_dir.glob("*.xml"))
+    if classes_filter:
+        classes_set = set(classes_filter)
+        xml_files = [f for f in xml_files if f.stem in classes_set]
+
+    # Build index entries and write per-class files
+    unified_set = set(CLASS_UNIFIED)
+    common_entries: list[tuple[str, str, str]] = []
+    other_entries: list[tuple[str, str, str]] = []
+    converted_count = 0
+    skipped_count = 0
+
+    for xml_file in xml_files:
+        # Parse index entry
+        entry = parse_index_entry(xml_file)
+        if entry is None:
+            skipped_count += 1
+            continue
+
+        name, inherits, brief = entry
+
+        # Parse full class content — always use full description in per-class files
+        detail_config = ConversionConfig(
+            class_description=DescriptionMode.FULL,
+            method_descriptions=config.method_descriptions,
+            property_descriptions=config.property_descriptions,
+            signal_descriptions=config.signal_descriptions,
+            constant_descriptions=config.constant_descriptions,
+            max_enum_values=config.max_enum_values,
+            no_virtual=config.no_virtual,
+            compact_format=config.compact_format,
+            simple_signals=config.simple_signals,
+        )
+        result = parse_class(xml_file, detail_config)
+        if result is None:
+            skipped_count += 1
+            continue
+
+        # Write per-class file
+        (split_dir / f"{name}.md").write_text(result + "\n")
+        converted_count += 1
+
+        # Sort into common vs other for the index
+        if name in unified_set:
+            common_entries.append((name, inherits, brief))
+        else:
+            other_entries.append((name, inherits, brief))
+
+    # Write two separate index files
+    def write_index(path: Path, title: str, entries: list[tuple[str, str, str]]) -> None:
+        lines = [f"# {title}", ""]
+        for name, inherits, brief in sorted(entries):
+            parent = f" <- {inherits}" if inherits else ""
+            desc = f" — {brief}" if brief else ""
+            lines.append(f"- {name}{parent}{desc}")
+        lines.append("")
+        path.write_text("\n".join(lines))
+
+    write_index(split_dir / "_common.md", f"Common Classes ({len(common_entries)})", common_entries)
+    write_index(split_dir / "_other.md", f"Other Classes ({len(other_entries)})", other_entries)
+
+    print(f"Converted {converted_count} classes, skipped {skipped_count}")
+    print(f"Common index: {split_dir / '_common.md'} ({len(common_entries)} classes)")
+    print(f"Other index: {split_dir / '_other.md'} ({len(other_entries)} classes)")
+    print(f"Output directory: {split_dir}")
+
+
 def convert_directory(
     input_dir: Path,
     output_file: Path,
@@ -424,12 +520,18 @@ def main():
         default=Path("./doc_source/godot/doc/classes"),
         help="Directory containing XML class files",
     )
-    parser.add_argument(
+    output_group = parser.add_mutually_exclusive_group()
+    output_group.add_argument(
         "-o",
         "--output",
         type=Path,
         default=Path("godot_api.md"),
         help="Output markdown file (default: godot_api.md)",
+    )
+    output_group.add_argument(
+        "--split-dir",
+        type=Path,
+        help="Output per-class .md files + _index.md to this directory",
     )
     parser.add_argument(
         "--class-desc",
@@ -535,7 +637,10 @@ def main():
     elif args.priority_only:
         classes_filter = PRIORITY_CLASSES
 
-    convert_directory(args.input_dir, args.output, config, classes_filter)
+    if args.split_dir:
+        convert_directory_split(args.input_dir, args.split_dir, config, classes_filter)
+    else:
+        convert_directory(args.input_dir, args.output, config, classes_filter)
 
     return 0
 
