@@ -1,4 +1,5 @@
 doc_source
 doc_api
 */__pycache__
+.claude/settings.local.json
 build/

@@ -9,23 +9,25 @@ allowed-tools: Read, Write, Edit, Bash, Glob, Grep
 
 You generate GDScript that programmatically creates Godot scenes. The script is executed headless by Godot to produce `.tscn` files.
 
+## Project Root
+
+The caller specifies `{project_root}` (e.g. `project_root=build`). Scene builder scripts and output `.tscn` files live under `{project_root}/`. The Godot project file lives at `{project_root}/project.godot`.
+
 ## Workflow
 
-1. **Read references** — ALWAYS read [gdscript.md](gdscript.md) before writing code. For node/resource API lookup, follow the steps below.
+1. **Read references** — ALWAYS read `gdscript.md` before writing code. For node/resource API lookup, follow the steps below.
 2. **Write GDScript** — Generate a `.gd` file that builds the scene (see requirements below).
-3. **Compile** — Run `godot --headless --script <path_to_gd>` from the Godot project root to produce the `.tscn`.
+3. **Compile** — Run `godot --headless --script <path_to_gd>` from `{project_root}/` to produce the `.tscn`.
 4. **Fix errors** — If Godot reports errors, read the output, fix the `.gd` file, and re-run. Repeat until clean.
 5. **Deliver both files** — Keep the `.gd` script (for future updates) and the `.tscn` output.
 
 ### Compilation Command
 
 ```bash
-godot --headless --script <path_to_gd_file>
+cd {project_root} && godot --headless --script <path_to_gd_file>
 ```
 
-Run this from the Godot project root (where `project.godot` lives). The script saves the `.tscn` to the path specified in `ResourceSaver.save()`.
-
-If the user provides a Godot project path, `cd` there first. Otherwise ask where `project.godot` is located.
+The script saves the `.tscn` to the path specified in `ResourceSaver.save()`.
 
 **Error handling:** Parse Godot's stderr/stdout for error lines. Common issues:
 - `Parser Error` — syntax error in GDScript, fix the line indicated
@@ -387,10 +389,6 @@ mesh_instance.set_surface_override_material(0, mat)
 
 - **`load()` without type** causes `instantiate()` method not found — always type as `PackedScene`
 - **`:=` with `instantiate()`** causes Variant type inference error — use `=` instead
-- **Box collision size 0.1** for a car — invisible, physics breaks. Use realistic bounds.
-- **Camera at z=100** for a 2m character — character is a dot. Use z=5-10.
-- **Platform size Vector3(1, 1, 1)** — tiny, hard to land on. Use Vector3(5, 0.3, 3)+.
-- **UV scale 1** on 50m floor — texture stretched/blurry. Scale proportionally.
 
 ## @export Parameters
 
@@ -439,5 +437,5 @@ extends SceneTree
 - Do NOT connect signals at build-time — scripts aren't instantiated yet, so `signal.connect(node.method)` will fail. Signal connections belong in runtime scripts' `_ready()` method
 - ALWAYS set `.name` on every node you create — script generator needs predictable names for `@onready` references
 - Save to the EXACT output path specified by the user (e.g., `res://scenes/main.tscn`)
-- **MANDATORY `quit()`** — Script MUST call `quit()` at the end. Without it, Godot runs forever in headless mode. Never remove or comment out `quit()` during error correction.
+- **MANDATORY `quit()`** — Script MUST call `quit()` at the end. Without it, Godot runs forever in headless mode.
 - **2D/3D consistency** — Use ONLY 2D nodes (Node2D, CharacterBody2D, Area2D, Camera2D) OR 3D nodes (Node3D, CharacterBody3D, Area3D, Camera3D). Never mix dimensions in the same scene hierarchy.
