@@ -1,13 +1,13 @@
 ---
 name: godot-scaffold
-description: Design the architecture of a Godot game and create the project skeleton — project.godot, STRUCTURE.md, and script stubs
+description: Design the architecture of a Godot game and create a compilable project skeleton — project.godot, STRUCTURE.md, script stubs, and scene stubs
 argument-hint: <game description>
 allowed-tools: Read, Write, Edit, Bash, Glob, Grep
 ---
 
 # Godot Scaffold Generator
 
-You design the architecture of a Godot game and create the project skeleton: `project.godot`, a structure document, and script stubs. You define *what exists and how it connects* — not what it does or how it behaves.
+You design the architecture of a Godot game and create a compilable project skeleton: `project.godot`, a structure document, script stubs, and scene stubs. The result is a valid (but blank) Godot project that compiles without errors. You define *what exists and how it connects* — not what it does or how it behaves.
 
 ## Project Root
 
@@ -21,6 +21,8 @@ All output goes to `{project_root}/`. The caller specifies this path (e.g. `proj
 4. **Write `{project_root}/project.godot`** — minimal project file with input mappings.
 5. **Write `{project_root}/STRUCTURE.md`** — architecture document listing all scenes, scripts, and connections.
 6. **Write script stubs** — `{project_root}/scripts/*.gd` with correct extends, signals, and empty handlers.
+7. **Build scene stubs** — for each scene, copy the template from `.claude/skills/godot-scaffold/stubs/build_scene.gd` to `{project_root}/scenes/build_{name}.gd` and fill in the 5 vars at the top (`_root_type`, `_root_name`, `_script_path`, `_output_path`, `_children`). Then run each builder in dependency order (leaf scenes first): `cd {project_root} && godot --headless --script scenes/build_{name}.gd`
+8. **Verify compilation** — run `cd {project_root} && godot --headless --quit 2>&1` and confirm no `ERROR` or `Parser Error` lines. Fix any issues before finishing. RID leak warnings are benign.
 
 ## Build Directory
 
@@ -156,6 +158,48 @@ Stubs include:
 - Empty lifecycle methods the script will need
 - Empty signal handlers for received signals
 - Brief `##` doc comment with file path
+
+### 4. Scene builder stubs: `{project_root}/scenes/build_*.gd` → `*.tscn`
+
+For each scene, create a stub builder script that produces a minimal `.tscn`. The scene skill later updates these same `build_*.gd` files with full implementations and re-runs them to regenerate the `.tscn`.
+
+**Process:**
+
+1. Read the template from `.claude/skills/godot-scaffold/stubs/build_scene.gd`.
+2. For each scene, write a copy to `{project_root}/scenes/build_{name}.gd` with only the 5 vars at the top changed.
+3. Run each in dependency order (leaf scenes first):
+```bash
+cd {project_root} && godot --headless --script scenes/build_player.gd
+cd {project_root} && godot --headless --script scenes/build_main.gd
+```
+
+**Example** — stub for Player scene (`scenes/build_player.gd`):
+```gdscript
+var _root_type := "CharacterBody3D"
+var _root_name := "Player"
+var _script_path := "res://scripts/player_controller.gd"
+var _output_path := "res://scenes/player.tscn"
+var _children: Array = []
+```
+
+**Example** — stub for Main scene with children (`scenes/build_main.gd`):
+```gdscript
+var _root_type := "Node3D"
+var _root_name := "Main"
+var _script_path := "res://scripts/main_controller.gd"
+var _output_path := "res://scenes/main.tscn"
+var _children: Array = [["Player", "res://scenes/player.tscn"]]
+```
+
+| Var | Source | Notes |
+|-----|--------|-------|
+| `_root_type` | Scene root type from STRUCTURE.md | `"CharacterBody3D"`, `"Node3D"`, etc. |
+| `_root_name` | Scene name from STRUCTURE.md | Matches root node name |
+| `_script_path` | Script that attaches to root, or `""` | Only scripts where `Attaches to` is `Scene:Scene` (root) |
+| `_output_path` | Scene file path from STRUCTURE.md | `"res://scenes/player.tscn"` |
+| `_children` | Child scene instances | `[["Name", "res://scenes/child.tscn"], ...]` |
+
+**Ordering:** Leaf scenes (no children) must be built before scenes that instance them. Topological sort by the children graph.
 
 ## Architecture Rules
 

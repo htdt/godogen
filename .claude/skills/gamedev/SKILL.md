@@ -1,6 +1,6 @@
 ---
 name: gamedev
-description: Generate complete Godot games from natural language — coordinates scaffold, decomposer, scene, script, and verifier skills
+description: Generate complete Godot games from natural language — coordinates scaffold, decomposer, task, and verifier skills
 argument-hint: <game description>
 allowed-tools: Read, Write, Edit, Bash, Glob, Grep, Task
 ---
@@ -22,31 +22,19 @@ If `build/assets.json` doesn't exist, proceed with no assets (placeholder geomet
 
 | Skill | Input | Output | When | How |
 |-------|-------|--------|------|-----|
-| **godot-scaffold** | game description, assets | `build/project.godot`, `build/STRUCTURE.md`, `build/scripts/*.gd` stubs | Once at start | Inline |
+| **godot-scaffold** | game description, assets | `build/project.godot`, `build/STRUCTURE.md`, `build/scripts/*.gd` stubs, `build/scenes/*.tscn` stubs | Once at start | Inline |
 | **godot-decomposer** | game description, STRUCTURE.md, assets | `build/PLAN.md` — task DAG with verification criteria | Once at start | Inline |
-| **godot-scene** | task from PLAN.md, STRUCTURE.md | `.tscn` scene files via GDScript builders | Per task | **Sub-agent** |
-| **godot-script** | task from PLAN.md, STRUCTURE.md | `.gd` script implementations | Per task | **Sub-agent** |
+| **godot-task** | task from PLAN.md, STRUCTURE.md | `.tscn` scenes + `.gd` scripts | Per task | **Sub-agent** |
 | **godot-verifier** | task from PLAN.md, built project | compilation check — pass/fail verdict | After each task | Inline |
 
 ## Running Sub-agents
 
-Use the **Task tool** to run `godot-scene` and `godot-script` as sub-agents. This keeps their large context (API docs, gdscript reference) out of the orchestrator's context window.
+Use the **Task tool** to run `godot-task` as a sub-agent. Each task gets ONE sub-agent that handles both scene generation and script writing, coordinating node names, script attachment, and signal wiring.
 
-**For each task that needs scene generation:**
+**For each task:**
 ```
 Task(subagent_type="general-purpose", prompt="""
-Use the godot-scene skill. project_root=build
-
-{paste the task block from PLAN.md}
-
-{paste relevant STRUCTURE.md sections}
-""")
-```
-
-**For each task that needs script generation:**
-```
-Task(subagent_type="general-purpose", prompt="""
-Use the godot-script skill. project_root=build
+Use the godot-task skill. project_root=build
 
 {paste the task block from PLAN.md}
 
@@ -70,7 +58,7 @@ User request
     |
     +- For each task (topological order):
     |   +- Set status: in_progress in PLAN.md
-    |   +- Launch scene/script sub-agents (parallel when independent)
+    |   +- Launch godot-task sub-agent (handles both scene + script)
     |   +- Run verifier (inline): cd build && timeout 30 godot --headless --quit 2>&1
     |   +- If PASS -> status: done
     |   +- If FAIL -> retry up to 3x with error context, then mark failed
@@ -86,7 +74,7 @@ Before generating for task N:
 1. **Read `build/PLAN.md`** — task requirements, placeholder, targets, dependencies
 2. **Read `build/STRUCTURE.md`** — relevant scenes, scripts, signal connections
 3. **Check dependencies** — all must be `done` and files must exist
-4. **Launch sub-agents** — pass the task block + relevant STRUCTURE.md sections, with `project_root=build`
+4. **Launch sub-agent** — one godot-task agent with the task block + relevant STRUCTURE.md sections, with `project_root=build`
 5. **Run verifier** — `cd build && timeout 30 godot --headless --quit 2>&1`
 6. **Update documents** — status, notes, any architectural changes
 
