@@ -1,13 +1,13 @@
 ---
 name: godot-task
-description: Execute a development task — generate Godot scenes (.tscn) and/or runtime scripts (.gd) with coordinated node naming, script attachment, and signal wiring
+description: Execute a development task — generate Godot scenes (.tscn) and/or runtime scripts (.gd), then verify visually via test harness and screenshots
 argument-hint: <task from PLAN.md>
 allowed-tools: Read, Write, Edit, Bash, Glob, Grep
 ---
 
 # Godot Task Executor
 
-You execute a single development task from PLAN.md. A task may require generating scenes (`.tscn` files via GDScript builders), runtime scripts (`.gd` files), or both. You determine what's needed from the task's **Targets** field.
+You execute a single development task from PLAN.md. A task may require generating scenes (`.tscn` files via GDScript builders), runtime scripts (`.gd` files), or both. You determine what's needed from the task's **Targets** field. Each task includes a **Verify** description — a visual test scenario you must satisfy by generating a test harness, capturing screenshots, and iterating until they match.
 
 ## Project Root
 
@@ -24,6 +24,9 @@ The caller specifies `{project_root}` (e.g. `project_root=build`). All files liv
 4. **Generate script(s)** — write `.gd` files to `{project_root}/scripts/`
 5. **Validate** — run `godot --headless --quit` to check for parse errors across all project scripts
 6. **Fix errors** — if Godot reports errors, read output, fix files, re-run. Repeat until clean.
+7. **Generate test harness** — write `{project_root}/test/test_task.gd` implementing the task's **Verify** scenario (see Part 3)
+8. **Capture screenshots** — run test with `xvfb-run` and `--write-movie` to produce PNGs
+9. **Verify visually** — read captured PNGs, compare to **Verify** description. If they don't match, identify the issue, fix scene/script/test, and repeat from step 3.
 
 ### Commands
 
@@ -40,6 +43,10 @@ cd {project_root} && godot --headless --quit 2>&1
 - `Invalid call` / `method not found` — wrong node type or API usage, look up the class in `doc_api/`
 - `Cannot infer type` — `:=` used with `instantiate()` or polymorphic math functions, see type inference rules
 - Script hangs — missing `quit()` call in scene builder; kill the process and add `quit()`
+
+## Project Memory
+
+Read `{project_root}/MEMORY.md` before starting work — it contains discoveries from previous tasks (workarounds, Godot quirks, asset details, architectural decisions). After completing your task, write back anything useful you learned: what worked, what failed, technical specifics others will need.
 
 ## API Lookup
 
@@ -349,18 +356,6 @@ func _physics_process(delta: float) -> void:
 
 **Script section ordering:** signals → exports → @onready vars → private state → lifecycle methods → public methods → private methods → signal handlers
 
-### Lifecycle Methods
-
-| Method | When Called | Use For |
-|--------|-------------|---------|
-| `_ready()` | Node enters tree, children ready | Init, cache refs, connect signals |
-| `_process(delta)` | Every frame | Visual updates, non-physics logic |
-| `_physics_process(delta)` | Fixed timestep (60/s) | Movement, physics, collision |
-| `_input(event)` | Any input event | Global input handling |
-| `_unhandled_input(event)` | Input not consumed | Game input (after UI) |
-| `_enter_tree()` | Added to tree | Early setup |
-| `_exit_tree()` | Removed from tree | Cleanup |
-
 ### Script @export Parameters
 
 ```gdscript
@@ -521,26 +516,6 @@ func move_to(target: Vector2) -> void:
         .set_trans(Tween.TRANS_CUBIC)
 ```
 
-### State Machine Pattern
-
-```gdscript
-enum State { IDLE, WALKING, JUMPING, ATTACKING }
-var _state: State = State.IDLE
-
-func _physics_process(delta: float) -> void:
-    match _state:
-        State.IDLE: _process_idle(delta)
-        State.WALKING: _process_walking(delta)
-        State.JUMPING: _process_jumping(delta)
-        State.ATTACKING: _process_attacking(delta)
-
-func _change_state(new_state: State) -> void:
-    _state = new_state
-    match new_state:
-        State.IDLE: anim.play("idle")
-        State.WALKING: anim.play("walk")
-```
-
 ### Scene Instantiation (Runtime Spawning)
 
 ```gdscript
@@ -600,36 +575,50 @@ func _ready() -> void:
     hitbox.body_entered.connect(_on_hitbox_body_entered)  # Signal connected here, not in scene
 ```
 
-## Commenting Guidelines
+---
 
-Code will be read by someone with general programming knowledge but no Godot API docs. Comment to bridge this gap.
+## Part 3: Test Harness & Visual Verification
 
-**ALWAYS comment:**
-- Godot-specific patterns (why owner assignment matters, why nodes are structured a certain way)
-- Non-obvious node/resource choices (why `AnimatableBody3D` instead of `RigidBody3D`)
-- Magic numbers with domain meaning (physics layers, collision masks, timing values)
-- Signal connection rationale (what triggers what and why)
-- Workarounds or constraints (Godot quirks, order-of-operations requirements)
-- Implementation decisions (why this approach over alternatives)
-
-**NEVER comment:**
-- Self-explanatory assignments: `position = Vector3(0, 5, 0)`
-- Standard programming constructs: loops, conditionals, basic math
-- Property names that describe themselves: `sprite.visible = false`
+Write `{project_root}/test/test_task.gd` — a SceneTree script that loads the scene under test and sets up the **Verify** scenario. Do NOT call `quit()` — the movie writer handles exit.
 
 ```gdscript
-# GOOD: Godot-specific requirement
-child.owner = root  # Required for PackedScene serialization—unowned nodes are excluded
+extends SceneTree
+## Test harness for: {task name}
+## Verify: {verify description from PLAN.md}
 
-# GOOD: Design decision
-var body := CharacterBody3D.new()  # Kinematic for direct velocity control (vs RigidBody3D physics)
+func _initialize() -> void:
+    var scene: PackedScene = load("res://scenes/{scene_name}.tscn")
+    var instance = scene.instantiate()
+    root.add_child(instance)
 
-# GOOD: Non-obvious value
-collision.collision_layer = 2  # Layer 2 = player, separates from environment (layer 1)
+    # Position camera to frame the verification target
+    var cam := Camera3D.new()
+    cam.position = Vector3(0, 10, 8)
+    cam.rotation.x = -PI / 4
+    root.add_child(cam)
+```
 
-# GOOD: Explains what API call does
-move_and_slide()  # Integrates velocity, handles collisions, updates is_on_floor()
+### Screenshot Capture
 
-# BAD: Obvious
-var speed := 5.0  # Set speed to 5
+```bash
+cd {project_root} && mkdir -p test/screenshots && \
+xvfb-run godot --rendering-driver opengl3 \
+    --write-movie test/screenshots/frame.png \
+    --fixed-fps 1 --quit-after 5 \
+    --script test/test_task.gd 2>&1
+```
+
+Output: `test/screenshots/frame00000000.png`, `frame00000001.png`, ... (one per game-second). Read the PNGs, compare to **Verify**, fix and re-capture until they match.
+
+### Simulated Input
+
+For tests needing player input, use a Timer to trigger actions:
+
+```gdscript
+    var timer := Timer.new()
+    timer.wait_time = 1.0
+    timer.one_shot = true
+    timer.timeout.connect(func(): Input.action_press("move_forward"))
+    root.add_child(timer)
+    timer.start()
 ```

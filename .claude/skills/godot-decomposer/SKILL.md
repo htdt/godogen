@@ -7,7 +7,7 @@ allowed-tools: Read, Write, Edit, Glob, Grep
 
 # Godot Game Decomposer
 
-You decompose a game into a development plan — a sequence of small tasks, each independently verifiable. The output is a markdown file that serves as both strategy and status tracker throughout implementation.
+You decompose a game into a development plan — a sequence of small tasks, each independently verifiable. The output is a markdown file that serves as the implementation strategy.
 
 ## Project Root
 
@@ -20,6 +20,7 @@ The caller specifies `{project_root}` (e.g. `project_root=build`). All file refe
 3. **Check for available assets** — list any files in `{project_root}/glb/` and `{project_root}/img/`.
 4. **Identify risks** — classify every feature as hard or easy.
 5. **Write `{project_root}/PLAN.md`** — the task DAG with verification criteria.
+6. **Initialize `{project_root}/MEMORY.md`** — create with a heading and empty sections for agents to fill in.
 
 ## Why Decompose
 
@@ -64,7 +65,6 @@ Produce a markdown file (`{project_root}/PLAN.md`) with the structure below. Imp
 ## Tasks
 
 ### 1. {Task Name}
-- **Status:** pending
 - **Depends on:** (none)
 - **Goal:** {What this task achieves and why it matters}
 - **Requirements:**
@@ -72,17 +72,13 @@ Produce a markdown file (`{project_root}/PLAN.md`) with the structure below. Imp
   - {Concrete, testable requirement}
 - **Placeholder:** {Minimal scaffolding to test in isolation. Must exercise the real challenge, not dodge it.}
 - **Verify:** {What screenshots should show. Specific and unambiguous.}
-- **Test actions:** hold W 2s, press Space, wait 1s
 - **Targets:** scenes/{x}.tscn, scripts/{y}.gd
-- **Notes:**
 
 ### 2. {Task Name}
-- **Status:** pending
 - **Depends on:** 1
 - ...
 
 ### 3. {Merge: X + Y}
-- **Status:** pending
 - **Depends on:** 1, 2
 - **Goal:** Integrate {X} with {Y}. Focus: {the specific integration risk}.
 - ...
@@ -90,15 +86,12 @@ Produce a markdown file (`{project_root}/PLAN.md`) with the structure below. Imp
 
 ### Task Fields
 
-- **Status** — `pending`, `in_progress`, `done`, `failed`, `blocked`, or `cut`
-- **Depends on** — task numbers that must be `done` before this starts. `(none)` for root tasks.
+- **Depends on** — task numbers that must be complete before this starts. `(none)` for root tasks.
 - **Goal** — what this task achieves and why it matters for the game
 - **Requirements** — concrete, testable behaviors. Include descriptions, dimensions, physics values — everything the generator needs. Each should be verifiable from a screenshot or gameplay test.
 - **Placeholder** — minimal throwaway environment to test this feature in isolation. Must exercise the real challenge. `(none)` for merge tasks that inherit real environments from dependencies.
-- **Verify** — what a screenshot must show to confirm the task works. Unambiguous enough that a verifier with no context can judge pass/fail.
-- **Test actions** — input sequence for automated testing: `hold W 2s`, `press Space`, `wait 1s`, `press Mouse1`
+- **Verify** — a concrete, scripted visual scenario that will be turned into a test harness. Describe: what scene to load, where the camera should look, what objects/state should be visible, and what behavior should be occurring. Must be specific enough to generate a test script and judge pass/fail from screenshots. Example: "Load main.tscn. Camera at (0, 15, 10) looking down at -45°. A green ground plane fills the lower half. A capsule (player) stands at center. 3 red cubes (enemies) are spaced around the edges."
 - **Targets** — scenes and scripts this task creates or modifies
-- **Notes** — initially empty. Agents fill this in with what worked, what failed, what changed.
 
 ### Asset Assignment
 
@@ -107,22 +100,11 @@ The decomposer assigns available assets to specific tasks. Each asset appears in
 - "Use `car` GLB model for the player vehicle, scale to 4m long"
 - "Apply `grass` texture to ground plane, tile every 2m"
 
-### Status Values
+### Project Memory
 
-- `pending` — not started
-- `in_progress` — currently being implemented
-- `done` — implemented and verified
-- `failed` — attempted but needs a different approach (notes must explain why)
-- `blocked` — waiting on a dependency that failed
-- `cut` — removed from scope to simplify (notes must explain why)
+All agents working on this project share `{project_root}/MEMORY.md` as a living knowledge base. When an agent discovers something useful — what worked, what failed, a Godot quirk, a workaround, an architectural decision — it writes it there. Before starting work, agents should read this file for context from previous tasks.
 
-### Living Document Rules
-
-- Agents **update status** on the task they're working on
-- Agents **add notes** about what they learned, what failed, what they changed
-- Agents **may adjust future tasks** based on discoveries — add/remove requirements, change approach, reorder — but must note what changed and why
-- Agents **may add tasks** if integration reveals unexpected work
-- Agents **may mark tasks as `cut`** if simplification is needed to get core gameplay working
+Write entries that are useful to any agent on the project: both high-level decisions ("switched from RigidBody3D to CharacterBody3D for the player because...") and technical specifics ("car.glb faces +Z, needs PI rotation on Y"). Keep it organized by topic, not chronologically.
 
 ## Decomposition Strategy
 
@@ -177,12 +159,14 @@ A single "feature" should be ONE task. Don't over-split things that can't be tes
 
 ### 6. Visual Verification Must Be Unambiguous
 
-The verifier sees screenshots, not code:
+The Verify field drives a test harness that captures screenshots. Describe what the camera sees, not what the code does:
 
-- "Movement works" — BAD
-- "Capsule visibly moves across flat plane when W held; stops when released" — GOOD
+- "Movement works" — BAD (not visual, can't generate test)
+- "Load main.tscn. Camera at (0, 10, 8) facing -45° down. Capsule visible on flat green plane. After 2s, capsule has moved forward ~3 units." — GOOD
 - "Integration successful" — BAD
-- "Player fires bullet while moving; bullet hits enemy; enemy disappears" — GOOD
+- "Load main.tscn. Player capsule at center. 3 red cubes spaced at edges. A small sphere (bullet) visible between player and nearest cube." — GOOD
+
+Include: scene to load, camera position/angle, what objects are visible, colors/shapes, expected positions or state changes over time.
 
 ### 7. Decorations and Polish Come Last
 
@@ -205,7 +189,7 @@ Before outputting, verify:
 3. **Hard tasks are early** — complex features are not blocked behind easy ones
 4. **Merge tasks integrate 2-3 things** — not everything at once
 5. **Placeholders exercise real challenges** — no "flat plane" for a game about terrain
-6. **Every task is verifiable** — clear visual outcome, specific test actions
+6. **Every task is verifiable** — Verify describes a concrete visual scenario with camera position, visible objects, and expected state
 7. **All assets assigned** — every available asset appears in the Assets table with a task
 
 ## What NOT to Include
