@@ -15,7 +15,7 @@ All skills operate on `project_root=build`. Every file reference below uses `bui
 
 ## Assets
 
-Read `build/assets.json` at the start to get the list of available assets. Pass the assets list to **godot-scaffold** and **godot-decomposer** so they can plan around available models and textures.
+Read `build/assets.json` at the start to get the list of available assets. Pass the assets list to **godot-scaffold** and **game-decomposer** so they can plan around available models and textures.
 If `build/assets.json` doesn't exist, proceed with no assets (placeholder geometry only).
 
 ## Skills
@@ -23,7 +23,7 @@ If `build/assets.json` doesn't exist, proceed with no assets (placeholder geomet
 | Skill | Input | Output | When | How |
 |-------|-------|--------|------|-----|
 | **godot-scaffold** | game description, assets | `build/project.godot`, `build/STRUCTURE.md`, `build/scripts/*.gd` stubs, `build/scenes/*.tscn` stubs | Once at start | Inline |
-| **godot-decomposer** | game description, STRUCTURE.md, assets | `build/PLAN.md` — task DAG with verification criteria | Once at start | Inline |
+| **game-decomposer** | game description, STRUCTURE.md, assets | `build/PLAN.md` — task DAG with verification criteria | Once at start | Inline |
 | **godot-task** | task from PLAN.md, STRUCTURE.md | `.tscn` scenes + `.gd` scripts + `test/test_task.gd` + screenshots | Per task | **Sub-agent** |
 
 ## Running Sub-agents

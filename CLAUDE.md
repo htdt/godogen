@@ -1,6 +1,6 @@
 The goal is to develop Claude Code skills for Godot game development:
 - gamedev
-- godot-decomposer
+- game-decomposer
 - godot-scaffold
 - godot-task
 
