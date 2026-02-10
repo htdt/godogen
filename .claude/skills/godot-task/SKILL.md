@@ -597,11 +597,13 @@ The test harness stdout is captured alongside screenshots. Use `print("ASSERT PA
 
 ```bash
 cd {project_root} && mkdir -p test/screenshots && \
-xvfb-run godot --rendering-driver opengl3 \
+xvfb-run godot --rendering-driver vulkan \
     --write-movie test/screenshots/frame.png \
     --fixed-fps 10 --quit-after {N} \
     --script test/test_task.gd 2>&1
 ```
+
+**Rendering driver:** Use `vulkan` (default) — it runs via lavapipe software rasterizer under xvfb and supports `forward_plus` rendering (shadows, lighting, post-processing). Fall back to `opengl3` only if vulkan fails (e.g. missing lavapipe/mesa-vulkan-drivers).
 
 `--quit-after {N}` is the frame count (at 10 FPS: 60 = 6s, 100 = 10s, 200 = 20s). Choose duration based on what needs to happen — a static scene needs only a few seconds for a camera orbit, a physics sequence may need 15-20s to play out.
 

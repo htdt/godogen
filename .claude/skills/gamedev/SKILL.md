@@ -2,7 +2,7 @@
 name: gamedev
 description: Generate complete Godot games from natural language — coordinates scaffold, decomposer, and task skills
 argument-hint: <game description>
-allowed-tools: Read, Write, Edit, Bash, Glob, Grep, Task
+allowed-tools: Read, Write, Edit, Bash, Glob, Grep, Task, TaskCreate, TaskUpdate, TaskList
 ---
 
 # Game Generator — Orchestrator
@@ -33,7 +33,9 @@ Each task gets ONE sub-agent that builds, tests, captures screenshots, and itera
 
 ```
 Task(subagent_type="general-purpose", prompt="""
-Use the godot-task skill. project_root=build
+CRITICAL: Your FIRST action must be to invoke the Skill tool with skill="godot-task" to load the task executor instructions.
+
+project_root=build
 
 {task block from PLAN.md — including Verify field}
 
@@ -83,11 +85,16 @@ User request
     +- scaffold (inline) -> STRUCTURE.md + project.godot + stubs
     +- decomposer (inline) -> PLAN.md
     |
-    +- For each task (topological order):
+    +- Create CLI todo list from PLAN.md tasks (TaskCreate)
+    |
+    +- For each task (one at a time, in topological order):
+    |   +- Mark task in_progress (TaskUpdate)
     |   +- Launch godot-task sub-agent
     |   +- On success: launch screenshot reviewer (clean context, sonnet)
     |   +- If reviewer says FAIL: retry task with reviewer's feedback
+    |   +- On final pass: mark task completed (TaskUpdate)
     |   +- Update STRUCTURE.md and PLAN.md as needed
+    |   +- Wait for completion before starting next task
     |
     +- Summary of completed game
 ```

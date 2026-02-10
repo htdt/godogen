@@ -10,7 +10,7 @@ func _initialize() -> void:
 	root.set_script(load("SCRIPT_PATH"))  # REPLACE SCRIPT_PATH — e.g. "res://scripts/player.gd"
 
 	# CHILDREN — delete block if none, duplicate per child
-	var CHILD_VAR := load("CHILD_PATH").instantiate()  # REPLACE CHILD_VAR, CHILD_PATH
+	var CHILD_VAR = load("CHILD_PATH").instantiate()  # REPLACE CHILD_VAR, CHILD_PATH
 	CHILD_VAR.name = "CHILD_NAME"                      # REPLACE CHILD_NAME
 	root.add_child(CHILD_VAR)
 

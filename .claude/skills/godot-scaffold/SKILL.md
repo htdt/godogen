@@ -153,6 +153,12 @@ cd {project_root} && godot --headless --script scenes/build_main.gd
 - AnimationPlayer — animation_finished
 - RigidBody2D/3D — body_entered (contact_monitor required)
 
+## Common Errors
+
+- **`Cannot infer the type of "x" variable`** — caused by using `:=` with `load().instantiate()`. Use `=` (not `:=`) for any variable assigned from `instantiate()`. The stub template already uses `=` — do not change it to `:=` when filling in placeholders.
+- **`preload()` fails in headless** — scene builders run headless. Always use `load()`, never `preload()`.
+- **Scene builder hangs** — missing `quit()` call. The stub template includes `quit(0)` — never remove it.
+
 ## What NOT to Include
 
 - Implementation details or behavior descriptions
