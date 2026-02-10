@@ -6,3 +6,5 @@ The goal is to develop Claude Code skills for Godot game development:
 
 We take a natural language game description and turn it into a real game.
 We iterate via building games and updating skills.
+
+When writing skills: don't give obvious guidance. Assume the skill is performed by a strong LLM — handholding only pollutes the context.

@@ -7,44 +7,41 @@ allowed-tools: Read, Write, Edit, Bash, Glob, Grep, Task
 
 # Game Generator — Orchestrator
 
-You generate complete Godot games from natural language descriptions. You coordinate specialized skills to plan, build, verify, and iterate until the game works.
+You generate and update Godot games from natural language. You coordinate specialized skills and keep project documents current.
 
 ## Project Root
 
-All skills operate on `project_root=build`. Every file reference below uses `build/` as the project root.
+All skills operate on `project_root=build`.
 
 ## Assets
 
-Read `build/assets.json` at the start to get the list of available assets. Pass the assets list to **godot-scaffold** and **game-decomposer** so they can plan around available models and textures.
-If `build/assets.json` doesn't exist, proceed with no assets (placeholder geometry only).
+Read `build/assets.json` at the start. Pass the assets list to **godot-scaffold** and **game-decomposer**. If it doesn't exist, proceed with placeholder geometry.
 
 ## Skills
 
-| Skill | Input | Output | When | How |
-|-------|-------|--------|------|-----|
-| **godot-scaffold** | game description, assets | `build/project.godot`, `build/STRUCTURE.md`, `build/scripts/*.gd` stubs, `build/scenes/*.tscn` stubs | Once at start | Inline |
-| **game-decomposer** | game description, STRUCTURE.md, assets | `build/PLAN.md` — task DAG with verification criteria | Once at start | Inline |
-| **godot-task** | task from PLAN.md, STRUCTURE.md | `.tscn` scenes + `.gd` scripts + `test/test_task.gd` + screenshots | Per task | **Sub-agent** |
+| Skill | When | How |
+|-------|------|-----|
+| **godot-scaffold** | New project OR update (new modules, reset subsystems) | Inline |
+| **game-decomposer** | New project OR update (plan new/changed features) | Inline |
+| **godot-task** | Per task from PLAN.md | **Sub-agent** |
 
-## Running Sub-agents
+Scaffold and decomposer work for both fresh projects and updates. When updating, explicitly tell the skill it's an update — pass existing STRUCTURE.md and describe what's changing vs. what's preserved.
 
-Use the **Task tool** to run `godot-task` as a sub-agent. Each task gets ONE sub-agent that handles scene generation, script writing, test harness creation, screenshot capture, and visual verification — iterating internally until screenshots match the task's **Verify** description.
+## Running Task Sub-agents
 
-**For each task:**
+Each task gets ONE sub-agent that builds, tests, captures screenshots, and iterates internally until verification passes.
+
 ```
 Task(subagent_type="general-purpose", prompt="""
 Use the godot-task skill. project_root=build
 
-{paste the task block from PLAN.md — including the Verify field}
+{task block from PLAN.md — including Verify field}
 
-{paste relevant STRUCTURE.md sections}
+{relevant STRUCTURE.md sections}
 """)
 ```
 
-Pass only the information the sub-agent needs:
-- The specific task block from PLAN.md (**including the Verify field** — this drives the test harness)
-- Relevant STRUCTURE.md sections (scenes/scripts the task touches)
-- Any error context if this is a retry
+Pass only what the sub-agent needs: task block (with Verify), relevant STRUCTURE.md sections, error context if retrying.
 
 ## Pipeline
 
@@ -53,50 +50,33 @@ User request
     |
     +- Read build/assets.json (if exists)
     +- scaffold (inline) -> STRUCTURE.md + project.godot + stubs
-    +- decomposer (inline) -> PLAN.md (uses STRUCTURE.md)
+    +- decomposer (inline) -> PLAN.md
     |
     +- For each task (topological order):
     |   +- Launch godot-task sub-agent
-    |   |   (builds scenes + scripts, generates test harness,
-    |   |    captures screenshots, iterates until Verify matches)
-    |   +- Cross-project compile check: cd build && timeout 30 godot --headless --quit 2>&1
-    |   +- If compile FAIL -> retry with error context
-    |   +- Review sub-agent's screenshots (build/test/screenshots/)
-    |   +- Update STRUCTURE.md if architecture changed
+    |   +- Read sub-agent result for status / issues
+    |   +- Update STRUCTURE.md and PLAN.md as needed
     |
-    +- Final compile check + screenshot review of complete game
+    +- Summary of completed game
 ```
 
-## When to Use godot-task
+## Debugging
 
-**Always prefer launching a godot-task sub-agent over editing files directly** — even for simple merges, tweaks, or one-line fixes. The sub-agent runs the test harness and captures screenshots, which catches issues that look trivial but break visually. If you edit a file inline, you skip verification and won't know if it worked until later (when it's harder to fix).
+The task sub-agent owns build + verify. If a sub-agent reports failure or you suspect integration issues, you can:
+- Read `build/MEMORY.md` — sub-agents log discoveries and workarounds
+- Read screenshots in `build/test/screenshots/`
+- Run `cd build && timeout 30 godot --headless --quit 2>&1` to check cross-project compilation
 
-## Executing a Task
+But don't do this by default — only when something goes wrong.
 
-Before generating for task N:
+## Document Maintenance
 
-1. **Read `build/PLAN.md`** — task requirements, placeholder, targets, dependencies, **Verify** description
-2. **Read `build/STRUCTURE.md`** — relevant scenes, scripts, signal connections
-3. **Check dependencies** — all dependency tasks must be complete and files must exist
-4. **Launch sub-agent** — one godot-task agent with the task block (including Verify) + relevant STRUCTURE.md sections, with `project_root=build`. The sub-agent builds, tests, captures screenshots, and iterates internally.
-5. **Cross-project compile check** — `cd build && timeout 30 godot --headless --quit 2>&1` to catch integration issues
-6. **Review screenshots** — read PNGs from `build/test/screenshots/` to confirm the sub-agent's visual verification
-7. **Update documents** — any architectural changes to STRUCTURE.md
+**STRUCTURE.md** — scaffold skill is the primary author. Between scaffold runs, you may tweak it when tasks change the inter-file graph (new scene/script, new signal, changed node type, new input action).
 
-## Updating Documents at Runtime
+**PLAN.md** — decomposer skill is the primary author. Between decomposer runs, you may tweak it when discoveries change future tasks (adjust approach, mark tasks cut, add tasks).
 
-### STRUCTURE.md
+Sub-agents write discoveries to `build/MEMORY.md`. Check it when a task fails.
 
-Update when generators **change the inter-file graph**: new scene/script, new signal connection, changed node type, new input action.
+## Always Prefer Sub-agents
 
-Don't update for internals (child nodes within a scene, helper functions). STRUCTURE.md tracks files and connections, not implementation.
-
-### PLAN.md
-
-Update when discoveries change future tasks:
-- Adjust future tasks if discoveries change the approach
-- Mark tasks cut if scope must shrink (with explanation)
-
-### MEMORY.md
-
-Sub-agents write discoveries to `build/MEMORY.md` as they work. Check it when a task fails — previous agents may have logged relevant workarounds or known issues.
+Launch a godot-task sub-agent rather than editing files directly — even for small fixes. The sub-agent runs the test harness, which catches issues that inline edits miss.
