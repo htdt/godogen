@@ -25,7 +25,7 @@ All output goes to `{project_root}/` (e.g. `build/`).
 3. **Design / update architecture** — scenes, scripts, signals, input actions.
 4. **Write/update `project.godot`** — create or merge input mappings.
 5. **Write `STRUCTURE.md`** — always the complete architecture, not a diff.
-6. **Write script stubs** — only for new or re-scaffolded scripts. Don't touch existing implemented scripts unless they're being re-scaffolded.
+6. **Write script stubs** — for new scripts and any existing scripts the task explicitly asks to replace.
 7. **Build scene stubs** — for each new/changed scene, copy `.claude/skills/godot-scaffold/stubs/build_scene.gd` to `{project_root}/scenes/build_{name}.gd`, replace all placeholders with concrete values, then run in dependency order (leaf scenes first): `cd {project_root} && godot --headless --script scenes/build_{name}.gd`
 8. **Verify** — `cd {project_root} && godot --headless --quit 2>&1`. No `ERROR` or `Parser Error` lines. RID warnings are benign.
 
