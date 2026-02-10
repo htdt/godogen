@@ -1,66 +1,29 @@
 extends SceneTree
-## Stub scene builder — scaffold fills in the vars below, scene skill replaces with full implementation.
-## Run: cd {project_root} && godot --headless --script scenes/build_{name}.gd
-
-var _root_type := "Node3D"
-var _root_name := "Main"
-var _script_path := ""
-var _output_path := "res://scenes/main.tscn"
-var _children: Array = []
+## Scene builder template — copy to scenes/build_<name>.gd, replace placeholders.
+## Run: cd {project_root} && godot --headless --script scenes/build_<name>.gd
 
 func _initialize() -> void:
-	var root: Node = _make_node(_root_type)
-	root.name = _root_name
+	var root := ROOT_TYPE.new()     # REPLACE ROOT_TYPE — e.g. CharacterBody3D
+	root.name = "ROOT_NAME"         # REPLACE ROOT_NAME — e.g. "Player"
 
-	if _script_path != "":
-		var scr = load(_script_path)
-		if scr:
-			root.set_script(scr)
+	# SCRIPT — delete block if no script on root
+	root.set_script(load("SCRIPT_PATH"))  # REPLACE SCRIPT_PATH — e.g. "res://scripts/player.gd"
 
-	for child_def in _children:
-		var child_scene: PackedScene = load(child_def[1])
-		if child_scene:
-			var inst = child_scene.instantiate()
-			inst.name = child_def[0]
-			root.add_child(inst)
-			inst.owner = root
+	# CHILDREN — delete block if none, duplicate per child
+	var CHILD_VAR := load("CHILD_PATH").instantiate()  # REPLACE CHILD_VAR, CHILD_PATH
+	CHILD_VAR.name = "CHILD_NAME"                      # REPLACE CHILD_NAME
+	root.add_child(CHILD_VAR)
 
-	set_owner_on_new_nodes(root, root)
-
+	# SAVE
+	_set_owners(root, root)
 	var packed := PackedScene.new()
 	packed.pack(root)
-	ResourceSaver.save(packed, _output_path)
-	print("Saved: " + _output_path)
+	ResourceSaver.save(packed, "OUTPUT_PATH")  # REPLACE OUTPUT_PATH — e.g. "res://scenes/player.tscn"
+	print("Saved: OUTPUT_PATH")                # REPLACE OUTPUT_PATH
 	quit(0)
 
-func set_owner_on_new_nodes(node: Node, scene_owner: Node) -> void:
-	for child in node.get_children():
-		child.owner = scene_owner
-		if child.scene_file_path.is_empty():
-			set_owner_on_new_nodes(child, scene_owner)
-
-func _make_node(type_name: String) -> Node:
-	match type_name:
-		"Node": return Node.new()
-		"Node2D": return Node2D.new()
-		"Node3D": return Node3D.new()
-		"CharacterBody2D": return CharacterBody2D.new()
-		"CharacterBody3D": return CharacterBody3D.new()
-		"RigidBody2D": return RigidBody2D.new()
-		"RigidBody3D": return RigidBody3D.new()
-		"StaticBody2D": return StaticBody2D.new()
-		"StaticBody3D": return StaticBody3D.new()
-		"AnimatableBody2D": return AnimatableBody2D.new()
-		"AnimatableBody3D": return AnimatableBody3D.new()
-		"Area2D": return Area2D.new()
-		"Area3D": return Area3D.new()
-		"Camera2D": return Camera2D.new()
-		"Camera3D": return Camera3D.new()
-		"Control": return Control.new()
-		"CanvasLayer": return CanvasLayer.new()
-		"SubViewport": return SubViewport.new()
-		"WorldEnvironment": return WorldEnvironment.new()
-		"Marker2D": return Marker2D.new()
-		"Marker3D": return Marker3D.new()
-	push_warning("Unknown type '" + type_name + "', using Node3D")
-	return Node3D.new()
+func _set_owners(node: Node, owner: Node) -> void:
+	for c in node.get_children():
+		c.owner = owner
+		if c.scene_file_path.is_empty():
+			_set_owners(c, owner)
