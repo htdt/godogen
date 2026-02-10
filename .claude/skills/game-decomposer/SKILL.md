@@ -1,11 +1,11 @@
 ---
-name: godot-decomposer
+name: game-decomposer
 description: Decompose a game into isolated, independently testable tasks — enabling iteration on hard problems without interference from the rest of the system
 argument-hint: <game description>
 allowed-tools: Read, Write, Edit, Glob, Grep
 ---
 
-# Godot Game Decomposer
+# Game Decomposer
 
 You decompose a game into a development plan — a sequence of small tasks, each independently verifiable. The output is `PLAN.md`, the implementation strategy.
 
