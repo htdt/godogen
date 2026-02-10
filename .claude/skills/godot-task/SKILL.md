@@ -529,24 +529,69 @@ func _ready() -> void:
 
 ## Part 3: Test Harness & Visual Verification
 
-Write `{project_root}/test/test_task.gd` — a SceneTree script that loads the scene under test and sets up the **Verify** scenario. Do NOT call `quit()` — the movie writer handles exit.
+Write `{project_root}/test/test_task.gd` — a SceneTree script that loads the scene under test and **thoroughly verifies the task's goal**. Do NOT call `quit()` — the movie writer handles exit.
 
+**Verify what the task actually asks for.** Read the Verify description and think about what would convince you — a skeptic, not the author — that the task is done. A decoration task needs multiple camera angles to check placement and scale. A movement task needs the camera to follow the action over time. A UI task needs the full interface visible. Match the test to the goal.
+
+### Test Harness Patterns
+
+**Static scene (decoration, terrain, environment) — use multiple angles:**
 ```gdscript
 extends SceneTree
-## Test harness for: {task name}
-## Verify: {verify description from PLAN.md}
+
+var _cam: Camera3D
+var _frame: int = 0
+var _target_pos: Vector3  # Center of the scene or object of interest
 
 func _initialize() -> void:
     var scene: PackedScene = load("res://scenes/{scene_name}.tscn")
     var instance = scene.instantiate()
     root.add_child(instance)
 
-    # Position camera to frame the verification target
-    var cam := Camera3D.new()
-    cam.position = Vector3(0, 10, 8)
-    cam.rotation.x = -PI / 4
-    root.add_child(cam)
+    _target_pos = Vector3(0, 2, 0)
+    _cam = Camera3D.new()
+    _cam.current = true
+    root.add_child(_cam)
+
+func _process(delta: float) -> bool:
+    _frame += 1
+    # Orbit around the subject to see it from multiple angles
+    var angle: float = float(_frame) / 60.0 * TAU * 0.5  # half orbit over 6s
+    var radius := 12.0
+    _cam.position = _target_pos + Vector3(sin(angle) * radius, 6, cos(angle) * radius)
+    _cam.look_at(_target_pos)
+    return false
 ```
+
+**Dynamic scene (movement, physics, gameplay) — follow the action:**
+```gdscript
+extends SceneTree
+
+var _cam: Camera3D
+var _target: Node3D
+var _frame: int = 0
+
+func _initialize() -> void:
+    var scene: PackedScene = load("res://scenes/{scene_name}.tscn")
+    var instance = scene.instantiate()
+    root.add_child(instance)
+
+    _target = instance.get_node("Player")
+    _cam = Camera3D.new()
+    _cam.current = true
+    root.add_child(_cam)
+
+func _process(delta: float) -> bool:
+    _frame += 1
+    if _target:
+        _cam.position = _target.position + Vector3(5, 4, 5)
+        _cam.look_at(_target.position)
+    return false
+```
+
+### Console Assertions
+
+The test harness stdout is captured alongside screenshots. Use `print("ASSERT PASS/FAIL: ...")` to verify behavioral properties that are hard to judge visually (exact positions, velocities, state changes). After capture, check stdout for any `ASSERT FAIL` lines — these must be fixed before the task is complete.
 
 ### Screenshot Capture
 
@@ -554,11 +599,18 @@ func _initialize() -> void:
 cd {project_root} && mkdir -p test/screenshots && \
 xvfb-run godot --rendering-driver opengl3 \
     --write-movie test/screenshots/frame.png \
-    --fixed-fps 10 --quit-after 60 \
+    --fixed-fps 10 --quit-after {N} \
     --script test/test_task.gd 2>&1
 ```
 
-Output: `test/screenshots/frame00000000.png` through `frame00000059.png` (60 frames at 10 FPS = 6 game-seconds). Read a selection of PNGs, compare to **Verify**, fix and re-capture until they match.
+`--quit-after {N}` is the frame count (at 10 FPS: 60 = 6s, 100 = 10s, 200 = 20s). Choose duration based on what needs to happen — a static scene needs only a few seconds for a camera orbit, a physics sequence may need 15-20s to play out.
+
+**Smart frame selection:** Don't read all frames — pick 3-5 that cover the verification:
+- For static/decoration: frames spread across a camera orbit (different angles)
+- For movement/physics: early (initial state), mid (action in progress), late (outcome)
+- For UI/HUD: frames showing different states or interactions
+
+Think about **what would convince a skeptic** — someone who hasn't seen the code — that the task is done.
 
 ### Simulated Input
 

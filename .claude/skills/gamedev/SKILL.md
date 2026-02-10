@@ -43,6 +43,37 @@ Use the godot-task skill. project_root=build
 
 Pass only what the sub-agent needs: task block (with Verify), relevant STRUCTURE.md sections, error context if retrying.
 
+### Screenshot Review
+
+After a task sub-agent reports success, review its screenshots with a **separate sub-agent that has no implementation context** — just the task spec and the visual evidence. This catches confirmation bias (the implementer sees what it expects, not what's actually there).
+
+```
+Task(subagent_type="general-purpose", model="sonnet", prompt="""
+You are reviewing screenshots from a Godot game development task.
+
+## Task
+{task Goal + Requirements + Verify from PLAN.md}
+
+## Screenshots
+Read these files and judge whether the task's Verify criteria are met:
+- build/test/screenshots/frame00000000.png  (initial state)
+- build/test/screenshots/frame{mid}.png     (action in progress)
+- build/test/screenshots/frame{late}.png    (expected outcome)
+
+Also read the test harness stdout below for any ASSERT FAIL lines:
+{stdout from xvfb-run capture}
+
+## Your job
+Reply with exactly one of:
+- PASS — screenshots and assertions confirm the Verify criteria are met
+- FAIL: {one-line reason} — what's wrong or missing
+
+Be strict: judge whether the Verify criteria are actually demonstrated, not just whether the scene loads. If Verify describes a behavior, the screenshots must show it happening. If Verify describes placement or appearance, the screenshots must show it clearly from the angles provided.
+""")
+```
+
+If the reviewer returns FAIL, retry the task sub-agent with the reviewer's reason appended as context.
+
 ## Pipeline
 
 ```
@@ -54,7 +85,8 @@ User request
     |
     +- For each task (topological order):
     |   +- Launch godot-task sub-agent
-    |   +- Read sub-agent result for status / issues
+    |   +- On success: launch screenshot reviewer (clean context, sonnet)
+    |   +- If reviewer says FAIL: retry task with reviewer's feedback
     |   +- Update STRUCTURE.md and PLAN.md as needed
     |
     +- Summary of completed game

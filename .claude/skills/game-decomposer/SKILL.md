@@ -130,12 +130,14 @@ If you can't test one part without the other, they belong in the same task.
 
 ### Verification Must Be Unambiguous
 
-The Verify field drives automated screenshot capture. Describe what the camera sees, not what the code does:
+The Verify field drives automated screenshot capture. Describe what the task's **goal looks like when achieved** — the expected outcome, not intermediate steps:
 
 - "Movement works" — **BAD** (not visual, can't generate test harness)
-- "Load main.tscn. Camera at (0, 10, 8) facing -45° down. Capsule on flat green plane. After 2s, capsule has moved forward ~3 units." — **GOOD**
+- "Objects are in the scene" — **BAD** (vague, proves nothing about the goal)
+- "Load arena.tscn. Camera orbits the castle model. Castle is centered, properly scaled relative to the ground plane, no clipping through terrain." — **GOOD** (placement task — describes what correct placement looks like)
+- "Load main.tscn. Camera follows player. Player walks to edge and falls — gravity pulls them down, they don't float." — **GOOD** (physics task — describes the behavior to demonstrate)
 
-Include: scene to load, camera position/angle, visible objects with colors/shapes, expected positions or state changes over time.
+Include: scene to load, camera setup, and what the screenshots must show. The task executor will choose test duration, camera angles, and frame selection.
 
 ## Plan Validation
 
