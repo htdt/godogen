@@ -15,6 +15,7 @@ The caller specifies `{project_root}` (e.g. `project_root=build`). All files liv
 
 ## Workflow
 
+1. **Bootstrap doc_api** — run `bash .claude/skills/godot-task/tools/ensure_doc_api.sh` (no-ops if already present).
 1. **Read references** — ALWAYS read `gdscript.md` before writing any code. For node/resource API lookup, see API Lookup below.
 2. **Analyze the task** — read the task's **Targets** to determine what to generate:
    - `scenes/*.tscn` targets → generate scene builder(s) (see Part 1)
@@ -40,7 +41,7 @@ cd {project_root} && godot --headless --quit 2>&1
 
 **Error handling:** Parse Godot's stderr/stdout for error lines. Common issues:
 - `Parser Error` — syntax error in GDScript, fix the line indicated
-- `Invalid call` / `method not found` — wrong node type or API usage, look up the class in `doc_api/`
+- `Invalid call` / `method not found` — wrong node type or API usage, look up the class in `doc_api`
 - `Cannot infer type` — `:=` used with `instantiate()` or polymorphic math functions, see type inference rules
 - Script hangs — missing `quit()` call in scene builder; kill the process and add `quit()`
 
@@ -50,11 +51,11 @@ Read `{project_root}/MEMORY.md` before starting work — it contains discoveries
 
 ## API Lookup
 
-Per-class API docs are in `doc_api/`. Follow this order:
+Per-class API docs live at `.claude/skills/godot-task/doc_api/`. Follow this order:
 
-1. **Read `doc_api/_common.md`** — index of ~128 commonly used classes. Find what you need here first.
-2. **If not found, read `doc_api/_other.md`** — index of ~730 remaining classes.
-3. **Read `doc_api/{ClassName}.md`** — full API reference for a specific class.
+1. **Read `.claude/skills/godot-task/doc_api/_common.md`** — index of ~128 commonly used classes. Find what you need here first.
+2. **If not found, read `.claude/skills/godot-task/doc_api/_other.md`** — index of ~730 remaining classes.
+3. **Read `.claude/skills/godot-task/doc_api/{ClassName}.md`** — full API reference for a specific class.
 
 ## Type Inference Errors
 
@@ -274,7 +275,7 @@ func set_owner_on_new_nodes(node: Node, scene_owner: Node) -> void:
 
 ### Scene Constraints
 
-- Use ONLY nodes and resources available in Godot — look up unfamiliar classes in `doc_api/`
+- Use ONLY nodes and resources available in Godot — look up unfamiliar classes in `doc_api`
 - Do NOT use `@onready` or scene-time annotations (this runs at build-time)
 - Do NOT use `preload()` — use `load()` (preload fails in headless)
 - ATTACH all scripts listed in STRUCTURE.md using `node.set_script(load("path"))`
@@ -283,6 +284,7 @@ func set_owner_on_new_nodes(node: Node, scene_owner: Node) -> void:
 - Save to the EXACT output path specified by the task
 - **MANDATORY `quit()`** — Script MUST call `quit()` at the end. Without it, Godot runs forever in headless mode.
 - **2D/3D consistency** — Use ONLY 2D nodes (Node2D, CharacterBody2D, Area2D, Camera2D) OR 3D nodes. Never mix dimensions in the same scene hierarchy.
+- **No spatial methods in `_initialize()`** — `look_at()`, `to_global()`, etc. fail because nodes aren't in the tree yet. Use `rotation_degrees` or compute transforms manually.
 
 ---
 
@@ -413,6 +415,8 @@ func _on_body_entered(body: Node2D) -> void:
     if body.is_in_group("enemies"):
         take_damage(10)
 ```
+
+**Sibling signal timing:** Scene tree calls `_ready()` on children in order. If sibling A emits a signal in its `_ready()`, sibling B (added later) hasn't connected yet and misses it. Fix: after connecting, check if the emitter already has data and call the handler manually.
 
 ### Node References
 
@@ -550,11 +554,11 @@ func _initialize() -> void:
 cd {project_root} && mkdir -p test/screenshots && \
 xvfb-run godot --rendering-driver opengl3 \
     --write-movie test/screenshots/frame.png \
-    --fixed-fps 1 --quit-after 5 \
+    --fixed-fps 10 --quit-after 60 \
     --script test/test_task.gd 2>&1
 ```
 
-Output: `test/screenshots/frame00000000.png`, `frame00000001.png`, ... (one per game-second). Read the PNGs, compare to **Verify**, fix and re-capture until they match.
+Output: `test/screenshots/frame00000000.png` through `frame00000059.png` (60 frames at 10 FPS = 6 game-seconds). Read a selection of PNGs, compare to **Verify**, fix and re-capture until they match.
 
 ### Simulated Input
 

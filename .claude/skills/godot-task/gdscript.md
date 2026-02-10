@@ -589,3 +589,7 @@ func _unhandled_input(event: InputEvent) -> void:
     # Called for input not consumed by UI
     pass
 ```
+
+## Physics Gotchas
+
+- BoxShape3D on RigidBody3D snags on trimesh collision edges (well-known Godot/Jolt bug). Use CapsuleShape3D for objects that slide across trimesh surfaces (vehicles, rolling objects).

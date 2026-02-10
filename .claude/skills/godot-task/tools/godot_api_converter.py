@@ -29,7 +29,7 @@ import argparse
 from pathlib import Path
 from dataclasses import dataclass
 from enum import Enum
-from tools.class_list import CLASS_SCENE, CLASS_SCRIPT, PRIORITY_CLASSES, CLASS_UNIFIED
+from class_list import CLASS_SCENE, CLASS_SCRIPT, PRIORITY_CLASSES, CLASS_UNIFIED
 
 
 class DescriptionMode(Enum):

@@ -1,5 +1,6 @@
-doc_source
-doc_api
+doc_source/
+.claude/skills/godot-task/doc_source/
+.claude/skills/godot-task/doc_api/
 */__pycache__
 .claude/settings.local.json
 build/
