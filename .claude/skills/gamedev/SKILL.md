@@ -65,90 +65,30 @@ project_root=build
 
 ## Handling Task Results
 
-godot-task tracks its own iteration count and stops after 5 implement-screenshot-verify loops. When it reports back:
+godot-task iterates internally and uses judgment to decide when to stop (it won't spin forever — it stops when it recognizes a fundamental blocker or lack of convergence). When it reports back:
 
 **Task succeeded** — mark completed, move on.
 
-**Task hit iteration limit** — read the report (what works, what's broken, root cause guess) and decide:
+**Task stopped with partial results** — read the report (what works, what's broken, root cause guess) and decide:
 1. **Good enough** — the core goal is met even if imperfect. Mark completed, note caveats.
 2. **Adjust task** — simplify requirements or change approach. Update the task in PLAN.md and re-run godot-task with the revised spec.
 3. **Replan** — the task is fundamentally blocked. Re-run scaffold (to fix architecture) and/or decomposer (to restructure tasks), then resume from the new plan.
 
-Don't retry the same task with the same spec — that's what godot-task already exhausted.
+Don't retry the same task with the same spec — that's what godot-task already tried.
 
 ## Screenshot Viewer
 
-After each task completes (or hits iteration limit), generate an HTML page that lets the user play the task's screenshots as a video.
+After each task completes (or hits iteration limit), copy the viewer and serve it so the user can review screenshots as a video.
 
 Screenshots live in `build/test/screenshots/{task_folder}/` (per-task folders created by godot-task).
 
-**Generate `build/test/screenshots/{task_folder}/viewer.html`:**
-
-```html
-<!DOCTYPE html>
-<html>
-<head>
-<style>
-  body { margin: 0; background: #1a1a1a; display: flex; flex-direction: column;
-         align-items: center; justify-content: center; height: 100vh; font-family: monospace; color: #ccc; }
-  img { max-width: 95vw; max-height: 80vh; image-rendering: pixelated; }
-  .controls { margin-top: 10px; }
-  button { font-size: 16px; margin: 0 5px; padding: 5px 15px; cursor: pointer; }
-  #info { margin-top: 8px; font-size: 14px; }
-</style>
-</head>
-<body>
-<img id="frame" src="frame00000000.png">
-<div class="controls">
-  <button onclick="prev()">&#9664; Prev</button>
-  <button id="playBtn" onclick="togglePlay()">&#9654; Play</button>
-  <button onclick="next()">Next &#9654;</button>
-  <input type="range" id="speed" min="1" max="30" value="10">
-  <label for="speed">FPS</label>
-</div>
-<div id="info">Frame 1 / ?</div>
-<script>
-let frames = [], idx = 0, timer = null;
-// Discover frames by probing sequentially
-(async () => {
-  for (let i = 0; i < 9999; i++) {
-    const name = 'frame' + String(i).padStart(8, '0') + '.png';
-    try {
-      const r = await fetch(name, { method: 'HEAD' });
-      if (!r.ok) break;
-      frames.push(name);
-    } catch { break; }
-  }
-  show();
-})();
-function show() {
-  document.getElementById('frame').src = frames[idx];
-  document.getElementById('info').textContent = `Frame ${idx + 1} / ${frames.length}`;
-}
-function next() { if (idx < frames.length - 1) { idx++; show(); } }
-function prev() { if (idx > 0) { idx--; show(); } }
-function togglePlay() {
-  if (timer) { clearInterval(timer); timer = null; document.getElementById('playBtn').textContent = '▶ Play'; }
-  else { timer = setInterval(() => { if (idx < frames.length - 1) { idx++; show(); } else togglePlay(); },
-    1000 / document.getElementById('speed').value); document.getElementById('playBtn').textContent = '⏸ Pause'; }
-}
-</script>
-</body>
-</html>
-```
-
-**Serve and share:**
 ```bash
+cp .claude/skills/gamedev/viewer.html build/test/screenshots/{task_folder}/viewer.html
+pkill -f "python3 -m http.server 8080" 2>/dev/null; sleep 0.5
 cd build/test/screenshots/{task_folder} && python3 -m http.server 8080 &
 ```
 
 Tell the user: **"Screenshots for {task_name} are at http://localhost:8080/viewer.html"**
-
-Kill previous server before starting a new one:
-```bash
-pkill -f "python3 -m http.server 8080" 2>/dev/null; sleep 0.5
-cd build/test/screenshots/{task_folder} && python3 -m http.server 8080 &
-```
 
 ## Debugging
 

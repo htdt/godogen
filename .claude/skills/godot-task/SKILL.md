@@ -31,17 +31,20 @@ The caller specifies `{project_root}` (e.g. `project_root=build`). All files liv
 
 ## Iteration Tracking
 
-Steps 3-9 form an **implement → screenshot → verify** loop. Track each pass through this loop.
+Steps 3-9 form an **implement → screenshot → verify** loop. Track each pass through this loop using the CLI todo list (TodoWrite).
 
-**Max iterations: 5.** After 5 full iterations without satisfying the Verify criteria, **stop** and report:
+There is no fixed iteration limit — use judgment:
+- Small visual tweaks (position, scale, color) can run many iterations cheaply. Keep going.
+- If you recognize a **fundamental limitation** (wrong architecture, missing engine feature, broken assumption), stop early — even after 2-3 iterations. More loops won't help.
+- The signal to stop is **"I'm making the same kind of fix repeatedly without convergence"**, not a counter.
+
+When you stop, report:
 - What works (with screenshot evidence)
 - What's still wrong
 - What you tried and why it didn't fix it
 - Your best guess at the root cause
 
-Do NOT keep spinning — the caller (gamedev orchestrator) will decide whether to adjust the task, re-scaffold, or accept the current state.
-
-Use the CLI todo list (TodoWrite) to track progress within the task: scene generation, script generation, validation passes, and each verify iteration.
+The caller (gamedev orchestrator) will decide whether to adjust the task, re-scaffold, or accept the current state.
 
 ### Commands
 
