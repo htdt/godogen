@@ -2,7 +2,7 @@
 name: godot-task
 description: Execute a development task — generate Godot scenes (.tscn) and/or runtime scripts (.gd), then verify visually via test harness and screenshots
 argument-hint: <task from PLAN.md>
-allowed-tools: Read, Write, Edit, Bash, Glob, Grep, TodoWrite
+allowed-tools: Read, Write, Edit, Bash, Glob, Grep
 ---
 
 # Godot Task Executor
@@ -31,11 +31,11 @@ The caller specifies `{project_root}` (e.g. `project_root=build`). All files liv
 
 ## Iteration Tracking
 
-Steps 3-9 form an **implement → screenshot → verify** loop. Track each pass through this loop using the CLI todo list (TodoWrite).
+Steps 3-9 form an **implement → screenshot → verify** loop.
 
 There is no fixed iteration limit — use judgment:
-- Small visual tweaks (position, scale, color) can run many iterations cheaply. Keep going.
-- If you recognize a **fundamental limitation** (wrong architecture, missing engine feature, broken assumption), stop early — even after 2-3 iterations. More loops won't help.
+- If there is progress — even in small, iterative steps — keep going. Screenshots and file updates are cheap.
+- If you recognize a **fundamental limitation** (wrong architecture, missing engine feature, broken assumption), stop early — even after 2-5 iterations. More loops won't help.
 - The signal to stop is **"I'm making the same kind of fix repeatedly without convergence"**, not a counter.
 
 When you stop, report:
