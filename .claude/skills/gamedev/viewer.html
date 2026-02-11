@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+  body { margin: 0; background: #1a1a1a; display: flex; flex-direction: column;
+         align-items: center; justify-content: center; height: 100vh; font-family: monospace; color: #ccc; }
+  img { max-width: 95vw; max-height: 80vh; image-rendering: pixelated; }
+  .controls { margin-top: 10px; }
+  button { font-size: 16px; margin: 0 5px; padding: 5px 15px; cursor: pointer; }
+  #info { margin-top: 8px; font-size: 14px; }
+</style>
+</head>
+<body>
+<img id="frame" src="frame00000000.png">
+<div class="controls">
+  <button onclick="prev()">&#9664; Prev</button>
+  <button id="playBtn" onclick="togglePlay()">&#9654; Play</button>
+  <button onclick="next()">Next &#9654;</button>
+  <input type="range" id="speed" min="1" max="30" value="10">
+  <label for="speed">FPS</label>
+</div>
+<div id="info">Frame 1 / ?</div>
+<script>
+let frames = [], idx = 0, timer = null;
+(async () => {
+  for (let i = 0; i < 9999; i++) {
+    const name = 'frame' + String(i).padStart(8, '0') + '.png';
+    try {
+      const r = await fetch(name, { method: 'HEAD' });
+      if (!r.ok) break;
+      frames.push(name);
+    } catch { break; }
+  }
+  show();
+})();
+function show() {
+  document.getElementById('frame').src = frames[idx];
+  document.getElementById('info').textContent = `Frame ${idx + 1} / ${frames.length}`;
+}
+function next() { if (idx < frames.length - 1) { idx++; show(); } }
+function prev() { if (idx > 0) { idx--; show(); } }
+function togglePlay() {
+  if (timer) { clearInterval(timer); timer = null; document.getElementById('playBtn').textContent = '\u25b6 Play'; }
+  else { timer = setInterval(() => { if (idx < frames.length - 1) { idx++; show(); } else togglePlay(); },
+    1000 / document.getElementById('speed').value); document.getElementById('playBtn').textContent = '\u23f8 Pause'; }
+}
+</script>
+</body>
+</html>
