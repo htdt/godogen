@@ -2,7 +2,7 @@
 name: godot-task
 description: Execute a development task — generate Godot scenes (.tscn) and/or runtime scripts (.gd), then verify visually via test harness and screenshots
 argument-hint: <task from PLAN.md>
-allowed-tools: Read, Write, Edit, Bash, Glob, Grep
+allowed-tools: Read, Write, Edit, Bash, Glob, Grep, TodoWrite
 ---
 
 # Godot Task Executor
@@ -26,8 +26,22 @@ The caller specifies `{project_root}` (e.g. `project_root=build`). All files liv
 5. **Validate** — run `godot --headless --quit` to check for parse errors across all project scripts
 6. **Fix errors** — if Godot reports errors, read output, fix files, re-run. Repeat until clean.
 7. **Generate test harness** — write `{project_root}/test/test_task.gd` implementing the task's **Verify** scenario (see Part 3)
-8. **Capture screenshots** — run test with `xvfb-run` and `--write-movie` to produce PNGs
+8. **Capture screenshots** — run test with `xvfb-run` and `--write-movie` to produce PNGs (see Screenshot Capture)
 9. **Verify visually** — read captured PNGs, compare to **Verify** description. If they don't match, identify the issue, fix scene/script/test, and repeat from step 3.
+
+## Iteration Tracking
+
+Steps 3-9 form an **implement → screenshot → verify** loop. Track each pass through this loop.
+
+**Max iterations: 5.** After 5 full iterations without satisfying the Verify criteria, **stop** and report:
+- What works (with screenshot evidence)
+- What's still wrong
+- What you tried and why it didn't fix it
+- Your best guess at the root cause
+
+Do NOT keep spinning — the caller (gamedev orchestrator) will decide whether to adjust the task, re-scaffold, or accept the current state.
+
+Use the CLI todo list (TodoWrite) to track progress within the task: scene generation, script generation, validation passes, and each verify iteration.
 
 ### Commands
 
@@ -595,13 +609,18 @@ The test harness stdout is captured alongside screenshots. Use `print("ASSERT PA
 
 ### Screenshot Capture
 
+Screenshots go in a **per-task folder** named after the task (e.g., `test/screenshots/task_01_terrain/`). This preserves history across iterations — each capture overwrites the same folder so the final state is always there, and the gamedev orchestrator can build a visual timeline across tasks.
+
 ```bash
-cd {project_root} && mkdir -p test/screenshots && \
+cd {project_root} && mkdir -p test/screenshots/{task_folder} && \
+rm -f test/screenshots/{task_folder}/frame*.png && \
 xvfb-run godot --rendering-driver vulkan \
-    --write-movie test/screenshots/frame.png \
+    --write-movie test/screenshots/{task_folder}/frame.png \
     --fixed-fps 10 --quit-after {N} \
     --script test/test_task.gd 2>&1
 ```
+
+Where `{task_folder}` is derived from the task name/number (e.g., `task_01_terrain`, `task_02_car_physics`). Use lowercase with underscores.
 
 **Rendering driver:** Use `vulkan` (default) — it runs via lavapipe software rasterizer under xvfb and supports `forward_plus` rendering (shadows, lighting, post-processing). Fall back to `opengl3` only if vulkan fails (e.g. missing lavapipe/mesa-vulkan-drivers).
 
