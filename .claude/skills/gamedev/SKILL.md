@@ -93,16 +93,22 @@ One task at a time, in topological order. Wait for each sub-agent to complete be
 After each sub-agent completes:
 
 1. **Read the sub-agent's result message** — it reports success/failure, what works, what's broken. Trust its visual assessment (it already verified screenshots).
-2. **Serve the viewer** so the user can see the screenshots:
+2. **Serve the viewer** (one server, reused across all tasks):
 
 ```bash
-cp .claude/skills/gamedev/viewer.html build/test/screenshots/{task_folder}/viewer.html
-pkill -f "python3 -m http.server 8080" 2>/dev/null; sleep 0.5
-cd build/test/screenshots/{task_folder} && python3 -m http.server 8080 &
+mkdir -p build/test/screenshots
+cp .claude/skills/gamedev/viewer.html build/test/screenshots/viewer.html
+pgrep -f "python3 -m http.server 8080" >/dev/null || { cd build/test/screenshots && python3 -m http.server 8080 & sleep 0.5; }
 ```
 
-3. Tell the user: **"Screenshots for {task_name} are at http://localhost:8080/viewer.html"**
-4. **Summarize the sub-agent's report** — relay what it said about success/failure and any caveats
+3. **Notify the user** (desktop notification + message):
+
+```bash
+notify-send "Task done: {task_name}" "http://localhost:8080/viewer.html#{task_folder}"
+```
+
+4. Tell the user: **"Screenshots are at http://localhost:8080/viewer.html#{task_folder}"**
+5. **Summarize the sub-agent's report** — relay what it said about success/failure and any caveats
 
 ## Handling Task Results
 
