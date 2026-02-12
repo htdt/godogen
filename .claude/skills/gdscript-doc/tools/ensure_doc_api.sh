@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Bootstrap doc_api for godot-task skill.
+# Bootstrap doc_api for gdscript-doc skill.
 # Clones Godot docs (sparse checkout) and generates per-class markdown API reference.
 # Safe to re-run — skips if doc_api/ already exists.
 set -euo pipefail

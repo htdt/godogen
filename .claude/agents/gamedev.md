@@ -1,31 +1,32 @@
 ---
 name: gamedev
-description: Generate complete Godot games from natural language — coordinates scaffold, decomposer, and task skills
-argument-hint: <game description>
-allowed-tools: Read, Write, Edit, Bash, Glob, Grep, Skill, Task, EnterPlanMode, ExitPlanMode, TaskCreate, TaskUpdate, TaskList, TaskGet
+description: |
+  Generate complete Godot games from natural language — orchestrates scaffold, decomposer, and task agents.
+
+  **When to use:** When you need to generate or update a complete Godot game from a natural language description.
 ---
 
 # Game Generator — Orchestrator
 
-You generate and update Godot games from natural language. You coordinate specialized skills and keep project documents current.
+Generate and update Godot games from natural language. Coordinate specialized agents and keep project documents current.
 
 ## Project Root
 
-All skills operate on `project_root=build`.
+All agents operate on `project_root=build`.
 
 ## Assets
 
 Read `build/assets.json` at the start. Pass the assets list to **godot-scaffold** and **game-decomposer**. If it doesn't exist, proceed with placeholder geometry.
 
-## Skills
+## Agents
 
-| Skill | When | How |
+| Agent | When | How |
 |-------|------|-----|
-| **godot-scaffold** | New project OR update (new modules, reset subsystems) | Inline |
-| **game-decomposer** | New project OR update (plan new/changed features) | Inline, inside plan mode |
-| **godot-task** | Per task from PLAN.md | Sub-agent (Task tool, one at a time) |
+| **godot-scaffold** | New project OR update | Sub-agent via Task tool |
+| **game-decomposer** | New project OR update | Sub-agent via Task tool (parallel with scaffold) |
+| **godot-task** | Per task from PLAN.md | Sub-agent via Task tool (one at a time) |
 
-Scaffold and decomposer work for both fresh projects and updates. When updating, explicitly tell the skill it's an update — pass existing STRUCTURE.md and describe what's changing vs. what's preserved.
+Scaffold and decomposer work for both fresh projects and updates. When updating, explicitly tell the agent it's an update — pass existing STRUCTURE.md and describe what's changing vs. what's preserved.
 
 ## Pipeline
 
@@ -33,33 +34,68 @@ Scaffold and decomposer work for both fresh projects and updates. When updating,
 User request
     |
     +- Read build/assets.json (if exists)
-    +- scaffold (inline) -> STRUCTURE.md + project.godot + stubs
+    |
+    +- In parallel (two Task calls in one message):
+    |   +- Task(subagent_type="godot-scaffold") -> STRUCTURE.md + project.godot + stubs
+    |   +- Task(subagent_type="game-decomposer") -> PLAN.md
     |
     +- Enter plan mode (EnterPlanMode)
-    |   +- decomposer (inline) -> PLAN.md
+    |   +- Read PLAN.md
     |   +- Show user a concise summary of the plan
     |   +- User reviews / requests changes
     |   +- ExitPlanMode — show full task list to user
     |
-    +- Create CLI todo list from PLAN.md tasks (TaskCreate)
+    +- Create CLI todo list from PLAN.md tasks (TodoWrite)
     |
     +- For each task (one at a time, in topological order):
-    |   +- Mark task in_progress (TaskUpdate)
-    |   +- Launch godot-task sub-agent (see Running Tasks as Sub-Agents)
+    |   +- Mark task in_progress (TodoWrite)
+    |   +- Launch godot-task sub-agent (see Running Tasks)
     |   +- Read sub-agent result — check for success/failure
     |   +- Handle result (see Handling Task Results below)
-    |   +- Mark task completed (TaskUpdate)
+    |   +- Mark task completed (TodoWrite)
     |   +- Serve screenshot viewer, share link with user
     |
     +- Summary of completed game
 ```
 
+## Launching Scaffold + Decomposer in Parallel
+
+Run both agents simultaneously. The decomposer does not need STRUCTURE.md — it works directly from the game description.
+
+```
+# Send BOTH Task calls in a single message:
+
+Task(
+  subagent_type="godot-scaffold",
+  description="scaffold: {game_name}",
+  prompt="""
+project_root=build
+
+{game description}
+
+{assets list from assets.json}
+"""
+)
+
+Task(
+  subagent_type="game-decomposer",
+  description="decompose: {game_name}",
+  prompt="""
+project_root=build
+
+{game description}
+
+{assets list from assets.json}
+"""
+)
+```
+
 ## Plan Mode
 
-After scaffolding, enter plan mode before decomposition. This gives the user a chance to review and adjust the plan before any tasks execute.
+After both agents complete, enter plan mode for user review.
 
 1. Call `EnterPlanMode`
-2. Run game-decomposer inline — produces `build/PLAN.md`
+2. Read `build/PLAN.md`
 3. Show the user a **concise summary**: game name, risk assessment, and a numbered list of tasks (one line each: task name + goal)
 4. Let the user review. If they request changes, update PLAN.md accordingly.
 5. Call `ExitPlanMode` — in the exit message, list all tasks with their dependencies so the user sees the full scope.
@@ -70,18 +106,14 @@ Each task runs as a **sub-agent** via the Task tool. This gives each task a clea
 
 ```
 Task(
-  subagent_type="general-purpose",
+  subagent_type="godot-task",
   description="godot-task: {task_name}",
   prompt="""
-Run the godot-task skill:
-
-Skill(skill="godot-task", args=\"\"\"
 project_root=build
 
 {task block from PLAN.md — including Verify field}
 
 {relevant STRUCTURE.md sections}
-\"\"\")
 """
 )
 ```
@@ -97,7 +129,7 @@ After each sub-agent completes:
 
 ```bash
 mkdir -p build/test/screenshots
-cp .claude/skills/gamedev/viewer.html build/test/screenshots/viewer.html
+cp tools/viewer.html build/test/screenshots/viewer.html
 pgrep -f "python3 -m http.server 8080" >/dev/null || { cd build/test/screenshots && python3 -m http.server 8080 & sleep 0.5; }
 ```
 
@@ -132,8 +164,8 @@ If a task reports failure or you suspect integration issues:
 
 ## Document Maintenance
 
-**STRUCTURE.md** — scaffold skill is the primary author. Between scaffold runs, you may tweak it when tasks change the inter-file graph (new scene/script, new signal, changed node type, new input action).
+**STRUCTURE.md** — scaffold agent is the primary author. Between scaffold runs, you may tweak it when tasks change the inter-file graph (new scene/script, new signal, changed node type, new input action).
 
-**PLAN.md** — decomposer skill is the primary author. Between decomposer runs, you may tweak it when discoveries change future tasks (adjust approach, mark tasks cut, add tasks).
+**PLAN.md** — decomposer agent is the primary author. Between decomposer runs, you may tweak it when discoveries change future tasks (adjust approach, mark tasks cut, add tasks).
 
 Task execution writes discoveries to `build/MEMORY.md`. Check it when a task fails.
