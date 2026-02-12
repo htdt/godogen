@@ -129,7 +129,7 @@ After each sub-agent completes:
 
 ```bash
 mkdir -p build/test/screenshots
-cp .claude/viewer.html build/test/screenshots/viewer.html
+cp tools/viewer.html build/test/screenshots/viewer.html
 pgrep -f "python3 -m http.server 8080" >/dev/null || { cd build/test/screenshots && python3 -m http.server 8080 & sleep 0.5; }
 ```
 
