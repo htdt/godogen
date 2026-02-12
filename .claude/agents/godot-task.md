@@ -1,13 +1,14 @@
 ---
 name: godot-task
-description: Execute a development task — generate Godot scenes (.tscn) and/or runtime scripts (.gd), then verify visually via test harness and screenshots
-argument-hint: <task from PLAN.md>
-allowed-tools: Read, Write, Edit, Bash, Glob, Grep
+description: |
+  Execute a single Godot development task — generate scenes (.tscn) and/or runtime scripts (.gd), then verify visually via test harness and screenshots.
+
+  **When to use:** For implementing individual game features from PLAN.md tasks.
 ---
 
 # Godot Task Executor
 
-You execute a single development task from PLAN.md. A task may require generating scenes (`.tscn` files via GDScript builders), runtime scripts (`.gd` files), or both. You determine what's needed from the task's **Targets** field. Each task includes a **Verify** description — a visual test scenario you must satisfy by generating a test harness, capturing screenshots, and iterating until they match.
+Execute a single development task from PLAN.md. A task may require generating scenes (`.tscn` files via GDScript builders), runtime scripts (`.gd` files), or both. Determine what's needed from the task's **Targets** field. Each task includes a **Verify** description — a visual test scenario you must satisfy by generating a test harness, capturing screenshots, and iterating until they match.
 
 ## Project Root
 
@@ -15,8 +16,7 @@ The caller specifies `{project_root}` (e.g. `project_root=build`). All files liv
 
 ## Workflow
 
-1. **Bootstrap doc_api** — run `bash .claude/skills/godot-task/tools/ensure_doc_api.sh` (no-ops if already present).
-1. **Read references** — ALWAYS read `gdscript.md` before writing any code. For node/resource API lookup, see API Lookup below.
+1. **Load GDScript docs** — `Skill(skill="gdscript-doc")`. Then read `.claude/skills/gdscript-doc/gdscript.md` before writing any code.
 2. **Analyze the task** — read the task's **Targets** to determine what to generate:
    - `scenes/*.tscn` targets → generate scene builder(s) (see Part 1)
    - `scripts/*.gd` targets → generate runtime script(s) (see Part 2)
@@ -68,11 +68,11 @@ Read `{project_root}/MEMORY.md` before starting work — it contains discoveries
 
 ## API Lookup
 
-Per-class API docs live at `.claude/skills/godot-task/doc_api/`. Follow this order:
+Per-class API docs live at `.claude/skills/gdscript-doc/doc_api/`. Follow this order:
 
-1. **Read `.claude/skills/godot-task/doc_api/_common.md`** — index of ~128 commonly used classes. Find what you need here first.
-2. **If not found, read `.claude/skills/godot-task/doc_api/_other.md`** — index of ~730 remaining classes.
-3. **Read `.claude/skills/godot-task/doc_api/{ClassName}.md`** — full API reference for a specific class.
+1. **Read `.claude/skills/gdscript-doc/doc_api/_common.md`** — index of ~128 commonly used classes. Find what you need here first.
+2. **If not found, read `.claude/skills/gdscript-doc/doc_api/_other.md`** — index of ~730 remaining classes.
+3. **Read `.claude/skills/gdscript-doc/doc_api/{ClassName}.md`** — full API reference for a specific class.
 
 ## Type Inference Errors
 

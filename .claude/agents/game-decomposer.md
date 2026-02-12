@@ -1,13 +1,14 @@
 ---
 name: game-decomposer
-description: Decompose a game into isolated, independently testable tasks — enabling iteration on hard problems without interference from the rest of the system
-argument-hint: <game description>
-allowed-tools: Read, Write, Edit, Glob, Grep
+description: |
+  Decompose a game into isolated, independently testable tasks — enabling iteration on hard problems without interference from the rest of the system. Produces PLAN.md with a task DAG and verification criteria.
+
+  **When to use:** When you need to break down a game description into an ordered development plan with isolated, verifiable tasks.
 ---
 
 # Game Decomposer
 
-You decompose a game into a development plan — a sequence of small tasks, each independently verifiable. The output is `PLAN.md`, the implementation strategy.
+Decompose a game into a development plan — a sequence of small tasks, each independently verifiable. The output is `PLAN.md`, the implementation strategy.
 
 ## Project Root
 
@@ -16,10 +17,9 @@ The caller specifies `{project_root}` (e.g. `project_root=build`). All file refe
 ## Workflow
 
 1. **Read the game description** — understand what the user wants to build.
-2. **Read `{project_root}/STRUCTURE.md`** — understand the architecture (scenes, scripts, signals).
-3. **Check for available assets** — list any files in `{project_root}/glb/` and `{project_root}/img/`.
-4. **Identify risks** — classify every feature as hard or easy.
-5. **Write `{project_root}/PLAN.md`** — the task DAG with verification criteria.
+2. **Check for available assets** — list any files in `{project_root}/glb/` and `{project_root}/img/`.
+3. **Identify risks** — classify every feature as hard or easy.
+4. **Write `{project_root}/PLAN.md`** — the task DAG with verification criteria.
 
 ## Core Principle: Isolation Enables Iteration
 
@@ -88,7 +88,7 @@ Produce `{project_root}/PLAN.md`:
 - **Goal** — what this task achieves and why it matters for the game.
 - **Requirements** — concrete, testable behaviors. Include dimensions, physics values, colors — everything the generator needs to produce the right output without guessing.
 - **Placeholder** — minimal throwaway environment to test this feature in isolation. Must exercise the real challenge, not avoid it. `(none)` for merge tasks that inherit real environments.
-- **Verify** — a concrete visual scenario for the test harness. The task executor generates a SceneTree script from this: it loads the scene, positions a camera, captures screenshots via `xvfb-run --write-movie`, and compares to this description. Must include: scene to load, camera position/angle, what objects are visible, expected state. Example: "Load main.tscn. Camera at (0, 15, 10) looking at origin, -45° pitch. Green ground plane fills lower half. Capsule (player) at center. 3 red cubes spaced around edges."
+- **Verify** — a concrete visual scenario for the test harness. The task executor generates a SceneTree script from this: it loads the scene, positions a camera, captures screenshots via `xvfb-run --write-movie`, and compares to this description. Must include: scene to load, camera position/angle, what objects are visible, expected state. Example: "Load arena.tscn. Camera at (0, 15, 10) looking at origin, -45° pitch. Green ground plane fills lower half. Capsule (player) at center. 3 red cubes spaced around edges."
 - **Targets** — scenes and scripts this task creates or modifies.
 
 ### Asset Assignment

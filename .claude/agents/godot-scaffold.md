@@ -1,8 +1,9 @@
 ---
 name: godot-scaffold
-description: Design the architecture of a Godot game and create a compilable project skeleton — project.godot, STRUCTURE.md, script stubs, and scene stubs
-argument-hint: <game description or change request>
-allowed-tools: Read, Write, Edit, Bash, Glob, Grep
+description: |
+  Design Godot game architecture and create a compilable project skeleton — project.godot, STRUCTURE.md, script stubs, and scene stubs.
+
+  **When to use:** When starting a new Godot project or updating architecture (adding scenes/scripts, resetting subsystems).
 ---
 
 # Godot Scaffold Generator
@@ -26,7 +27,7 @@ All output goes to `{project_root}/` (e.g. `build/`).
 4. **Write/update `project.godot`** — create or merge input mappings.
 5. **Write `STRUCTURE.md`** — always the complete architecture, not a diff.
 6. **Write script stubs** — for new scripts and any existing scripts the task explicitly asks to replace.
-7. **Build scene stubs** — for each new/changed scene, copy `.claude/skills/godot-scaffold/stubs/build_scene.gd` to `{project_root}/scenes/build_{name}.gd`, replace all placeholders with concrete values, then run in dependency order (leaf scenes first): `cd {project_root} && godot --headless --script scenes/build_{name}.gd`
+7. **Build scene stubs** — for each new/changed scene, write a scene builder script to `{project_root}/scenes/build_{name}.gd` using the template below, then run in dependency order (leaf scenes first): `cd {project_root} && godot --headless --script scenes/build_{name}.gd`
 8. **Verify** — `cd {project_root} && godot --headless --quit 2>&1`. No `ERROR` or `Parser Error` lines. RID warnings are benign.
 
 ## Output Files
@@ -131,7 +132,38 @@ Correct `extends`, signal declarations, `@export` defaults, empty lifecycle and 
 
 ### 4. Scene builder stubs: `scenes/build_*.gd`
 
-Copy `.claude/skills/godot-scaffold/stubs/build_scene.gd`, replace all UPPER_CASE placeholders with concrete values. Delete optional blocks (SCRIPT, CHILDREN) that don't apply.
+Write each scene builder using this template — replace all UPPER_CASE placeholders with concrete values, delete optional blocks (SCRIPT, CHILDREN) that don't apply:
+
+```gdscript
+extends SceneTree
+## Scene builder — run: cd {project_root} && godot --headless --script scenes/build_<name>.gd
+
+func _initialize() -> void:
+	var root := ROOT_TYPE.new()     # REPLACE ROOT_TYPE — e.g. CharacterBody3D
+	root.name = "ROOT_NAME"         # REPLACE ROOT_NAME — e.g. "Player"
+
+	# SCRIPT — delete block if no script on root
+	root.set_script(load("SCRIPT_PATH"))  # REPLACE SCRIPT_PATH — e.g. "res://scripts/player.gd"
+
+	# CHILDREN — delete block if none, duplicate per child
+	var CHILD_VAR = load("CHILD_PATH").instantiate()  # REPLACE CHILD_VAR, CHILD_PATH
+	CHILD_VAR.name = "CHILD_NAME"                      # REPLACE CHILD_NAME
+	root.add_child(CHILD_VAR)
+
+	# SAVE
+	_set_owners(root, root)
+	var packed := PackedScene.new()
+	packed.pack(root)
+	ResourceSaver.save(packed, "OUTPUT_PATH")  # REPLACE OUTPUT_PATH — e.g. "res://scenes/player.tscn"
+	print("Saved: OUTPUT_PATH")                # REPLACE OUTPUT_PATH
+	quit(0)
+
+func _set_owners(node: Node, owner: Node) -> void:
+	for c in node.get_children():
+		c.owner = owner
+		if c.scene_file_path.is_empty():
+			_set_owners(c, owner)
+```
 
 Run in dependency order (leaf scenes first):
 ```bash
@@ -155,9 +187,9 @@ cd {project_root} && godot --headless --script scenes/build_main.gd
 
 ## Common Errors
 
-- **`Cannot infer the type of "x" variable`** — caused by using `:=` with `load().instantiate()`. Use `=` (not `:=`) for any variable assigned from `instantiate()`. The stub template already uses `=` — do not change it to `:=` when filling in placeholders.
+- **`Cannot infer the type of "x" variable`** — caused by using `:=` with `load().instantiate()`. Use `=` (not `:=`) for any variable assigned from `instantiate()`. The template already uses `=` — do not change it to `:=` when filling in placeholders.
 - **`preload()` fails in headless** — scene builders run headless. Always use `load()`, never `preload()`.
-- **Scene builder hangs** — missing `quit()` call. The stub template includes `quit(0)` — never remove it.
+- **Scene builder hangs** — missing `quit()` call. The template includes `quit(0)` — never remove it.
 
 ## What NOT to Include
 
