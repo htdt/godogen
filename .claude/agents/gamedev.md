@@ -53,7 +53,7 @@ User request
     |   +- Read sub-agent result — check for success/failure
     |   +- Handle result (see Handling Task Results below)
     |   +- Mark task completed (TodoWrite)
-    |   +- Serve screenshot viewer, share link with user
+    |   +- Summarize result to user
     |
     +- Summary of completed game
 ```
@@ -120,29 +120,9 @@ project_root=build
 
 One task at a time, in topological order. Wait for each sub-agent to complete before starting the next.
 
-## Screenshot Review
-
-After each sub-agent completes:
-
-1. **Read the sub-agent's result message** — it reports success/failure, what works, what's broken. Trust its visual assessment (it already verified screenshots).
-2. **Serve the viewer** (one server, reused across all tasks):
-
-```bash
-mkdir -p build/test/screenshots
-cp tools/viewer.html build/test/screenshots/viewer.html
-pgrep -f "python3 -m http.server 8080" >/dev/null || { cd build/test/screenshots && python3 -m http.server 8080 & sleep 0.5; }
-```
-
-3. **Notify the user** (desktop notification + message):
-
-```bash
-notify-send "Task done: {task_name}" "http://localhost:8080/viewer.html#{task_folder}"
-```
-
-4. Tell the user: **"Screenshots are at http://localhost:8080/viewer.html#{task_folder}"**
-5. **Summarize the sub-agent's report** — relay what it said about success/failure and any caveats
-
 ## Handling Task Results
+
+After each sub-agent completes, read its result message and summarize to the user (what succeeded, what's broken, any caveats).
 
 godot-task iterates internally and uses judgment to decide when to stop (it won't spin forever — it stops when it recognizes a fundamental blocker or lack of convergence). When the sub-agent reports back:
 

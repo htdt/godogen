@@ -1,6 +1,6 @@
 doc_source/
 .claude/skills/gdscript-doc/doc_source/
 .claude/skills/gdscript-doc/doc_api/
-*/__pycache__
+**/__pycache__
 .claude/settings.local.json
 build/
