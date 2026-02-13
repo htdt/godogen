@@ -1,12 +1,12 @@
 The goal is to develop Claude Code agents and skills for Godot game development:
 
 **Agents** (autonomous, run via Task tool):
-- gamedev — orchestrator that coordinates scaffold, decomposer, and task agents
 - game-decomposer — decomposes a game into isolated, testable tasks (PLAN.md)
 - godot-scaffold — designs architecture and creates compilable project skeleton
 - godot-task — executes a single task: generates scenes/scripts, verifies via screenshots
 
-**Skills** (passive knowledge, loaded into context):
+**Skills** (loaded into context):
+- gamedev — orchestrator that coordinates scaffold, decomposer, and task agents (invoked via `/gamedev`)
 - gdscript-doc — GDScript syntax reference + Godot API docs bootstrap and lookup
 
 We take a natural language game description and turn it into a real game.

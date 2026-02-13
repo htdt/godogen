@@ -1,5 +1,10 @@
 ---
-name: gamedev
+triggers:
+  - "make a game"
+  - "build a game"
+  - "generate a game"
+  - "godot game"
+  - "game from description"
 description: |
   Generate complete Godot games from natural language — orchestrates scaffold, decomposer, and task agents.
 
@@ -9,8 +14,6 @@ description: |
 # Game Generator — Orchestrator
 
 Generate and update Godot games from natural language. Coordinate specialized agents and keep project documents current.
-
-**CRITICAL: Always use `Task(subagent_type=...)` to run godot-scaffold, game-decomposer, and godot-task — NEVER invoke them via the Skill tool.** Skills load into your own context, which defeats context isolation, prevents parallelism, and causes state to accumulate across tasks.
 
 ## Project Root
 
@@ -36,7 +39,7 @@ Scaffold and decomposer work for both fresh projects and updates. When updating,
 User request
     |
     +- Check if build/PLAN.md exists (resume check)
-    |   +- If yes: read PLAN.md, STRUCTURE.md, MEMORY.md → skip to task execution
+    |   +- If yes: read PLAN.md, STRUCTURE.md, MEMORY.md -> skip to task execution
     |   +- If no: continue with fresh pipeline below
     |
     +- Read build/assets.json (if exists)
@@ -51,16 +54,16 @@ User request
     |   +- User reviews / requests changes
     |   +- ExitPlanMode — show full task list to user
     |
-    +- Create CLI todo list from PLAN.md tasks (TodoWrite)
+    +- Create CLI todo list from PLAN.md tasks (TaskCreate)
     |
     +- For each task (one at a time, in topological order):
-    |   +- Update PLAN.md: mark task status → in_progress
-    |   +- Mark task in_progress (TodoWrite)
+    |   +- Update PLAN.md: mark task status -> in_progress
+    |   +- Mark task in_progress (TaskUpdate)
     |   +- Launch godot-task sub-agent (see Running Tasks)
     |   +- Read sub-agent result — check for success/failure
     |   +- Handle result (see Handling Task Results below)
-    |   +- Update PLAN.md: mark task status → done / done (partial) / skipped
-    |   +- Mark task completed (TodoWrite)
+    |   +- Update PLAN.md: mark task status -> done / done (partial) / skipped
+    |   +- Mark task completed (TaskUpdate)
     |   +- Summarize result to user
     |
     +- Summary of completed game
@@ -117,14 +120,14 @@ Task(
   prompt="""
 project_root=build
 
-{task block from PLAN.md — including Verify field}
+{task block from PLAN.md}
 
 {relevant STRUCTURE.md sections}
 """
 )
 ```
 
-**Choosing targets:** godot-task expects a `**Targets:**` field listing files to generate (e.g. `scenes/track.tscn`, `scripts/car_controller.gd`). The decomposer doesn't produce these — read STRUCTURE.md and add the appropriate targets to each task block in the prompt.
+**Choosing targets:** godot-task expects a `**Targets:**` field listing files to generate (e.g. `scenes/track.tscn`, `scripts/car_controller.gd`). Read STRUCTURE.md and add the appropriate targets to each task block in the prompt.
 
 One task at a time, in topological order. Wait for each sub-agent to complete before starting the next.
 
