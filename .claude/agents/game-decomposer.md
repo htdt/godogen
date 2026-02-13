@@ -66,8 +66,8 @@ Produce `{project_root}/PLAN.md`:
 - **Depends on:** (none)
 - **Goal:** {What this task achieves and why it matters}
 - **Requirements:**
-  - {Concrete, testable requirement}
-  - {Concrete, testable requirement}
+  - {High-level, testable behavior — what the player should experience}
+  - {High-level, testable behavior — what the player should experience}
 - **Placeholder:** {Minimal environment to test in isolation. Must exercise the real challenge, not dodge it.}
 - **Verify:** {What screenshots should show. Specific and unambiguous.}
 - **Targets:** scenes/{x}.tscn, scripts/{y}.gd
@@ -76,7 +76,7 @@ Produce `{project_root}/PLAN.md`:
 - **Depends on:** 1
 - ...
 
-### 3. {Merge: X + Y}
+### 3. {Merge: X + Y} ← only if integration is non-trivial; omit for simple projects
 - **Depends on:** 1, 2
 - **Goal:** Integrate {X} with {Y}. Focus: {the specific integration risk}.
 - ...
@@ -86,7 +86,7 @@ Produce `{project_root}/PLAN.md`:
 
 - **Depends on** — task numbers that must complete before this starts. `(none)` for root tasks.
 - **Goal** — what this task achieves and why it matters for the game.
-- **Requirements** — concrete, testable behaviors. Include dimensions, physics values, colors — everything the generator needs to produce the right output without guessing.
+- **Requirements** — high-level behaviors the task must achieve. Focus on *what* the player experiences, not *how* to implement it. The task executor is a strong LLM — it doesn't need pixel-exact dimensions or implementation recipes. Specify concrete values only when they matter for game feel (e.g., "car should feel heavy, not twitchy") or correctness (e.g., "arena is 50m wide to fit 4 players").
 - **Placeholder** — minimal throwaway environment to test this feature in isolation. Must exercise the real challenge, not avoid it. `(none)` for merge tasks that inherit real environments.
 - **Verify** — a concrete visual scenario for the test harness. The task executor generates a SceneTree script from this: it loads the scene, positions a camera, captures screenshots via `xvfb-run --write-movie`, and compares to this description. Must include: scene to load, camera position/angle, what objects are visible, expected state. Example: "Load arena.tscn. Camera at (0, 15, 10) looking at origin, -45° pitch. Green ground plane fills lower half. Capsule (player) at center. 3 red cubes spaced around edges."
 - **Targets** — scenes and scripts this task creates or modifies.
@@ -115,9 +115,13 @@ A placeholder that avoids the hard part gives false confidence.
 
 Two features are independent when they don't share runtime state and can each be tested with their own placeholder. Make them separate tasks with no dependency. When task A fails and needs regeneration, task B is unaffected.
 
-### Merge Progressively
+### Merge Tasks Are Rarely Needed
 
-Merge tasks integrate previously-independent features. Integrate 2-3 things at a time (A+B → AB, then AB+C → ABC), not everything at once. Merge requirements focus on **integration behavior** ("bullets fired by player damage enemies"), not re-specifying individual features. Note potential friction points.
+In most projects, each task builds directly into the shared project — features are already integrated by default. A separate merge task is redundant when the task agent can just add its feature to the existing scene.
+
+**Only add merge tasks when integration is genuinely non-trivial** — e.g., two large independent systems with complex runtime interactions (physics + networking, multiple AI agents competing for shared resources). If the "merge" is just "load both scenes into main" or "connect a signal between two nodes," that belongs as a step in the later task's requirements, not a standalone task.
+
+When you do need a merge task, integrate 2-3 things at a time and focus requirements on **integration behavior** ("bullets fired by player damage enemies"), not re-specifying individual features.
 
 ### Group Coherent Behaviors
 
@@ -144,7 +148,7 @@ Include: scene to load, camera setup, and what the screenshots must show. The ta
 Before outputting, verify:
 
 1. **Hard tasks have clean isolation** — complex features are independent early tasks, not buried behind easy ones
-2. **Merges are progressive** — integrate 2-3 things per merge, not everything at once
+2. **Merge tasks are justified** — only present when integration is genuinely non-trivial; most simple games need zero merge tasks
 3. **Placeholders exercise real challenges** — no flat planes for games about terrain
 4. **Every Verify is test-harness-ready** — concrete visual scenario with camera position, visible objects, and expected state
 5. **All assets assigned** — every available asset appears in the Assets table with a task
@@ -152,5 +156,7 @@ Before outputting, verify:
 ## What NOT to Include
 
 - GDScript code or implementation details (task executor handles that)
+- Detailed technical specs — the task executor is a strong LLM, it makes good implementation decisions on its own. Focus on *what* each task should achieve, not *how*.
 - Untestable requirements (everything must be visually verifiable via screenshots)
 - Artificial dependencies between actually-independent features
+- Merge tasks for simple integrations — if features build into a shared project, merging happens naturally

@@ -27,7 +27,10 @@ The caller specifies `{project_root}` (e.g. `project_root=build`). All files liv
 6. **Fix errors** — if Godot reports errors, read output, fix files, re-run. Repeat until clean.
 7. **Generate test harness** — write `{project_root}/test/test_task.gd` implementing the task's **Verify** scenario (see Part 3)
 8. **Capture screenshots** — run test with `xvfb-run` and `--write-movie` to produce PNGs (see Screenshot Capture)
-9. **Verify visually** — read captured PNGs, compare to **Verify** description. If they don't match, identify the issue, fix scene/script/test, and repeat from step 3.
+9. **Verify visually** — read captured PNGs and check two things:
+   - **Task goal:** does the screenshot match the **Verify** description?
+   - **Visual quality & logic:** look for obvious bugs — geometry clipping through other geometry, objects floating in mid-air when they shouldn't be, wrong assets used (e.g., dog image where cat is expected), text overflow, UI elements overlapping or cut off at screen edges. Don't add decorations or polish beyond the task scope, but do fix clear correctness issues.
+   If either check fails, identify the issue, fix scene/script/test, and repeat from step 3.
 
 ## Iteration Tracking
 

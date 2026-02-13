@@ -33,6 +33,10 @@ Scaffold and decomposer work for both fresh projects and updates. When updating,
 ```
 User request
     |
+    +- Check if build/PLAN.md exists (resume check)
+    |   +- If yes: read PLAN.md, STRUCTURE.md, MEMORY.md → skip to task execution
+    |   +- If no: continue with fresh pipeline below
+    |
     +- Read build/assets.json (if exists)
     |
     +- In parallel (two Task calls in one message):
@@ -48,10 +52,12 @@ User request
     +- Create CLI todo list from PLAN.md tasks (TodoWrite)
     |
     +- For each task (one at a time, in topological order):
+    |   +- Update PLAN.md: mark task status → in_progress
     |   +- Mark task in_progress (TodoWrite)
     |   +- Launch godot-task sub-agent (see Running Tasks)
     |   +- Read sub-agent result — check for success/failure
     |   +- Handle result (see Handling Task Results below)
+    |   +- Update PLAN.md: mark task status → done / done (partial) / skipped
     |   +- Mark task completed (TodoWrite)
     |   +- Summarize result to user
     |
@@ -142,10 +148,34 @@ If a task reports failure or you suspect integration issues:
 - Read screenshots in `build/test/screenshots/{task_folder}/`
 - Run `cd build && timeout 30 godot --headless --quit 2>&1` to check cross-project compilation
 
+## PLAN.md Task Status
+
+You are responsible for keeping PLAN.md task statuses current. The process can be interrupted at any point — another session (with no prior context) must be able to resume by reading the project folder.
+
+Add a `**Status:**` field to each task header as you work through the plan:
+- `**Status:** pending` — not started (default, can be omitted)
+- `**Status:** in_progress` — currently being worked on
+- `**Status:** done` — completed successfully
+- `**Status:** done (partial)` — completed with caveats (add a note explaining what's imperfect)
+- `**Status:** skipped` — intentionally skipped (add reason)
+
+Update the status in PLAN.md **immediately** when a task's state changes — before launching the sub-agent (mark `in_progress`) and after reading its result (mark `done` or `done (partial)`).
+
+## Resuming an Interrupted Pipeline
+
+At the start of every run, check if `build/PLAN.md` already exists. If it does:
+
+1. Read `build/PLAN.md`, `build/STRUCTURE.md`, and `build/MEMORY.md`
+2. Check task statuses — find the first task that is not `done`
+3. If a task is `in_progress`, treat it as needing a retry (the previous run was interrupted mid-task)
+4. Resume from that task — no need to re-run scaffold or decomposer unless something is fundamentally broken
+
+This means the pipeline is **idempotent by default**: re-running picks up where it left off.
+
 ## Document Maintenance
 
 **STRUCTURE.md** — scaffold agent is the primary author. Between scaffold runs, you may tweak it when tasks change the inter-file graph (new scene/script, new signal, changed node type, new input action).
 
-**PLAN.md** — decomposer agent is the primary author. Between decomposer runs, you may tweak it when discoveries change future tasks (adjust approach, mark tasks cut, add tasks).
+**PLAN.md** — decomposer agent is the primary author. You own the `**Status:**` fields. Between decomposer runs, you may also tweak tasks when discoveries change future work (adjust approach, mark tasks skipped, add tasks).
 
 Task execution writes discoveries to `build/MEMORY.md`. Check it when a task fails.
