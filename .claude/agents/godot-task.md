@@ -622,7 +622,9 @@ Where `{task_folder}` is derived from the task name/number (e.g., `task_01_terra
 
 **Rendering driver:** Use `vulkan` (default) — it runs via lavapipe software rasterizer under xvfb and supports `forward_plus` rendering (shadows, lighting, post-processing). Fall back to `opengl3` only if vulkan fails (e.g. missing lavapipe/mesa-vulkan-drivers).
 
-`--quit-after {N}` is the frame count (at 10 FPS: 60 = 6s, 100 = 10s, 200 = 20s). Choose duration based on what needs to happen — a static scene needs only a few seconds for a camera orbit, a physics sequence may need 15-20s to play out.
+`--quit-after {N}` is the frame count. Choose FPS and duration based on scene type:
+- **Static scenes** (decoration, terrain, UI): use `--fixed-fps 1`. Higher FPS just produces duplicate screenshots and wastes time. Adjust `--quit-after` to however many distinct views you need (e.g. 8 frames for a full orbit at 1 FPS = 8s).
+- **Dynamic scenes** (physics, movement, gameplay): use `--fixed-fps 10`. Low FPS breaks physics and movement — `delta` becomes too large, causing objects to tunnel through collisions or behave erratically. Typical duration: 3-10s (30-100 frames).
 
 **Smart frame selection:** Don't read all frames — pick 3-5 that cover the verification:
 - For static/decoration: frames spread across a camera orbit (different angles)

@@ -17,8 +17,9 @@ The caller specifies `{project_root}` (e.g. `project_root=build`). All file refe
 ## Workflow
 
 1. **Read the game description** — understand what the user wants to build.
-2. **Identify risks** — classify every feature as hard or easy.
-3. **Write `{project_root}/PLAN.md`** — the task DAG with verification criteria.
+2. **Review assets** — glob `{project_root}/img/**` and read every image. These are textures and GLB prototypes. Understand what's available before planning.
+3. **Identify risks** — classify every feature as hard or easy.
+4. **Write `{project_root}/PLAN.md`** — the task DAG with verification criteria.
 
 ## Core Principle: Isolation Enables Iteration
 
