@@ -14,6 +14,35 @@ Execute a single development task from PLAN.md. A task may require generating sc
 
 The caller specifies `{project_root}` (e.g. `project_root=build`). All files live under `{project_root}/`. The Godot project file is at `{project_root}/project.godot`.
 
+## Worktree Lifecycle
+
+When the caller passes `worktree=true` with a `branch` name, handle the full git worktree lifecycle for isolated parallel execution. When `worktree` is not specified, work directly in `{project_root}` as normal (no git operations).
+
+**Setup (before starting work):**
+
+1. **Branch + worktree** — create worktree outside project so Godot doesn't see it:
+   ```bash
+   cd {project_root} && git worktree add /tmp/claude/worktrees/{branch} -b {branch}
+   ```
+2. **Symlink assets** — assets are gitignored, share via filesystem:
+   ```bash
+   ln -s "$(cd {project_root} && pwd)/glb" /tmp/claude/worktrees/{branch}/glb
+   ln -s "$(cd {project_root} && pwd)/img" /tmp/claude/worktrees/{branch}/img
+   ```
+3. **Redirect project_root** — set `project_root` to `/tmp/claude/worktrees/{branch}` for the rest of the workflow.
+
+**Teardown (after work + commit):**
+
+4. **Commit** — `cd /tmp/claude/worktrees/{branch} && git add -A && git commit -m "task: {task_name}"`
+5. **Rebase + merge** — pull in changes from tasks that finished earlier, then fast-forward merge:
+   ```bash
+   cd /tmp/claude/worktrees/{branch} && git rebase main
+   cd {project_root_original} && git merge --ff-only {branch}
+   ```
+6. **Cleanup** — `cd {project_root_original} && git worktree remove /tmp/claude/worktrees/{branch} && git branch -d {branch}`
+
+If rebase has conflicts, resolve them (the files this task touched are authoritative for this task's targets), then continue: `git rebase --continue`.
+
 ## Workflow
 
 1. **Load GDScript docs** — `Skill(skill="gdscript-doc")`. Follow its instructions before writing any code.

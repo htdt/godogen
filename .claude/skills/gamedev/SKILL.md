@@ -29,7 +29,7 @@ Read `build/assets.json` at the start. Pass the assets list to **godot-scaffold*
 |-------|------|-----|
 | **godot-scaffold** | New project OR update | Sub-agent via Task tool |
 | **game-decomposer** | New project OR update | Sub-agent via Task tool (parallel with scaffold) |
-| **godot-task** | Per task from PLAN.md | Sub-agent via Task tool (one at a time) |
+| **godot-task** | Per task from PLAN.md | Sub-agent via Task tool (parallel when independent) |
 
 Scaffold and decomposer work for both fresh projects and updates. When updating, explicitly tell the agent it's an update — pass existing STRUCTURE.md and describe what's changing vs. what's preserved.
 
@@ -56,15 +56,24 @@ User request
     |
     +- Create CLI todo list from PLAN.md tasks (TaskCreate)
     |
-    +- For each task (one at a time, in topological order):
-    |   +- Update PLAN.md: mark task status -> in_progress
-    |   +- Mark task in_progress (TaskUpdate)
-    |   +- Launch godot-task sub-agent (see Running Tasks)
-    |   +- Read sub-agent result — check for success/failure
-    |   +- Handle result (see Handling Task Results below)
-    |   +- Update PLAN.md: mark task status -> done / done (partial) / skipped
-    |   +- Mark task completed (TaskUpdate)
-    |   +- Summarize result to user
+    +- Find ready tasks (pending, deps all done)
+    +- While ready tasks exist:
+    |   +- If 2+ independent tasks ready:
+    |   |   +- Dispatch all as parallel Task() calls in one message
+    |   |   +- Each godot-task handles its own worktree lifecycle
+    |   +- Else (1 task or merge task):
+    |   |   +- Run directly on main (no worktree)
+    |   +- For each task in wave:
+    |   |   +- Update PLAN.md: mark task status -> in_progress
+    |   |   +- Mark task in_progress (TaskUpdate)
+    |   +- Launch godot-task sub-agent(s) (see Running Tasks)
+    |   +- Read sub-agent results — check for success/failure
+    |   +- Handle results (see Handling Task Results below)
+    |   +- Update PLAN.md: mark task statuses -> done / done (partial) / skipped
+    |   +- Mark tasks completed (TaskUpdate)
+    |   +- cd build && git add PLAN.md && git commit -m "plan: wave N done"
+    |   +- Summarize results to user
+    |   +- Find next ready tasks
     |
     +- Summary of completed game
 ```
@@ -113,6 +122,12 @@ After both agents complete, enter plan mode for user review.
 
 Each task runs as a **sub-agent** via the Task tool. This gives each task a clean context window, preventing accumulated state from earlier tasks from polluting later ones.
 
+**Choosing targets:** godot-task expects a `**Targets:**` field listing files to generate (e.g. `scenes/track.tscn`, `scripts/car_controller.gd`). Read STRUCTURE.md and add the appropriate targets to each task block in the prompt.
+
+### Single task (or only 1 ready)
+
+Run directly on main — no worktree:
+
 ```
 Task(
   subagent_type="godot-task",
@@ -127,9 +142,43 @@ project_root=build
 )
 ```
 
-**Choosing targets:** godot-task expects a `**Targets:**` field listing files to generate (e.g. `scenes/track.tscn`, `scripts/car_controller.gd`). Read STRUCTURE.md and add the appropriate targets to each task block in the prompt.
+### Parallel wave (2+ independent tasks ready)
 
-One task at a time, in topological order. Wait for each sub-agent to complete before starting the next.
+Send ALL ready tasks as parallel Task() calls in a single message. Each gets `worktree=true` and a unique branch name:
+
+```
+# All in ONE message — parallel dispatch:
+
+Task(
+  subagent_type="godot-task",
+  description="godot-task: {task_A_name}",
+  prompt="""
+project_root=build
+worktree=true
+branch=task-{A_id}-{short_name}
+
+{task A block from PLAN.md}
+
+{relevant STRUCTURE.md sections}
+"""
+)
+
+Task(
+  subagent_type="godot-task",
+  description="godot-task: {task_B_name}",
+  prompt="""
+project_root=build
+worktree=true
+branch=task-{B_id}-{short_name}
+
+{task B block from PLAN.md}
+
+{relevant STRUCTURE.md sections}
+"""
+)
+```
+
+Each godot-task handles its own worktree lifecycle (branch, work, commit, rebase, merge, cleanup). After the wave completes, commit PLAN.md status updates: `cd build && git add PLAN.md && git commit -m "plan: wave N done"`.
 
 ## Handling Task Results
 

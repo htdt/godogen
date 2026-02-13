@@ -30,6 +30,12 @@ All output goes to `{project_root}/` (e.g. `build/`).
 7. **Import assets** — `cd {project_root} && timeout 60 godot --headless --import 2>&1`. Ensures all assets (`.glb`, `.png`, etc.) are imported before scene builders reference them.
 8. **Build scene stubs** — for each new/changed scene, write a scene builder script to `{project_root}/scenes/build_{name}.gd` using the template below, then run in dependency order (leaf scenes first): `cd {project_root} && godot --headless --script scenes/build_{name}.gd`
 9. **Verify** — `cd {project_root} && godot --headless --quit 2>&1`. No `ERROR` or `Parser Error` lines. RID warnings are benign.
+10. **Git init** — initialize the project as a git repo:
+    ```bash
+    cd {project_root}
+    echo -e "glb/\nimg/\ntest/screenshots/\n*.png\n*.jpg\n*.import" > .gitignore
+    git init && git add -A && git commit -m "scaffold: project skeleton"
+    ```
 
 ## Output Files
 
@@ -107,7 +113,11 @@ Complete architecture reference. Always written in full, even for incremental up
 
 No descriptions, no requirements, no asset assignments. Just the graph.
 
-### 3. Script stubs: `scripts/*.gd`
+### 3. `.gitignore`
+
+Assets and screenshots stay out of git — they're binary and shared via filesystem across worktrees.
+
+### 4. Script stubs: `scripts/*.gd`
 
 ```gdscript
 extends CharacterBody3D
@@ -131,7 +141,7 @@ func _on_hurt_entered(area: Area3D) -> void:
 
 Correct `extends`, signal declarations, `@export` defaults, empty lifecycle and handler methods.
 
-### 4. Scene builder stubs: `scenes/build_*.gd`
+### 5. Scene builder stubs: `scenes/build_*.gd`
 
 Write each scene builder using this template — replace all UPPER_CASE placeholders with concrete values, delete optional blocks (SCRIPT, CHILDREN) that don't apply:
 
