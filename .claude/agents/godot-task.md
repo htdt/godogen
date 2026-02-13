@@ -29,7 +29,7 @@ The caller specifies `{project_root}` (e.g. `project_root=build`). All files liv
 8. **Capture screenshots** — run test with `xvfb-run` and `--write-movie` to produce PNGs (see Screenshot Capture)
 9. **Verify visually** — read captured PNGs and check two things:
    - **Task goal:** does the screenshot match the **Verify** description?
-   - **Visual quality & logic:** look for obvious bugs — geometry clipping through other geometry, objects floating in mid-air when they shouldn't be, wrong assets used (e.g., dog image where cat is expected), text overflow, UI elements overlapping or cut off at screen edges. Don't add decorations or polish beyond the task scope, but do fix clear correctness issues.
+   - **Visual quality & logic:** look for obvious bugs — geometry clipping through other geometry, objects floating in mid-air when they shouldn't be, wrong assets used, unnatural asset pose or size, text overflow, UI elements overlapping or cut off at screen edges. Don't add decorations or polish beyond the task scope, but do fix clear correctness issues.
    If either check fails, identify the issue, fix scene/script/test, and repeat from step 3.
 
 ## Iteration Tracking
@@ -39,7 +39,7 @@ Steps 3-9 form an **implement → screenshot → verify** loop.
 There is no fixed iteration limit — use judgment:
 - If there is progress — even in small, iterative steps — keep going. Screenshots and file updates are cheap.
 - If you recognize a **fundamental limitation** (wrong architecture, missing engine feature, broken assumption), stop early — even after 2-5 iterations. More loops won't help.
-- The signal to stop is **"I'm making the same kind of fix repeatedly without convergence"**, not a counter.
+- The signal to stop is **"I'm making the same kind of fix repeatedly without convergence"**.
 
 When you stop, report:
 - What works (with screenshot evidence)

@@ -66,8 +66,6 @@ User request
 
 ## Launching Scaffold + Decomposer in Parallel
 
-Run both agents simultaneously. The decomposer does not need STRUCTURE.md — it works directly from the game description.
-
 ```
 # Send BOTH Task calls in a single message:
 
@@ -123,6 +121,8 @@ project_root=build
 """
 )
 ```
+
+**Choosing targets:** godot-task expects a `**Targets:**` field listing files to generate (e.g. `scenes/track.tscn`, `scripts/car_controller.gd`). The decomposer doesn't produce these — read STRUCTURE.md and add the appropriate targets to each task block in the prompt.
 
 One task at a time, in topological order. Wait for each sub-agent to complete before starting the next.
 
