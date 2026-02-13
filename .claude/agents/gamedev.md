@@ -33,6 +33,10 @@ Scaffold and decomposer work for both fresh projects and updates. When updating,
 ```
 User request
     |
+    +- Check if build/PLAN.md exists (resume check)
+    |   +- If yes: read PLAN.md, STRUCTURE.md, MEMORY.md → skip to task execution
+    |   +- If no: continue with fresh pipeline below
+    |
     +- Read build/assets.json (if exists)
     |
     +- In parallel (two Task calls in one message):
@@ -48,10 +52,12 @@ User request
     +- Create CLI todo list from PLAN.md tasks (TodoWrite)
     |
     +- For each task (one at a time, in topological order):
+    |   +- Update PLAN.md: mark task status → in_progress
     |   +- Mark task in_progress (TodoWrite)
     |   +- Launch godot-task sub-agent (see Running Tasks)
     |   +- Read sub-agent result — check for success/failure
     |   +- Handle result (see Handling Task Results below)
+    |   +- Update PLAN.md: mark task status → done / done (partial) / skipped
     |   +- Mark task completed (TodoWrite)
     |   +- Summarize result to user
     |
@@ -142,10 +148,18 @@ If a task reports failure or you suspect integration issues:
 - Read screenshots in `build/test/screenshots/{task_folder}/`
 - Run `cd build && timeout 30 godot --headless --quit 2>&1` to check cross-project compilation
 
+## PLAN.md Task Status
+
+Keep a `**Status:**` field on each task in PLAN.md: `pending` | `in_progress` | `done` | `done (partial)` | `skipped`. Update it immediately when state changes — before launching the sub-agent and after reading its result. This is what enables resumption.
+
+## Resuming an Interrupted Pipeline
+
+At the start of every run, check if `build/PLAN.md` exists. If so, read it along with STRUCTURE.md and MEMORY.md, then resume from the first non-`done` task. Treat `in_progress` as needing a retry.
+
 ## Document Maintenance
 
 **STRUCTURE.md** — scaffold agent is the primary author. Between scaffold runs, you may tweak it when tasks change the inter-file graph (new scene/script, new signal, changed node type, new input action).
 
-**PLAN.md** — decomposer agent is the primary author. Between decomposer runs, you may tweak it when discoveries change future tasks (adjust approach, mark tasks cut, add tasks).
+**PLAN.md** — decomposer agent is the primary author. You own the `**Status:**` fields. Between decomposer runs, you may also tweak tasks when discoveries change future work (adjust approach, mark tasks skipped, add tasks).
 
 Task execution writes discoveries to `build/MEMORY.md`. Check it when a task fails.
