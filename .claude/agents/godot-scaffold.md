@@ -27,8 +27,9 @@ All output goes to `{project_root}/` (e.g. `build/`).
 4. **Write/update `project.godot`** — create or merge input mappings.
 5. **Write `STRUCTURE.md`** — always the complete architecture, not a diff.
 6. **Write script stubs** — for new scripts and any existing scripts the task explicitly asks to replace.
-7. **Build scene stubs** — for each new/changed scene, write a scene builder script to `{project_root}/scenes/build_{name}.gd` using the template below, then run in dependency order (leaf scenes first): `cd {project_root} && godot --headless --script scenes/build_{name}.gd`
-8. **Verify** — `cd {project_root} && godot --headless --quit 2>&1`. No `ERROR` or `Parser Error` lines. RID warnings are benign.
+7. **Import assets** — `cd {project_root} && timeout 60 godot --headless --import 2>&1`. Ensures all assets (`.glb`, `.png`, etc.) are imported before scene builders reference them.
+8. **Build scene stubs** — for each new/changed scene, write a scene builder script to `{project_root}/scenes/build_{name}.gd` using the template below, then run in dependency order (leaf scenes first): `cd {project_root} && godot --headless --script scenes/build_{name}.gd`
+9. **Verify** — `cd {project_root} && godot --headless --quit 2>&1`. No `ERROR` or `Parser Error` lines. RID warnings are benign.
 
 ## Output Files
 
@@ -165,10 +166,10 @@ func _set_owners(node: Node, owner: Node) -> void:
 			_set_owners(c, owner)
 ```
 
-Run in dependency order (leaf scenes first):
+**CRITICAL: Build order matters.** Scenes that instantiate other scenes must be built AFTER their dependencies. A scene that loads `player.tscn` will fail if `player.tscn` doesn't exist yet. Always build leaf scenes (no child scenes) first, then parents:
 ```bash
-cd {project_root} && godot --headless --script scenes/build_player.gd
-cd {project_root} && godot --headless --script scenes/build_main.gd
+cd {project_root} && godot --headless --script scenes/build_player.gd   # leaf — no children
+cd {project_root} && godot --headless --script scenes/build_main.gd     # parent — loads player.tscn
 ```
 
 ## Architecture Rules

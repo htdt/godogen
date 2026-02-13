@@ -611,7 +611,7 @@ Screenshots go in a **per-task folder** named after the task (e.g., `test/screen
 
 ```bash
 cd {project_root} && mkdir -p test/screenshots/{task_folder} && \
-rm -f test/screenshots/{task_folder}/frame*.png && \
+rm -f test/screenshots/{task_folder}/frame*.png 2>/dev/null; \
 xvfb-run godot --rendering-driver vulkan \
     --write-movie test/screenshots/{task_folder}/frame.png \
     --fixed-fps 10 --quit-after {N} \

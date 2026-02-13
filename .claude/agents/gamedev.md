@@ -10,6 +10,8 @@ description: |
 
 Generate and update Godot games from natural language. Coordinate specialized agents and keep project documents current.
 
+**CRITICAL: Always use `Task(subagent_type=...)` to run godot-scaffold, game-decomposer, and godot-task — NEVER invoke them via the Skill tool.** Skills load into your own context, which defeats context isolation, prevents parallelism, and causes state to accumulate across tasks.
+
 ## Project Root
 
 All agents operate on `project_root=build`.
