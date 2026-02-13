@@ -150,27 +150,11 @@ If a task reports failure or you suspect integration issues:
 
 ## PLAN.md Task Status
 
-You are responsible for keeping PLAN.md task statuses current. The process can be interrupted at any point — another session (with no prior context) must be able to resume by reading the project folder.
-
-Add a `**Status:**` field to each task header as you work through the plan:
-- `**Status:** pending` — not started (default, can be omitted)
-- `**Status:** in_progress` — currently being worked on
-- `**Status:** done` — completed successfully
-- `**Status:** done (partial)` — completed with caveats (add a note explaining what's imperfect)
-- `**Status:** skipped` — intentionally skipped (add reason)
-
-Update the status in PLAN.md **immediately** when a task's state changes — before launching the sub-agent (mark `in_progress`) and after reading its result (mark `done` or `done (partial)`).
+Keep a `**Status:**` field on each task in PLAN.md: `pending` | `in_progress` | `done` | `done (partial)` | `skipped`. Update it immediately when state changes — before launching the sub-agent and after reading its result. This is what enables resumption.
 
 ## Resuming an Interrupted Pipeline
 
-At the start of every run, check if `build/PLAN.md` already exists. If it does:
-
-1. Read `build/PLAN.md`, `build/STRUCTURE.md`, and `build/MEMORY.md`
-2. Check task statuses — find the first task that is not `done`
-3. If a task is `in_progress`, treat it as needing a retry (the previous run was interrupted mid-task)
-4. Resume from that task — no need to re-run scaffold or decomposer unless something is fundamentally broken
-
-This means the pipeline is **idempotent by default**: re-running picks up where it left off.
+At the start of every run, check if `build/PLAN.md` exists. If so, read it along with STRUCTURE.md and MEMORY.md, then resume from the first non-`done` task. Treat `in_progress` as needing a retry.
 
 ## Document Maintenance
 

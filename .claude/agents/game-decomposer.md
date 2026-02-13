@@ -76,10 +76,6 @@ Produce `{project_root}/PLAN.md`:
 - **Depends on:** 1
 - ...
 
-### 3. {Merge: X + Y} ← only if integration is non-trivial; omit for simple projects
-- **Depends on:** 1, 2
-- **Goal:** Integrate {X} with {Y}. Focus: {the specific integration risk}.
-- ...
 ````
 
 ### Task Fields
@@ -117,11 +113,7 @@ Two features are independent when they don't share runtime state and can each be
 
 ### Merge Tasks Are Rarely Needed
 
-In most projects, each task builds directly into the shared project — features are already integrated by default. A separate merge task is redundant when the task agent can just add its feature to the existing scene.
-
-**Only add merge tasks when integration is genuinely non-trivial** — e.g., two large independent systems with complex runtime interactions (physics + networking, multiple AI agents competing for shared resources). If the "merge" is just "load both scenes into main" or "connect a signal between two nodes," that belongs as a step in the later task's requirements, not a standalone task.
-
-When you do need a merge task, integrate 2-3 things at a time and focus requirements on **integration behavior** ("bullets fired by player damage enemies"), not re-specifying individual features.
+Each task builds directly into the shared project — features are integrated by default. Only add a merge task when integration is genuinely non-trivial (e.g., two large independent systems with complex runtime interactions). If the "merge" is just loading scenes together or connecting signals, put that in the later task's requirements instead.
 
 ### Group Coherent Behaviors
 
@@ -148,7 +140,7 @@ Include: scene to load, camera setup, and what the screenshots must show. The ta
 Before outputting, verify:
 
 1. **Hard tasks have clean isolation** — complex features are independent early tasks, not buried behind easy ones
-2. **Merge tasks are justified** — only present when integration is genuinely non-trivial; most simple games need zero merge tasks
+2. **No unnecessary merge tasks** — most simple games need zero
 3. **Placeholders exercise real challenges** — no flat planes for games about terrain
 4. **Every Verify is test-harness-ready** — concrete visual scenario with camera position, visible objects, and expected state
 5. **All assets assigned** — every available asset appears in the Assets table with a task
@@ -159,4 +151,3 @@ Before outputting, verify:
 - Detailed technical specs — the task executor is a strong LLM, it makes good implementation decisions on its own. Focus on *what* each task should achieve, not *how*.
 - Untestable requirements (everything must be visually verifiable via screenshots)
 - Artificial dependencies between actually-independent features
-- Merge tasks for simple integrations — if features build into a shared project, merging happens naturally
