@@ -10,38 +10,51 @@ description: |
 
 Execute a single development task from PLAN.md. A task may require generating scenes (`.tscn` files via GDScript builders), runtime scripts (`.gd` files), or both. Determine what's needed from the task's **Targets** field. Each task includes a **Verify** description — a visual test scenario you must satisfy by generating a test harness, capturing screenshots, and iterating until they match.
 
-## Project Root
+## Project Layout
 
-The caller specifies `{project_root}` (e.g. `project_root=build`). All files live under `{project_root}/`. The Godot project file is at `{project_root}/project.godot`.
+The caller provides `{project_root}` — an absolute path. Everything lives under it:
+
+```
+{project_root}/
+  game/           # Godot project (git repo) — project.godot, scripts/, scenes/
+  assets/         # shared binary assets — glb/, img/, assets.json
+  worktrees/      # parallel branch checkouts (temporary)
+  screenshots/    # test output, per-task subfolders
+```
+
+`{game_dir}` is where Godot runs — normally `{project_root}/game`, or `{project_root}/worktrees/{branch}` when using a worktree.
 
 ## Worktree Lifecycle
 
-When the caller passes `worktree=true` with a `branch` name, handle the full git worktree lifecycle for isolated parallel execution. When `worktree` is not specified, work directly in `{project_root}` as normal (no git operations).
+When the caller passes `worktree=true` with a `branch` name, handle the full git worktree lifecycle for isolated parallel execution. When `worktree` is not specified, `{game_dir}` = `{project_root}/game` (no git operations).
 
 **Setup (before starting work):**
 
-1. **Branch + worktree** — create worktree outside project so Godot doesn't see it:
+1. **Branch + worktree:**
    ```bash
-   cd {project_root} && git worktree add /tmp/claude/worktrees/{branch} -b {branch}
+   cd {project_root}/game && git worktree add {project_root}/worktrees/{branch} -b {branch}
    ```
-2. **Symlink assets** — assets are gitignored, share via filesystem:
+2. **Symlink assets:**
    ```bash
-   ln -s "$(cd {project_root} && pwd)/glb" /tmp/claude/worktrees/{branch}/glb
-   ln -s "$(cd {project_root} && pwd)/img" /tmp/claude/worktrees/{branch}/img
+   ln -s {project_root}/assets/glb {project_root}/worktrees/{branch}/glb
+   ln -s {project_root}/assets/img {project_root}/worktrees/{branch}/img
    ```
-3. **Redirect project_root** — set `project_root` to `/tmp/claude/worktrees/{branch}` for the rest of the workflow.
+3. **Set game_dir** — use `{project_root}/worktrees/{branch}` as `{game_dir}` for the rest of the workflow.
 
 **Teardown (after work + commit):**
 
-4. **Commit** — `cd /tmp/claude/worktrees/{branch} && git add -A && git commit -m "task: {task_name}"`
-5. **Rebase + merge** — pull in changes from tasks that finished earlier, then fast-forward merge:
+4. **Commit** — `cd {game_dir} && git add -A && git commit -m "task: {task_name}"`
+5. **Rebase + merge:**
    ```bash
-   cd /tmp/claude/worktrees/{branch} && git rebase main
-   cd {project_root_original} && git merge --ff-only {branch}
+   cd {game_dir} && git rebase master
+   cd {project_root}/game && git merge --ff-only {branch}
    ```
-6. **Cleanup** — `cd {project_root_original} && git worktree remove /tmp/claude/worktrees/{branch} && git branch -d {branch}`
+6. **Cleanup:**
+   ```bash
+   cd {project_root}/game && git worktree remove {project_root}/worktrees/{branch} && git branch -d {branch}
+   ```
 
-If rebase has conflicts, resolve them (the files this task touched are authoritative for this task's targets), then continue: `git rebase --continue`.
+If rebase has conflicts, resolve them (this task's files are authoritative), then continue: `git add <resolved> && GIT_EDITOR=true git rebase --continue`.
 
 ## Workflow
 
@@ -51,10 +64,10 @@ If rebase has conflicts, resolve them (the files this task touched are authorita
    - `scripts/*.gd` targets → generate runtime script(s) (see Part 2)
    - Both → generate scenes FIRST, then scripts (scenes create nodes that scripts attach to)
 3. **Generate scene(s)** — write GDScript scene builder, compile to produce `.tscn`
-4. **Generate script(s)** — write `.gd` files to `{project_root}/scripts/`
+4. **Generate script(s)** — write `.gd` files to `{game_dir}/scripts/`
 5. **Validate** — run `godot --headless --quit` to check for parse errors across all project scripts
 6. **Fix errors** — if Godot reports errors, read output, fix files, re-run. Repeat until clean.
-7. **Generate test harness** — write `{project_root}/test/test_task.gd` implementing the task's **Verify** scenario (see Part 3)
+7. **Generate test harness** — write `{game_dir}/test/test_task.gd` implementing the task's **Verify** scenario (see Part 3)
 8. **Capture screenshots** — run test with `xvfb-run` and `--write-movie` to produce PNGs (see Screenshot Capture)
 9. **Verify visually** — read captured PNGs and check two things:
    - **Task goal:** does the screenshot match the **Verify** description?
@@ -82,10 +95,10 @@ The caller (gamedev orchestrator) will decide whether to adjust the task, re-sca
 
 ```bash
 # Compile a scene builder (produces .tscn):
-cd {project_root} && godot --headless --script <path_to_gd_builder>
+cd {game_dir} && godot --headless --script <path_to_gd_builder>
 
 # Validate all project scripts (parse check):
-cd {project_root} && godot --headless --quit 2>&1
+cd {game_dir} && godot --headless --quit 2>&1
 ```
 
 **Error handling:** Parse Godot's stderr/stdout for error lines. Common issues:
@@ -96,7 +109,7 @@ cd {project_root} && godot --headless --quit 2>&1
 
 ## Project Memory
 
-Read `{project_root}/MEMORY.md` before starting work — it contains discoveries from previous tasks (workarounds, Godot quirks, asset details, architectural decisions). After completing your task, write back anything useful you learned: what worked, what failed, technical specifics others will need.
+Read `{game_dir}/MEMORY.md` before starting work — it contains discoveries from previous tasks (workarounds, Godot quirks, asset details, architectural decisions). After completing your task, write back anything useful you learned: what worked, what failed, technical specifics others will need.
 
 ## Type Inference Errors
 
@@ -570,7 +583,7 @@ func _ready() -> void:
 
 ## Part 3: Test Harness & Visual Verification
 
-Write `{project_root}/test/test_task.gd` — a SceneTree script that loads the scene under test and **thoroughly verifies the task's goal**. Do NOT call `quit()` — the movie writer handles exit.
+Write `{game_dir}/test/test_task.gd` — a SceneTree script that loads the scene under test and **thoroughly verifies the task's goal**. Do NOT call `quit()` — the movie writer handles exit.
 
 **Verify what the task actually asks for.** Read the Verify description and think about what would convince you — a skeptic, not the author — that the task is done. A decoration task needs multiple camera angles to check placement and scale. A movement task needs the camera to follow the action over time. A UI task needs the full interface visible. Match the test to the goal.
 
@@ -636,13 +649,13 @@ The test harness stdout is captured alongside screenshots. Use `print("ASSERT PA
 
 ### Screenshot Capture
 
-Screenshots go in a **per-task folder** named after the task (e.g., `test/screenshots/task_01_terrain/`). This preserves history across iterations — each capture overwrites the same folder so the final state is always there, and the gamedev orchestrator can build a visual timeline across tasks.
+Screenshots go in `{project_root}/screenshots/` — outside the Godot project and worktrees, always at the same path. Each task gets a subfolder.
 
 ```bash
-cd {project_root} && mkdir -p test/screenshots/{task_folder} && \
-rm -f test/screenshots/{task_folder}/frame*.png 2>/dev/null; \
-xvfb-run godot --rendering-driver vulkan \
-    --write-movie test/screenshots/{task_folder}/frame.png \
+mkdir -p {project_root}/screenshots/{task_folder}
+rm -f {project_root}/screenshots/{task_folder}/frame*.png 2>/dev/null
+cd {game_dir} && xvfb-run godot --rendering-driver vulkan \
+    --write-movie {project_root}/screenshots/{task_folder}/frame.png \
     --fixed-fps 10 --quit-after {N} \
     --script test/test_task.gd 2>&1
 ```

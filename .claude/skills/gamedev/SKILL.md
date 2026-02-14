@@ -15,13 +15,21 @@ description: |
 
 Generate and update Godot games from natural language. Coordinate specialized agents and keep project documents current.
 
-## Project Root
+## Project Layout
 
-All agents operate on `project_root=build`.
+All agents receive `project_root=$(pwd)` — the absolute path to the working directory. The layout:
+
+```
+{project_root}/
+  game/           # Godot project (git repo)
+  assets/         # shared binary assets — glb/, img/, assets.json
+  worktrees/      # parallel branch checkouts (temporary)
+  screenshots/    # test output, per-task subfolders
+```
 
 ## Assets
 
-Read `build/assets.json` at the start. Pass the assets list to **godot-scaffold** and **game-decomposer**. If it doesn't exist, proceed with placeholder geometry.
+Read `assets/assets.json` at the start. Pass the assets list to **godot-scaffold** and **game-decomposer**. If it doesn't exist, proceed with placeholder geometry.
 
 ## Agents
 
@@ -38,11 +46,11 @@ Scaffold and decomposer work for both fresh projects and updates. When updating,
 ```
 User request
     |
-    +- Check if build/PLAN.md exists (resume check)
+    +- Check if game/PLAN.md exists (resume check)
     |   +- If yes: read PLAN.md, STRUCTURE.md, MEMORY.md -> skip to task execution
     |   +- If no: continue with fresh pipeline below
     |
-    +- Read build/assets.json (if exists)
+    +- Read assets/assets.json (if exists)
     |
     +- In parallel (two Task calls in one message):
     |   +- Task(subagent_type="godot-scaffold") -> STRUCTURE.md + project.godot + stubs
@@ -71,7 +79,7 @@ User request
     |   +- Handle results (see Handling Task Results below)
     |   +- Update PLAN.md: mark task statuses -> done / done (partial) / skipped
     |   +- Mark tasks completed (TaskUpdate)
-    |   +- cd build && git add PLAN.md && git commit -m "plan: wave N done"
+    |   +- cd game && git add PLAN.md && git commit -m "plan: wave N done"
     |   +- Summarize results to user
     |   +- Find next ready tasks
     |
@@ -87,7 +95,7 @@ Task(
   subagent_type="godot-scaffold",
   description="scaffold: {game_name}",
   prompt="""
-project_root=build
+project_root=$(pwd)
 
 {game description}
 
@@ -99,7 +107,7 @@ Task(
   subagent_type="game-decomposer",
   description="decompose: {game_name}",
   prompt="""
-project_root=build
+project_root=$(pwd)
 
 {game description}
 
@@ -113,7 +121,7 @@ project_root=build
 After both agents complete, enter plan mode for user review.
 
 1. Call `EnterPlanMode`
-2. Read `build/PLAN.md`
+2. Read `game/PLAN.md`
 3. Show the user a **concise summary**: game name, risk assessment, and a numbered list of tasks (one line each: task name + goal)
 4. Let the user review. If they request changes, update PLAN.md accordingly.
 5. Call `ExitPlanMode` — in the exit message, list all tasks with their dependencies so the user sees the full scope.
@@ -133,7 +141,7 @@ Task(
   subagent_type="godot-task",
   description="godot-task: {task_name}",
   prompt="""
-project_root=build
+project_root=$(pwd)
 
 {task block from PLAN.md}
 
@@ -153,7 +161,7 @@ Task(
   subagent_type="godot-task",
   description="godot-task: {task_A_name}",
   prompt="""
-project_root=build
+project_root=$(pwd)
 worktree=true
 branch=task-{A_id}-{short_name}
 
@@ -167,7 +175,7 @@ Task(
   subagent_type="godot-task",
   description="godot-task: {task_B_name}",
   prompt="""
-project_root=build
+project_root=$(pwd)
 worktree=true
 branch=task-{B_id}-{short_name}
 
@@ -178,7 +186,7 @@ branch=task-{B_id}-{short_name}
 )
 ```
 
-Each godot-task handles its own worktree lifecycle (branch, work, commit, rebase, merge, cleanup). After the wave completes, commit PLAN.md status updates: `cd build && git add PLAN.md && git commit -m "plan: wave N done"`.
+Each godot-task handles its own worktree lifecycle (branch, work, commit, rebase, merge, cleanup). After the wave completes, commit PLAN.md status updates: `cd game && git add PLAN.md && git commit -m "plan: wave N done"`.
 
 ## Handling Task Results
 
@@ -198,9 +206,9 @@ Don't retry the same task with the same spec — that's what godot-task already 
 ## Debugging
 
 If a task reports failure or you suspect integration issues:
-- Read `build/MEMORY.md` — task execution logs discoveries and workarounds
-- Read screenshots in `build/test/screenshots/{task_folder}/`
-- Run `cd build && timeout 30 godot --headless --quit 2>&1` to check cross-project compilation
+- Read `game/MEMORY.md` — task execution logs discoveries and workarounds
+- Read screenshots in `screenshots/{task_folder}/`
+- Run `cd game && timeout 30 godot --headless --quit 2>&1` to check cross-project compilation
 
 ## PLAN.md Task Status
 
@@ -208,7 +216,7 @@ Keep a `**Status:**` field on each task in PLAN.md: `pending` | `in_progress` | 
 
 ## Resuming an Interrupted Pipeline
 
-At the start of every run, check if `build/PLAN.md` exists. If so, read it along with STRUCTURE.md and MEMORY.md, then resume from the first non-`done` task. Treat `in_progress` as needing a retry.
+At the start of every run, check if `game/PLAN.md` exists. If so, read it along with STRUCTURE.md and MEMORY.md, then resume from the first non-`done` task. Treat `in_progress` as needing a retry.
 
 ## Document Maintenance
 
@@ -216,4 +224,4 @@ At the start of every run, check if `build/PLAN.md` exists. If so, read it along
 
 **PLAN.md** — decomposer agent is the primary author. You own the `**Status:**` fields. Between decomposer runs, you may also tweak tasks when discoveries change future work (adjust approach, mark tasks skipped, add tasks).
 
-Task execution writes discoveries to `build/MEMORY.md`. Check it when a task fails.
+Task execution writes discoveries to `game/MEMORY.md`. Check it when a task fails.

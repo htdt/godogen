@@ -1,18 +1,28 @@
 #!/usr/bin/env bash
-# Remove everything in build/ except assets.json, img/, and glb/
+# Remove game/ project files (keeps assets/ untouched)
 set -euo pipefail
 
-BUILD_DIR="$(cd "$(dirname "$0")" && pwd)/build"
+REPO_ROOT="$(cd "$(dirname "$0")" && pwd)"
+GAME_DIR="$REPO_ROOT/game"
 
-if [ ! -d "$BUILD_DIR" ]; then
-  echo "No build directory found"
+if [ ! -d "$GAME_DIR" ]; then
+  echo "No game directory found"
   exit 0
 fi
 
-find "$BUILD_DIR" -mindepth 1 -maxdepth 1 \
-  ! -name 'assets.json' \
-  ! -name 'img' \
-  ! -name 'glb' \
-  -exec rm -rf {} +
+rm -rf "$GAME_DIR"
+echo "Removed game/"
 
-echo "Cleaned build/ (kept assets.json, img/, glb/)"
+# Clean up any leftover worktrees
+if [ -d "$REPO_ROOT/worktrees" ]; then
+  rm -rf "$REPO_ROOT/worktrees"
+  echo "Removed worktrees/"
+fi
+
+# Clean up screenshots
+if [ -d "$REPO_ROOT/screenshots" ]; then
+  rm -rf "$REPO_ROOT/screenshots"
+  echo "Removed screenshots/"
+fi
+
+echo "Clean. assets/ preserved."

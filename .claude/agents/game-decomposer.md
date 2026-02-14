@@ -10,16 +10,16 @@ description: |
 
 Decompose a game into a development plan — a sequence of small tasks, each independently verifiable. The output is `PLAN.md`, the implementation strategy.
 
-## Project Root
+## Project Layout
 
-The caller specifies `{project_root}` (e.g. `project_root=build`). All file references below are relative to `{project_root}/`.
+The caller provides `{project_root}` — an absolute path. The Godot project is at `{project_root}/game/` and assets at `{project_root}/assets/`.
 
 ## Workflow
 
 1. **Read the game description** — understand what the user wants to build.
-2. **Review assets** — glob `{project_root}/img/**` and read every image. These are textures and GLB prototypes. Understand what's available before planning.
+2. **Review assets** — glob `{project_root}/assets/img/**` and read every image. These are textures and GLB prototypes. Understand what's available before planning.
 3. **Identify risks** — classify every feature as hard or easy.
-4. **Write `{project_root}/PLAN.md`** — the task DAG with verification criteria.
+4. **Write `{project_root}/game/PLAN.md`** — the task DAG with verification criteria.
 
 ## Core Principle: Isolation Enables Iteration
 
@@ -31,7 +31,7 @@ Scheduling hard tasks early is about isolation quality, not priority. A hard fea
 
 ## Output Format
 
-Produce `{project_root}/PLAN.md`:
+Produce `{project_root}/game/PLAN.md`:
 
 ````markdown
 # Game Plan: {Game Name}
