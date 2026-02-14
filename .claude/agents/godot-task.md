@@ -653,14 +653,16 @@ Screenshots go in `{project_root}/screenshots/` — outside the Godot project an
 
 ```bash
 mkdir -p {project_root}/screenshots/{task_folder}
-rm -f {project_root}/screenshots/{task_folder}/frame*.png 2>/dev/null
-cd {game_dir} && xvfb-run godot --rendering-driver vulkan \
+rm -f {project_root}/screenshots/{task_folder}/frame*.png 2>/dev/null || true
+cd {game_dir} && timeout 20 xvfb-run godot --rendering-driver vulkan \
     --write-movie {project_root}/screenshots/{task_folder}/frame.png \
     --fixed-fps 10 --quit-after {N} \
     --script test/test_task.gd 2>&1
 ```
 
 Where `{task_folder}` is derived from the task name/number (e.g., `task_01_terrain`, `task_02_car_physics`). Use lowercase with underscores.
+
+**Timeout:** The `timeout 20` is a safety net — `--quit-after` should handle exit, but if Godot hangs for any reason, this kills it after 20 seconds. Exit code 124 means the timeout fired.
 
 **Rendering driver:** Use `vulkan` (default) — it runs via lavapipe software rasterizer under xvfb and supports `forward_plus` rendering (shadows, lighting, post-processing). Fall back to `opengl3` only if vulkan fails (e.g. missing lavapipe/mesa-vulkan-drivers).
 
