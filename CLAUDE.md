@@ -1,11 +1,13 @@
 The goal is to develop Claude Code agents and skills for Godot game development:
 
 **Agents** (autonomous, run via Task tool):
+- asset-planner — analyzes game, allocates budget, generates assets (images + GLBs)
 - game-decomposer — decomposes a game into isolated, testable tasks (PLAN.md)
 - godot-scaffold — designs architecture and creates compilable project skeleton
 - godot-task — executes a single task: generates scenes/scripts, verifies via screenshots
 
 **Skills** (loaded into context):
+- asset-gen — CLI tools and instructions for generating images (Gemini) and GLBs (Tripo3D)
 - gamedev — orchestrator that coordinates scaffold, decomposer, and task agents (invoked via `/gamedev`)
 - gdscript-doc — GDScript syntax reference + Godot API docs bootstrap and lookup
 

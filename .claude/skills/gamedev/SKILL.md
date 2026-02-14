@@ -17,29 +17,25 @@ Generate and update Godot games from natural language. Coordinate specialized ag
 
 ## Project Layout
 
-All agents receive `project_root=$(pwd)` — the absolute path to the working directory. The layout:
-
 ```
-{project_root}/
-  game/           # Godot project (git repo)
-  assets/         # shared binary assets — glb/, img/, assets.json
-  worktrees/      # parallel branch checkouts (temporary)
-  screenshots/    # test output, per-task subfolders
+game/           # Godot project (git repo)
+assets/         # shared binary assets — glb/, img/, assets.md
+worktrees/      # parallel branch checkouts (temporary)
+screenshots/    # test output, per-task subfolders
 ```
 
-## Assets
-
-Read `assets/assets.json` at the start. Pass the assets list to **godot-scaffold** and **game-decomposer**. If it doesn't exist, proceed with placeholder geometry.
 
 ## Agents
 
 | Agent | When | How |
 |-------|------|-----|
+| **asset-planner** | New project, no assets, budget provided | Sub-agent via Task tool (runs before scaffold) |
 | **godot-scaffold** | New project OR update | Sub-agent via Task tool |
 | **game-decomposer** | New project OR update | Sub-agent via Task tool (parallel with scaffold) |
 | **godot-task** | Per task from PLAN.md | Sub-agent via Task tool (parallel when independent) |
 
 Scaffold and decomposer work for both fresh projects and updates. When updating, explicitly tell the agent it's an update — pass existing STRUCTURE.md and describe what's changing vs. what's preserved.
+
 
 ## Pipeline
 
@@ -50,7 +46,9 @@ User request
     |   +- If yes: read PLAN.md, STRUCTURE.md, MEMORY.md -> skip to task execution
     |   +- If no: continue with fresh pipeline below
     |
-    +- Read assets/assets.json (if exists)
+    +- If no assets/assets.md AND budget provided:
+    |   +- Task(subagent_type="asset-planner")
+    |       prompt: budget_cents, game description
     |
     +- In parallel (two Task calls in one message):
     |   +- Task(subagent_type="godot-scaffold") -> STRUCTURE.md + project.godot + stubs
@@ -95,11 +93,7 @@ Task(
   subagent_type="godot-scaffold",
   description="scaffold: {game_name}",
   prompt="""
-project_root=$(pwd)
-
 {game description}
-
-{assets list from assets.json}
 """
 )
 
@@ -107,11 +101,7 @@ Task(
   subagent_type="game-decomposer",
   description="decompose: {game_name}",
   prompt="""
-project_root=$(pwd)
-
 {game description}
-
-{assets list from assets.json}
 """
 )
 ```
@@ -141,8 +131,6 @@ Task(
   subagent_type="godot-task",
   description="godot-task: {task_name}",
   prompt="""
-project_root=$(pwd)
-
 {task block from PLAN.md}
 
 {relevant STRUCTURE.md sections}
@@ -161,7 +149,6 @@ Task(
   subagent_type="godot-task",
   description="godot-task: {task_A_name}",
   prompt="""
-project_root=$(pwd)
 worktree=true
 branch=task-{A_id}-{short_name}
 
@@ -175,7 +162,6 @@ Task(
   subagent_type="godot-task",
   description="godot-task: {task_B_name}",
   prompt="""
-project_root=$(pwd)
 worktree=true
 branch=task-{B_id}-{short_name}
 

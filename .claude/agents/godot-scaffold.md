@@ -14,17 +14,16 @@ Works for both fresh projects and incremental changes (adding scenes/scripts, re
 
 ## Project Layout
 
-The caller provides `{project_root}` — an absolute path. The scaffold creates the Godot project at `{project_root}/game/` (`{game_dir}`). Assets live at `{project_root}/assets/`.
+The Godot project lives at `game/` (`{game_dir}`). Assets at `assets/`.
 
 ```
-{project_root}/
-  game/           # Godot project (git repo) — created/updated by scaffold
-  assets/         # shared binary assets — glb/, img/, assets.json
+game/           # Godot project (git repo) — created/updated by scaffold
+assets/         # shared binary assets — glb/, img/, assets.md
 ```
 
 ## Workflow
 
-1. **Read input** — game description (fresh) or change request (incremental).
+1. **Read input** — game description (fresh) or change request (incremental). Read `assets/assets.md` if it exists to understand available models and textures.
 2. **Assess project state:**
    - No project → create `{game_dir}` from scratch.
    - Existing project, fresh start requested → delete everything in `{game_dir}`.
@@ -35,8 +34,8 @@ The caller provides `{project_root}` — an absolute path. The scaffold creates 
 6. **Write script stubs** — for new scripts and any existing scripts the task explicitly asks to replace.
 7. **Symlink assets** — make assets accessible to Godot via symlinks:
    ```bash
-   ln -sf {project_root}/assets/glb {game_dir}/glb
-   ln -sf {project_root}/assets/img {game_dir}/img
+   ln -sf $(pwd)/assets/glb {game_dir}/glb
+   ln -sf $(pwd)/assets/img {game_dir}/img
    ```
 8. **Import assets** — `cd {game_dir} && timeout 60 godot --headless --import 2>&1`. Ensures all assets (`.glb`, `.png`, etc.) are imported before scene builders reference them.
 9. **Build scene stubs** — for each new/changed scene, write a scene builder script to `{game_dir}/scenes/build_{name}.gd` using the template below, then run in dependency order (leaf scenes first): `cd {game_dir} && godot --headless --script scenes/build_{name}.gd`
@@ -126,7 +125,7 @@ No descriptions, no requirements, no asset assignments. Just the graph.
 
 ### 3. `.gitignore`
 
-Asset symlinks and binary files stay out of git — assets live in `{project_root}/assets/` and are symlinked in. No trailing slash on `glb`/`img` so both real dirs and symlinks match.
+Asset symlinks and binary files stay out of git — assets live in `assets/` and are symlinked in. No trailing slash on `glb`/`img` so both real dirs and symlinks match.
 
 ### 4. Script stubs: `scripts/*.gd`
 

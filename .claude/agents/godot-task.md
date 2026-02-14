@@ -12,34 +12,31 @@ Execute a single development task from PLAN.md. A task may require generating sc
 
 ## Project Layout
 
-The caller provides `{project_root}` — an absolute path. Everything lives under it:
-
 ```
-{project_root}/
-  game/           # Godot project (git repo) — project.godot, scripts/, scenes/
-  assets/         # shared binary assets — glb/, img/, assets.json
-  worktrees/      # parallel branch checkouts (temporary)
-  screenshots/    # test output, per-task subfolders
+game/           # Godot project (git repo) — project.godot, scripts/, scenes/
+assets/         # shared binary assets — glb/, img/, assets.json
+worktrees/      # parallel branch checkouts (temporary)
+screenshots/    # test output, per-task subfolders
 ```
 
-`{game_dir}` is where Godot runs — normally `{project_root}/game`, or `{project_root}/worktrees/{branch}` when using a worktree.
+`{game_dir}` is where Godot runs — normally `game/`, or `worktrees/{branch}` when using a worktree.
 
 ## Worktree Lifecycle
 
-When the caller passes `worktree=true` with a `branch` name, handle the full git worktree lifecycle for isolated parallel execution. When `worktree` is not specified, `{game_dir}` = `{project_root}/game` (no git operations).
+When the caller passes `worktree=true` with a `branch` name, handle the full git worktree lifecycle for isolated parallel execution. When `worktree` is not specified, `{game_dir}` = `game/` (no git operations).
 
 **Setup (before starting work):**
 
 1. **Branch + worktree:**
    ```bash
-   cd {project_root}/game && git worktree add {project_root}/worktrees/{branch} -b {branch}
+   git -C game worktree add $(pwd)/worktrees/{branch} -b {branch}
    ```
 2. **Symlink assets:**
    ```bash
-   ln -s {project_root}/assets/glb {project_root}/worktrees/{branch}/glb
-   ln -s {project_root}/assets/img {project_root}/worktrees/{branch}/img
+   ln -s $(pwd)/assets/glb worktrees/{branch}/glb
+   ln -s $(pwd)/assets/img worktrees/{branch}/img
    ```
-3. **Set game_dir** — use `{project_root}/worktrees/{branch}` as `{game_dir}` for the rest of the workflow.
+3. **Set game_dir** — use `worktrees/{branch}` as `{game_dir}` for the rest of the workflow.
 
 **Teardown (after work + commit):**
 
@@ -47,11 +44,11 @@ When the caller passes `worktree=true` with a `branch` name, handle the full git
 5. **Rebase + merge:**
    ```bash
    cd {game_dir} && git rebase master
-   cd {project_root}/game && git merge --ff-only {branch}
+   cd game && git merge --ff-only {branch}
    ```
 6. **Cleanup:**
    ```bash
-   cd {project_root}/game && git worktree remove {project_root}/worktrees/{branch} && git branch -d {branch}
+   git -C game worktree remove $(pwd)/worktrees/{branch} && git -C game branch -d {branch}
    ```
 
 If rebase has conflicts, resolve them (this task's files are authoritative), then continue: `git add <resolved> && GIT_EDITOR=true git rebase --continue`.
@@ -649,13 +646,14 @@ The test harness stdout is captured alongside screenshots. Use `print("ASSERT PA
 
 ### Screenshot Capture
 
-Screenshots go in `{project_root}/screenshots/` — outside the Godot project and worktrees, always at the same path. Each task gets a subfolder.
+Screenshots go in `screenshots/` — outside the Godot project and worktrees, always at the same path. Each task gets a subfolder. Resolve the absolute path before `cd {game_dir}`.
 
 ```bash
-mkdir -p {project_root}/screenshots/{task_folder}
-rm -f {project_root}/screenshots/{task_folder}/frame*.png 2>/dev/null || true
+mkdir -p screenshots/{task_folder}
+rm -f screenshots/{task_folder}/frame*.png 2>/dev/null || true
+MOVIE=$(pwd)/screenshots/{task_folder}
 cd {game_dir} && timeout 20 xvfb-run godot --rendering-driver vulkan \
-    --write-movie {project_root}/screenshots/{task_folder}/frame.png \
+    --write-movie $MOVIE/frame.png \
     --fixed-fps 10 --quit-after {N} \
     --script test/test_task.gd 2>&1
 ```
