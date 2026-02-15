@@ -1,8 +1,11 @@
 .claude/skills/gdscript-doc/doc_source/
 .claude/skills/gdscript-doc/doc_api/
+.agents/skills/gdscript-doc/doc_source/
+.agents/skills/gdscript-doc/doc_api/
 **/__pycache__
 .claude/settings.local.json
 game/
 assets/
 worktrees/
 screenshots/
+.tmp_godot
