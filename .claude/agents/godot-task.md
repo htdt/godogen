@@ -673,7 +673,7 @@ Screenshots go in `screenshots/` — outside the Godot project and worktrees, al
 ```bash
 MOVIE=$PROJECT_ROOT/screenshots/{task_folder}
 rm -rf $MOVIE && mkdir -p $MOVIE
-cd $PROJECT_ROOT/{game_dir} && mkdir -p _captures && timeout 20 HOME=/tmp/godot-home xvfb-run -a godot --rendering-driver vulkan \
+cd $PROJECT_ROOT/{game_dir} && mkdir -p _captures && timeout 20 xvfb-run -s '-screen 0 1280x720x24' godot --rendering-driver vulkan \
     --write-movie _captures/frame.png \
     --fixed-fps 10 --quit-after {N} \
     --script test/test_task.gd 2>&1
