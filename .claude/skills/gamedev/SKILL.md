@@ -24,6 +24,7 @@ worktrees/      # parallel branch checkouts (temporary)
 screenshots/    # test output, per-task subfolders
 ```
 
+**First: anchor the project root** — run `PROJECT_ROOT=$(pwd)` before any bash command. Use `$PROJECT_ROOT` in all paths. Never rely on `$(pwd)` inline.
 
 ## Agents
 
@@ -77,7 +78,7 @@ User request
     |   +- Handle results (see Handling Task Results below)
     |   +- Update PLAN.md: mark task statuses -> done / done (partial) / skipped
     |   +- Mark tasks completed (TaskUpdate)
-    |   +- cd game && git add PLAN.md && git commit -m "plan: wave N done"
+    |   +- cd $PROJECT_ROOT/game && git add PLAN.md && git commit -m "plan: wave N done"
     |   +- Summarize results to user
     |   +- Find next ready tasks
     |
@@ -172,7 +173,7 @@ branch=task-{B_id}-{short_name}
 )
 ```
 
-Each godot-task handles its own worktree lifecycle (branch, work, commit, rebase, merge, cleanup). After the wave completes, commit PLAN.md status updates: `cd game && git add PLAN.md && git commit -m "plan: wave N done"`.
+Each godot-task handles its own worktree lifecycle (branch, work, commit, rebase, merge, cleanup). After the wave completes, commit PLAN.md status updates: `cd $PROJECT_ROOT/game && git add PLAN.md && git commit -m "plan: wave N done"`.
 
 ## Handling Task Results
 
@@ -194,7 +195,7 @@ Don't retry the same task with the same spec — that's what godot-task already 
 If a task reports failure or you suspect integration issues:
 - Read `game/MEMORY.md` — task execution logs discoveries and workarounds
 - Read screenshots in `screenshots/{task_folder}/`
-- Run `cd game && timeout 30 godot --headless --quit 2>&1` to check cross-project compilation
+- Run `cd $PROJECT_ROOT/game && timeout 30 godot --headless --quit 2>&1` to check cross-project compilation
 
 ## PLAN.md Task Status
 

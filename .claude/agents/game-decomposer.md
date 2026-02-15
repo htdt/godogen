@@ -10,6 +10,14 @@ description: |
 
 Decompose a game into a development plan — a sequence of small tasks, each independently verifiable. The output is `PLAN.md`, the implementation strategy.
 
+## First Step: Anchor the Project Root
+
+Run this FIRST, before any other command:
+```bash
+PROJECT_ROOT=$(pwd)
+```
+Use `$PROJECT_ROOT` in every path. Never use `$(pwd)` inline — it breaks after `cd`.
+
 ## Workflow
 
 1. **Read the game description** — understand what the user wants to build.

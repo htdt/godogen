@@ -17,6 +17,14 @@ The caller provides:
 - `budget_cents` — total budget for asset generation
 - Game description — what the game is about
 
+## First Step: Anchor the Project Root
+
+Run this FIRST, before any other command:
+```bash
+PROJECT_ROOT=$(pwd)
+```
+Use `$PROJECT_ROOT` in every path. Never use `$(pwd)` inline — it breaks after `cd`.
+
 ## Setup
 
 Load the asset-gen skill for CLI reference:
@@ -43,38 +51,25 @@ Prioritize by visual impact — what makes the game recognizable. Cut low-impact
 
 ### 3. Establish style
 
-Choose a style string that fits the game description. Write it to `assets/style.txt`.
+Choose a style string that fits the game description. Prepend it to every prompt. This goes into `assets/assets.md` in step 7.
 
-### 4. Generate all images in parallel
+If `assets/assets.md` already exists, read it and reuse the existing **Style:** string.
 
-Construct prompts using the templates from the asset-gen skill. Fire off all image generation calls in a single message (parallel Bash calls):
-
-```bash
-python3 .claude/skills/asset-gen/tools/asset_gen.py image \
-  --prompt "style, 3D model reference of car. description. 3/4 front elevated..." \
-  -o assets/img/car.png
+Recommended default:
+```
+Stylized realism, soft lighting, muted saturated colors, smooth clean surfaces, subtle material definition, rounded geometry with beveled edges
 ```
 
-### 5. Review each image
+Example alternatives:
+- `Low-poly flat-shaded, bright primary colors, geometric shapes, minimal detail`
+- `Pixel art 3D, voxel-like, limited palette, chunky proportions`
+- `Watercolor painterly, soft edges, pastel palette, hand-drawn feel`
 
-Read every generated PNG. Check:
-- Subject is centered and complete (not cropped)
-- Background is clean (white/solid for 3D, appropriate for textures)
-- Style matches the style string
-- No artifacts or unwanted elements
+### 4. Generate images, review, convert to GLBs
 
-Regenerate bad images (max 1 retry each, costs 4 cents from budget).
+Use the asset-gen skill for prompt templates, CLI commands, and review guidance. Generate all images in parallel, review each PNG, regenerate bad ones (max 1 retry each), then convert approved 3D images to GLBs in parallel.
 
-### 6. Convert 3D images to GLBs in parallel
-
-For all approved 3D images, fire off GLB conversions in parallel:
-
-```bash
-python3 .claude/skills/asset-gen/tools/asset_gen.py glb \
-  --image assets/img/car.png --quality medium -o assets/glb/car.glb
-```
-
-### 7. Write assets/assets.md
+### 5. Write assets/assets.md
 
 ```markdown
 # Assets

@@ -1,1 +1,1 @@
-Top-down racing game. Closed-loop circuit with natural winding layout—hairpins, sweeping turns, S-curves. Road surface affects gameplay: fast on track, slow on grass/dirt. Mountain walls as track borders. Instanced tree forests lining the track.
+Top-down racing game. Closed-loop circuit with natural winding layout—hairpins, sweeping turns, S-curves. Road surface affects gameplay: fast on track, slow on grass/dirt. Mountain walls as track borders. Instanced tree forests lining the track. No HUD, only basic mechanics.

@@ -21,6 +21,14 @@ screenshots/    # test output, per-task subfolders
 
 `{game_dir}` is where Godot runs — normally `game/`, or `worktrees/{branch}` when using a worktree.
 
+## First Step: Anchor the Project Root
+
+Run this FIRST, before any other command:
+```bash
+PROJECT_ROOT=$(pwd)
+```
+Use `$PROJECT_ROOT` in every path. Never use `$(pwd)` inline — it breaks after `cd`.
+
 ## Worktree Lifecycle
 
 When the caller passes `worktree=true` with a `branch` name, handle the full git worktree lifecycle for isolated parallel execution. When `worktree` is not specified, `{game_dir}` = `game/` (no git operations).
@@ -29,26 +37,30 @@ When the caller passes `worktree=true` with a `branch` name, handle the full git
 
 1. **Branch + worktree:**
    ```bash
-   git -C game worktree add $(pwd)/worktrees/{branch} -b {branch}
+   git -C $PROJECT_ROOT/game worktree add $PROJECT_ROOT/worktrees/{branch} -b {branch}
    ```
 2. **Symlink assets:**
    ```bash
-   ln -s $(pwd)/assets/glb worktrees/{branch}/glb
-   ln -s $(pwd)/assets/img worktrees/{branch}/img
+   ln -s $PROJECT_ROOT/assets/glb $PROJECT_ROOT/worktrees/{branch}/glb
+   ln -s $PROJECT_ROOT/assets/img $PROJECT_ROOT/worktrees/{branch}/img
    ```
-3. **Set game_dir** — use `worktrees/{branch}` as `{game_dir}` for the rest of the workflow.
+3. **Import assets** — required once per new worktree so scene builders can load GLBs:
+   ```bash
+   cd $PROJECT_ROOT/worktrees/{branch} && godot --headless --import --quit 2>&1
+   ```
+4. **Set game_dir** — use `worktrees/{branch}` as `{game_dir}` for the rest of the workflow.
 
 **Teardown (after work + commit):**
 
-4. **Commit** — `cd {game_dir} && git add -A && git commit -m "task: {task_name}"`
-5. **Rebase + merge:**
+5. **Commit** — `cd $PROJECT_ROOT/{game_dir} && git add -A && git commit -m "task: {task_name}"`
+6. **Rebase + merge:**
    ```bash
-   cd {game_dir} && git rebase master
-   cd game && git merge --ff-only {branch}
+   cd $PROJECT_ROOT/{game_dir} && git rebase master
+   cd $PROJECT_ROOT/game && git merge --ff-only {branch}
    ```
-6. **Cleanup:**
+7. **Cleanup:**
    ```bash
-   git -C game worktree remove $(pwd)/worktrees/{branch} && git -C game branch -d {branch}
+   git -C $PROJECT_ROOT/game worktree remove $PROJECT_ROOT/worktrees/{branch} && git -C $PROJECT_ROOT/game branch -d {branch}
    ```
 
 If rebase has conflicts, resolve them (this task's files are authoritative), then continue: `git add <resolved> && GIT_EDITOR=true git rebase --continue`.
@@ -92,10 +104,10 @@ The caller (gamedev orchestrator) will decide whether to adjust the task, re-sca
 
 ```bash
 # Compile a scene builder (produces .tscn):
-cd {game_dir} && godot --headless --script <path_to_gd_builder>
+cd $PROJECT_ROOT/{game_dir} && godot --headless --script <path_to_gd_builder>
 
 # Validate all project scripts (parse check):
-cd {game_dir} && godot --headless --quit 2>&1
+cd $PROJECT_ROOT/{game_dir} && godot --headless --quit 2>&1
 ```
 
 **Error handling:** Parse Godot's stderr/stdout for error lines. Common issues:
@@ -107,6 +119,14 @@ cd {game_dir} && godot --headless --quit 2>&1
 ## Project Memory
 
 Read `{game_dir}/MEMORY.md` before starting work — it contains discoveries from previous tasks (workarounds, Godot quirks, asset details, architectural decisions). After completing your task, write back anything useful you learned: what worked, what failed, technical specifics others will need.
+
+## Known Quirks
+
+- **RID leak errors on exit** — headless scene builders always produce these. Harmless; ignore them.
+- **`--import` for worktrees** — must run `godot --headless --import --quit` once per new worktree before scene builders can load GLB files. Already included in worktree setup above.
+- **`add_to_group()` in scene builders** — groups set at build-time persist in saved .tscn files.
+- **MultiMeshInstance3D + GLBs** — does NOT render after pack+save (mesh resource reference lost during serialization). Use individual GLB instances instead.
+- **Software renderer perf** — llvmpipe (software vulkan) gets ~3-4 FPS with ~150 GLB instances. Keep total draw calls under 200 for reasonable capture times.
 
 ## Type Inference Errors
 
@@ -231,6 +251,8 @@ func find_mesh_instance(node: Node) -> MeshInstance3D:
             return found
     return null
 ```
+
+**GLB orientation:** Imported models often face the wrong axis. After instantiating, check the AABB: the longest dimension tells you which local axis the model faces. If a car's AABB is longest on Z but your game expects forward=negative Z, no rotation needed; if longest on X, rotate 90°. For animals/characters, the forward-facing axis must align with the direction of movement — an animal moving sideways is a clear bug. Verify this in screenshots: if the bounding box or silhouette doesn't match the movement direction, fix the rotation.
 
 **Collision shapes for 3D models:** Always use simple primitives (BoxShape3D, SphereShape3D, CapsuleShape3D). Never use `create_convex_shape()` or `create_trimesh_shape()` on imported GLB meshes — causes <1 FPS on high-poly models (100k+ triangles).
 
@@ -646,17 +668,19 @@ The test harness stdout is captured alongside screenshots. Use `print("ASSERT PA
 
 ### Screenshot Capture
 
-Screenshots go in `screenshots/` — outside the Godot project and worktrees, always at the same path. Each task gets a subfolder. Resolve the absolute path before `cd {game_dir}`.
+Screenshots go in `screenshots/` — outside the Godot project and worktrees, always at the same path. Each task gets a subfolder. Resolve the absolute path before `cd $PROJECT_ROOT/{game_dir}`.
 
 ```bash
-mkdir -p screenshots/{task_folder}
-rm -f screenshots/{task_folder}/frame*.png 2>/dev/null || true
-MOVIE=$(pwd)/screenshots/{task_folder}
-cd {game_dir} && timeout 20 xvfb-run godot --rendering-driver vulkan \
-    --write-movie $MOVIE/frame.png \
+MOVIE=$PROJECT_ROOT/screenshots/{task_folder}
+rm -rf $MOVIE && mkdir -p $MOVIE
+cd $PROJECT_ROOT/{game_dir} && mkdir -p _captures && timeout 20 HOME=/tmp/godot-home xvfb-run -a godot --rendering-driver vulkan \
+    --write-movie _captures/frame.png \
     --fixed-fps 10 --quit-after {N} \
     --script test/test_task.gd 2>&1
+mv $PROJECT_ROOT/{game_dir}/_captures/* $MOVIE/ && rm -rf $PROJECT_ROOT/{game_dir}/_captures
 ```
+
+**`--write-movie` path:** MUST be relative and inside the Godot project directory. Absolute paths or paths outside the project resolve incorrectly. That's why we write to `_captures/` inside `{game_dir}` then move the frames out.
 
 Where `{task_folder}` is derived from the task name/number (e.g., `task_01_terrain`, `task_02_car_physics`). Use lowercase with underscores.
 
