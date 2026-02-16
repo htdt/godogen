@@ -4,7 +4,7 @@ description: |
   Analyze a game description, decide what visual assets are needed, and generate them within a budget.
   Loads the asset-gen skill for CLI tools.
 
-  **When to use:** When starting a new game that needs generated assets (3D models, textures) before scaffolding.
+  **When to use:** When starting a new game that needs generated assets (3D models, textures, spritesheets) before scaffolding.
 ---
 
 # Asset Planner
@@ -40,11 +40,13 @@ Invoke the `asset-gen` skill in this session and follow its CLI guidance.
 Read the game description. List every distinct visual element:
 - **3D models**: characters, vehicles, key props, buildings — anything that needs geometry
 - **Textures**: ground surfaces, walls, sky, UI backgrounds — flat materials that tile
+- **Spritesheets**: 2D characters/effects/items that need frame-based animation or atlas-style packing
 
 ### 2. Prioritize and budget
 
 Each asset costs:
 - Texture: 4 cents (image only)
+- Spritesheet: 14 cents (4x4 image with 16 frames/items)
 - 3D model: 34 cents (4 cent image + 30 cent GLB at medium quality)
 
 Prioritize by visual impact — what makes the game recognizable. Cut low-impact assets first if budget is tight. Reserve ~10% of budget for retries.
@@ -65,9 +67,9 @@ Example alternatives:
 - `Pixel art 3D, voxel-like, limited palette, chunky proportions`
 - `Watercolor painterly, soft edges, pastel palette, hand-drawn feel`
 
-### 4. Generate images, review, convert to GLBs
+### 4. Generate assets, review, convert to GLBs as needed
 
-Use the asset-gen skill for prompt templates, CLI commands, and review guidance. Generate all images in parallel, review each PNG, regenerate bad ones (max 1 retry each), then convert approved 3D images to GLBs in parallel.
+Use the asset-gen skill for prompt templates, CLI commands, and review guidance. Generate textures/spritesheets/3D reference images in parallel, review each PNG, regenerate bad ones (max 1 retry each), clean spritesheets when needed, then convert approved 3D images to GLBs in parallel.
 
 ### 5. Write assets/assets.md
 
@@ -87,6 +89,12 @@ Use the asset-gen skill for prompt templates, CLI commands, and review guidance.
 | Name | Description | Image |
 |------|-------------|-------|
 | grass | ... | assets/img/grass.png |
+
+## Spritesheets
+
+| Name | Description | Raw | Clean |
+|------|-------------|-----|-------|
+| knight_attack | ... | assets/img/knight_attack_raw.png | assets/img/knight_attack.png |
 ```
 
 ## Budget Tracking
@@ -96,7 +104,7 @@ Sum `cost_cents` from each CLI JSON output. Stop generating if remaining budget 
 ## Output
 
 Report back to the caller:
-- Total assets generated (N images, M GLBs)
+- Total assets generated (textures, spritesheets, 3D images, GLBs)
 - Total cost vs budget
 - Any assets that failed or were cut for budget
 - Path to `assets/assets.md`

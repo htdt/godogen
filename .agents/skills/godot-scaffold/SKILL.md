@@ -47,10 +47,10 @@ Apply this before any `godot` command in this workflow.
 4. **Write/update `project.godot`** — create or merge input mappings.
 5. **Write `STRUCTURE.md`** — always the complete architecture, not a diff.
 6. **Write script stubs** — for new scripts and any existing scripts the task explicitly asks to replace.
-7. **Symlink assets** — make assets accessible to Godot via symlinks:
+7. **Ensure asset links exist (one-time setup)** — make assets accessible to Godot via symlinks, but only create missing links:
    ```bash
-   ln -sf $PROJECT_ROOT/assets/glb $PROJECT_ROOT/{game_dir}/glb
-   ln -sf $PROJECT_ROOT/assets/img $PROJECT_ROOT/{game_dir}/img
+   test -e $PROJECT_ROOT/{game_dir}/glb || ln -s $PROJECT_ROOT/assets/glb $PROJECT_ROOT/{game_dir}/glb
+   test -e $PROJECT_ROOT/{game_dir}/img || ln -s $PROJECT_ROOT/assets/img $PROJECT_ROOT/{game_dir}/img
    ```
 8. **Import assets** — `cd $PROJECT_ROOT/{game_dir} && timeout 60 godot --headless --import 2>&1`. Ensures all assets (`.glb`, `.png`, etc.) are imported before scene builders reference them.
 9. **Build scene stubs** — for each new/changed scene, write a scene builder script to `{game_dir}/scenes/build_{name}.gd` using the template below, then run in dependency order (leaf scenes first): `cd $PROJECT_ROOT/{game_dir} && godot --headless --script scenes/build_{name}.gd`

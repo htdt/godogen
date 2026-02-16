@@ -14,12 +14,11 @@ Execute a single development task from PLAN.md. A task may require generating sc
 
 ```
 game/           # Godot project (git repo) — project.godot, scripts/, scenes/
-assets/         # shared binary assets — glb/, img/, assets.json
-worktrees/      # parallel branch checkouts (temporary)
+assets/         # shared binary assets — glb/, img/, assets.md
 screenshots/    # test output, per-task subfolders
 ```
 
-`{game_dir}` is where Godot runs — normally `game/`, or `worktrees/{branch}` when using a worktree.
+All Godot commands in this skill run from `game/`.
 
 ## First Step: Anchor the Project Root
 
@@ -40,41 +39,16 @@ export XDG_DATA_HOME=$PROJECT_ROOT/.tmp_godot/.local/share
 export XDG_CONFIG_HOME=$PROJECT_ROOT/.tmp_godot/.config
 ```
 
-## Worktree Lifecycle
+## Working Directory and Assets
 
-When the caller passes `worktree=true` with a `branch` name, handle the full git worktree lifecycle for isolated parallel execution. When `worktree` is not specified, `{game_dir}` = `game/` (no git operations).
+Use `$PROJECT_ROOT/game` as the only working directory for task execution.
 
-**Setup (before starting work):**
+Asset links should exist once per game (`game/glb`, `game/img`), usually created by `godot-scaffold`. If either link is missing, create it once:
 
-1. **Branch + worktree:**
-   ```bash
-   git -C $PROJECT_ROOT/game worktree add $PROJECT_ROOT/worktrees/{branch} -b {branch}
-   ```
-2. **Symlink assets:**
-   ```bash
-   ln -s $PROJECT_ROOT/assets/glb $PROJECT_ROOT/worktrees/{branch}/glb
-   ln -s $PROJECT_ROOT/assets/img $PROJECT_ROOT/worktrees/{branch}/img
-   ```
-3. **Import assets** — required once per new worktree so scene builders can load GLBs:
-   ```bash
-   cd $PROJECT_ROOT/worktrees/{branch} && godot --headless --import --quit 2>&1
-   ```
-4. **Set game_dir** — use `worktrees/{branch}` as `{game_dir}` for the rest of the workflow.
-
-**Teardown (after work + commit):**
-
-5. **Commit** — `cd $PROJECT_ROOT/{game_dir} && git add -A && git commit -m "task: {task_name}"`
-6. **Rebase + merge:**
-   ```bash
-   cd $PROJECT_ROOT/{game_dir} && git rebase master
-   cd $PROJECT_ROOT/game && git merge --ff-only {branch}
-   ```
-7. **Cleanup:**
-   ```bash
-   git -C $PROJECT_ROOT/game worktree remove $PROJECT_ROOT/worktrees/{branch} && git -C $PROJECT_ROOT/game branch -d {branch}
-   ```
-
-If rebase has conflicts, resolve them (this task's files are authoritative), then continue: `git add <resolved> && GIT_EDITOR=true git rebase --continue`.
+```bash
+test -e $PROJECT_ROOT/game/glb || ln -s $PROJECT_ROOT/assets/glb $PROJECT_ROOT/game/glb
+test -e $PROJECT_ROOT/game/img || ln -s $PROJECT_ROOT/assets/img $PROJECT_ROOT/game/img
+```
 
 ## Workflow
 
@@ -84,15 +58,34 @@ If rebase has conflicts, resolve them (this task's files are authoritative), the
    - `scripts/*.gd` targets → generate runtime script(s) (see Part 2)
    - Both → generate scenes FIRST, then scripts (scenes create nodes that scripts attach to)
 3. **Generate scene(s)** — write GDScript scene builder, compile to produce `.tscn`
-4. **Generate script(s)** — write `.gd` files to `{game_dir}/scripts/`
+4. **Generate script(s)** — write `.gd` files to `game/scripts/`
 5. **Validate** — run `godot --headless --quit` to check for parse errors across all project scripts
 6. **Fix errors** — if Godot reports errors, read output, fix files, re-run. Repeat until clean.
-7. **Generate test harness** — write `{game_dir}/test/test_task.gd` implementing the task's **Verify** scenario (see Part 3)
-8. **Capture screenshots** — run test with `xvfb-run` to produce PNGs (see Screenshot Capture)
-9. **Verify visually** — read captured PNGs and check two things:
+7. **Generate test harness** — write `game/test/test_task.gd` implementing the task's **Verify** scenario (see Part 3)
+8. **Capture screenshots (MANDATORY every iteration)** — run test with `xvfb-run` to produce PNGs (see Screenshot Capture)
+9. **Verify visually (MANDATORY every iteration)** — read captured PNGs and check two things:
    - **Task goal:** does the screenshot match the **Verify** description?
    - **Visual quality & logic:** look for obvious bugs — geometry clipping through other geometry, objects floating in mid-air when they shouldn't be, wrong assets used, unnatural asset pose or size, text overflow, UI elements overlapping or cut off at screen edges. Don't add decorations or polish beyond the task scope, but do fix clear correctness issues.
+   Also check harness stdout for `ASSERT FAIL`.
    If either check fails, identify the issue, fix scene/script/test, and repeat from step 3.
+10. **Store final evidence before completion** — keep screenshots and verification notes in `screenshots/{task_folder}/` (do not leave task completion without saved visual artifacts).
+
+## Non-Skippable Visual Loop Contract
+
+This skill is invalidly executed if visual verification is skipped. Enforce this contract:
+
+1. Every implementation pass must follow: **develop -> screenshots -> verify -> iterate**.
+2. Any change to scene/layout/camera/material/lighting/animation/UI/test-harness after a capture invalidates that capture. Re-capture before claiming completion.
+3. Final response must be backed by saved artifacts in `screenshots/{task_folder}/`:
+   - PNG frames from the last passing capture (keeping only the latest set is acceptable)
+   - `verification.md` containing:
+     - Which frame files were inspected
+     - Pass/fail decision against the task's Verify criteria
+     - Any remaining visual caveats
+4. "One screenshot at the end without inspection" is non-compliant. You must inspect multiple frames that cover the behavior:
+   - Static tasks: at least 3 angles/distinct views
+   - Dynamic tasks: at least 3 timepoints (early/mid/late)
+5. Do not mark the task done if screenshots are missing, stale, or not reviewed.
 
 ## Iteration Tracking
 
@@ -115,10 +108,10 @@ The orchestrating workflow decides whether to adjust the task, re-scaffold, or a
 
 ```bash
 # Compile a scene builder (produces .tscn):
-cd $PROJECT_ROOT/{game_dir} && godot --headless --script <path_to_gd_builder>
+cd $PROJECT_ROOT/game && godot --headless --script <path_to_gd_builder>
 
 # Validate all project scripts (parse check):
-cd $PROJECT_ROOT/{game_dir} && godot --headless --quit 2>&1
+cd $PROJECT_ROOT/game && godot --headless --quit 2>&1
 ```
 
 **Error handling:** Parse Godot's stderr/stdout for error lines. Common issues:
@@ -129,12 +122,12 @@ cd $PROJECT_ROOT/{game_dir} && godot --headless --quit 2>&1
 
 ## Project Memory
 
-Read `{game_dir}/MEMORY.md` before starting work — it contains discoveries from previous tasks (workarounds, Godot quirks, asset details, architectural decisions). After completing your task, write back anything useful you learned: what worked, what failed, technical specifics others will need.
+Read `game/MEMORY.md` before starting work — it contains discoveries from previous tasks (workarounds, Godot quirks, asset details, architectural decisions). After completing your task, write back anything useful you learned: what worked, what failed, technical specifics others will need.
 
 ## Known Quirks
 
 - **RID leak errors on exit** — headless scene builders always produce these. Harmless; ignore them.
-- **`--import` for worktrees** — must run `godot --headless --import --quit` once per new worktree before scene builders can load GLB files. Already included in worktree setup above.
+- **`--import` after first-time asset setup** — if GLB resources fail to load after links are created, run `cd $PROJECT_ROOT/game && godot --headless --import --quit 2>&1` once to refresh imports.
 - **`add_to_group()` in scene builders** — groups set at build-time persist in saved .tscn files.
 - **MultiMeshInstance3D + GLBs** — does NOT render after pack+save (mesh resource reference lost during serialization). Use individual GLB instances instead.
 - **Software renderer perf** — llvmpipe (software vulkan) gets ~3-4 FPS with ~150 GLB instances. Keep total draw calls under 200 for reasonable capture times.
@@ -614,7 +607,7 @@ func _ready() -> void:
 
 ## Part 3: Test Harness & Visual Verification
 
-Write `{game_dir}/test/test_task.gd` — a SceneTree script that loads the scene under test and **thoroughly verifies the task's goal**. Do NOT call `quit()` — the movie writer handles exit.
+Write `game/test/test_task.gd` — a SceneTree script that loads the scene under test and **thoroughly verifies the task's goal**. Do NOT call `quit()` — the movie writer handles exit.
 
 **Verify what the task actually asks for.** Read the Verify description and think about what would convince you — a skeptic, not the author — that the task is done. A decoration task needs multiple camera angles to check placement and scale. A movement task needs the camera to follow the action over time. A UI task needs the full interface visible. Match the test to the goal.
 
@@ -680,19 +673,19 @@ The test harness stdout is captured alongside screenshots. Use `print("ASSERT PA
 
 ### Screenshot Capture
 
-Screenshots go in `screenshots/` — outside the Godot project and worktrees, always at the same path. Each task gets a subfolder. Resolve the absolute path before `cd $PROJECT_ROOT/{game_dir}`.
+Screenshots go in `screenshots/` — outside the Godot project, always at the same path. Each task gets a subfolder. Resolve the absolute path before `cd $PROJECT_ROOT/game`.
 
 Memory-derived baseline (harness writes PNGs directly):
 ```bash
-cd $PROJECT_ROOT/{game_dir} && \
+cd $PROJECT_ROOT/game && \
 xvfb-run -s '-screen 0 1280x720x24' \
-godot --path $PROJECT_ROOT/{game_dir} --script res://test/<script>.gd 2>&1
+godot --path $PROJECT_ROOT/game --script res://test/<script>.gd 2>&1
 ```
 
 ```bash
 MOVIE=$PROJECT_ROOT/screenshots/{task_folder}
 rm -rf $MOVIE && mkdir -p $MOVIE
-cd $PROJECT_ROOT/{game_dir} && mkdir -p _captures && timeout 20 \
+cd $PROJECT_ROOT/game && mkdir -p _captures && timeout 20 \
     HOME=$PROJECT_ROOT/.tmp_godot \
     XDG_DATA_HOME=$PROJECT_ROOT/.tmp_godot/.local/share \
     XDG_CONFIG_HOME=$PROJECT_ROOT/.tmp_godot/.config \
@@ -700,12 +693,14 @@ cd $PROJECT_ROOT/{game_dir} && mkdir -p _captures && timeout 20 \
     --write-movie _captures/frame.png \
     --fixed-fps 10 --quit-after {N} \
     --script test/test_task.gd 2>&1
-mv $PROJECT_ROOT/{game_dir}/_captures/* $MOVIE/ && rm -rf $PROJECT_ROOT/{game_dir}/_captures
+mv $PROJECT_ROOT/game/_captures/* $MOVIE/ && rm -rf $PROJECT_ROOT/game/_captures
 ```
 
-**`--write-movie` path:** MUST be relative and inside the Godot project directory. Absolute paths or paths outside the project resolve incorrectly. That's why we write to `_captures/` inside `{game_dir}` then move the frames out.
+**`--write-movie` path:** MUST be relative and inside the Godot project directory. Absolute paths or paths outside the project resolve incorrectly. That's why we write to `_captures/` inside `game/` then move the frames out.
 
 Where `{task_folder}` is derived from the task name/number (e.g., `task_01_terrain`, `task_02_car_physics`). Use lowercase with underscores.
+
+This workflow keeps only the most recent capture by design (`rm -rf $MOVIE` before each run). That is acceptable as long as the final passing frames and `verification.md` exist when the task is completed.
 
 **Timeout:** The `timeout 20` is a safety net — `--quit-after` should handle exit, but if Godot hangs for any reason, this kills it after 20 seconds. Exit code 124 means the timeout fired.
 
@@ -721,6 +716,18 @@ Where `{task_folder}` is derived from the task name/number (e.g., `task_01_terra
 - For UI/HUD: frames showing different states or interactions
 
 Think about **what would convince a skeptic** — someone who hasn't seen the code — that the task is done.
+
+**Write verification record:** after reviewing frames, save `screenshots/{task_folder}/verification.md` with concrete evidence.
+Template:
+```md
+# Verification
+- Task: {task_id_or_name}
+- Capture folder: screenshots/{task_folder}
+- Reviewed frames: frame0001.png, frame0004.png, frame0008.png
+- Verify criteria: {copied from PLAN.md task Verify}
+- Decision: PASS | FAIL
+- Notes: {visual findings, ASSERT FAIL/PASS summary, remaining caveats}
+```
 
 ### Simulated Input
 

@@ -18,10 +18,10 @@ Project capabilities are implemented as skills under `.agents/skills/`.
 - `godot-scaffold` — creates/updates project architecture and stubs.
 - `game-decomposer` — produces `game/PLAN.md` with isolated, testable tasks.
 - `godot-task` — executes one task with screenshot-based verification.
-- `asset-gen` — CLI instructions for PNG and GLB generation.
+- `asset-gen` — CLI instructions for PNG, spritesheet, and GLB generation.
 - `gdscript-doc` — GDScript and Godot API local reference workflow.
 
-## Working Principles
+## Writing Skills
 
 - Avoid obvious guidance. Assume the executing model is strong.
 - Keep instructions high-signal and operational.

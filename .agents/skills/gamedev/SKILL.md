@@ -12,9 +12,8 @@ Generate and update Godot games from natural language. Coordinate specialized sk
 ## Project Layout
 
 ```
-game/           # Godot project (git repo)
+game/           # Godot project (git repo; primary change tracker)
 assets/         # shared binary assets — glb/, img/, assets.md
-worktrees/      # parallel branch checkouts (temporary)
 screenshots/    # test output, per-task subfolders
 ```
 
@@ -61,24 +60,33 @@ Apply the same env prefix to `--import`, scene builder runs, and test scripts.
 3. **Scaffold + decomposition**
 - Apply `godot-scaffold` to create/update structure.
 - Apply `game-decomposer` to create/update `game/PLAN.md`.
-- Run these two in parallel when practical.
+- Run these sequentially in this order: scaffold first, decomposer second.
 
-4. **Plan review**
+4. **Plan normalization (required)**
+- Read `game/PLAN.md` and `game/STRUCTURE.md` together.
+- For every task in `game/PLAN.md`:
+  - Add `- **Status:** pending` if `Status` is missing.
+  - Add `- **Targets:**` if missing.
+  - Fill `Targets` with concrete project-relative files expected to change (for example `scenes/main.tscn`, `scripts/player_controller.gd`, and `project.godot` when input/actions are affected), inferred from task text plus scene/script mappings in `game/STRUCTURE.md`.
+- Save the normalized plan before any review or execution.
+
+5. **Plan review**
 - Read `game/PLAN.md`.
 - Present a concise summary: game name, risk profile, and numbered tasks.
 - Incorporate requested plan edits before execution.
 
-5. **Task waves**
+6. **Sequential task execution**
 - Parse task dependency graph from `game/PLAN.md`.
 - Identify ready tasks: status `pending` and all dependencies done.
-- For each wave:
-  - Mark selected tasks `in_progress` in `game/PLAN.md`.
-  - Execute each selected task with `godot-task` guidance.
-  - Use `worktree=true` and unique branches for independent parallel tasks.
+- Process ready tasks one at a time (no parallel execution).
+- For each task:
+  - Mark the selected task `in_progress` in `game/PLAN.md`.
+  - Execute the task with `godot-task` guidance from `$PROJECT_ROOT/game`.
   - After results, update status to `done`, `done (partial)`, or `skipped`.
-  - Commit plan status update: `cd $PROJECT_ROOT/game && git add PLAN.md && git commit -m "plan: wave N done"`.
+  - Commit task changes in the per-game repo:
+    - `cd $PROJECT_ROOT/game && git add -A && git commit -m "task <id>: <short outcome>"`.
 
-6. **Completion**
+7. **Completion**
 - Continue until no ready tasks remain.
 - Summarize completed work, caveats, and remaining blocked items.
 
@@ -86,13 +94,7 @@ Apply the same env prefix to `--import`, scene builder runs, and test scripts.
 
 ### Single ready task
 
-Run on main checkout with no worktree.
-
-### Multiple independent ready tasks
-
-Use one worktree branch per task:
-- `task-{id}-{short-name}`
-- Each branch executes full `godot-task` lifecycle: worktree setup, implementation, validation, commit, rebase/merge, cleanup.
+Run tasks directly in `$PROJECT_ROOT/game`. Codex executes exactly one task at a time.
 
 ## Handling Results
 
@@ -120,15 +122,13 @@ XDG_CONFIG_HOME=$PROJECT_ROOT/.tmp_godot/.config \
 timeout 30 godot --headless --quit 2>&1
 ```
 
-## PLAN.md Status Contract
+## PLAN.md Task Contract
 
-Each task must contain `**Status:**` with one of:
-- `pending`
-- `in_progress`
-- `done`
-- `done (partial)`
-- `skipped`
+Each task must contain:
+- `**Status:**` with one of `pending`, `in_progress`, `done`, `done (partial)`, `skipped`.
+- `**Targets:**` listing concrete project-relative files the task is expected to modify (for example `scenes/main.tscn`, `scripts/player_controller.gd`).
 
+When missing, initialize `Status` to `pending` during plan normalization.
 Update status immediately before and after execution.
 
 ## Document Maintenance
