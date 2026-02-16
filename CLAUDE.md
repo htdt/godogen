@@ -1,4 +1,8 @@
-The goal is to develop Claude Code agents and skills for Godot game development:
+The goal is to develop Claude Code agents and skills for Godot game development.
+We take a natural language game description and turn it into a real game.
+We iterate via building games and updating agents/skills.
+
+Codex targets the same pipeline via `.agents/skills/` — don't change it unless asked.
 
 **Agents** (autonomous, run via Task tool):
 - asset-planner — analyzes game, allocates budget, generates assets (images + GLBs)
@@ -10,9 +14,6 @@ The goal is to develop Claude Code agents and skills for Godot game development:
 - asset-gen — CLI tools and instructions for generating images (Gemini) and GLBs (Tripo3D)
 - gamedev — orchestrator that coordinates scaffold, decomposer, and task agents (invoked via `/gamedev`)
 - gdscript-doc — GDScript syntax reference + Godot API docs bootstrap and lookup
-
-We take a natural language game description and turn it into a real game.
-We iterate via building games and updating agents/skills.
 
 When writing agents/skills: don't give obvious guidance. Assume the agent is a strong LLM — handholding only pollutes the context.
 

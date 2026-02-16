@@ -55,6 +55,16 @@ User request
     |   +- Task(subagent_type="godot-scaffold") -> STRUCTURE.md + project.godot + stubs
     |   +- Task(subagent_type="game-decomposer") -> PLAN.md
     |
+    +- Plan normalization (required):
+    |   +- Read game/PLAN.md and game/STRUCTURE.md together
+    |   +- For every task in PLAN.md:
+    |   |   +- Add `**Status:** pending` if Status is missing
+    |   |   +- Add `**Targets:**` if missing
+    |   |   +- Fill Targets with concrete project-relative files expected to change
+    |   |     (e.g. scenes/main.tscn, scripts/player_controller.gd, project.godot)
+    |   |     inferred from task text + scene/script mappings in STRUCTURE.md
+    |   +- Save the normalized plan before review
+    |
     +- Enter plan mode (EnterPlanMode)
     |   +- Read PLAN.md
     |   +- Show user a concise summary of the plan
@@ -120,8 +130,6 @@ After both agents complete, enter plan mode for user review.
 ## Running Tasks as Sub-Agents
 
 Each task runs as a **sub-agent** via the Task tool. This gives each task a clean context window, preventing accumulated state from earlier tasks from polluting later ones.
-
-**Choosing targets:** godot-task expects a `**Targets:**` field listing files to generate (e.g. `scenes/track.tscn`, `scripts/car_controller.gd`). Read STRUCTURE.md and add the appropriate targets to each task block in the prompt.
 
 ### Single task (or only 1 ready)
 
@@ -197,9 +205,14 @@ If a task reports failure or you suspect integration issues:
 - Read screenshots in `screenshots/{task_folder}/`
 - Run `cd $PROJECT_ROOT/game && timeout 30 godot --headless --quit 2>&1` to check cross-project compilation
 
-## PLAN.md Task Status
+## PLAN.md Task Contract
 
-Keep a `**Status:**` field on each task in PLAN.md: `pending` | `in_progress` | `done` | `done (partial)` | `skipped`. Update it immediately when state changes — before launching the sub-agent and after reading its result. This is what enables resumption.
+Each task must contain:
+- `**Status:**` with one of `pending`, `in_progress`, `done`, `done (partial)`, `skipped`.
+- `**Targets:**` listing concrete project-relative files the task is expected to modify (for example `scenes/main.tscn`, `scripts/player_controller.gd`).
+
+When missing, initialize `Status` to `pending` and fill `Targets` from STRUCTURE.md during plan normalization.
+Update status immediately before and after execution.
 
 ## Resuming an Interrupted Pipeline
 

@@ -1,17 +1,14 @@
 # Codex Project Instructions
 
 This repository builds Godot game-development skills for Codex.
-
-## Core Goal
-
 Take a natural-language game description and turn it into a real, runnable Godot game.
 Iterate by building games and updating skills based on what is learned.
 
-## Codex Architecture
+Claude Code targets the same pipeline via `.claude/agents/` + `.claude/skills/` — don't change it unless asked.
 
-Project capabilities are implemented as skills under `.agents/skills/`.
+## Available Skills
 
-### Available Game Skills
+Skills live under `.agents/skills/`.
 
 - `gamedev` — orchestrates full game generation/update workflow.
 - `asset-planner` — plans and generates assets within a budget.

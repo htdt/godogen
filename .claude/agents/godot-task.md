@@ -81,7 +81,9 @@ If rebase has conflicts, resolve them (this task's files are authoritative), the
 9. **Verify visually** — read captured PNGs and check two things:
    - **Task goal:** does the screenshot match the **Verify** description?
    - **Visual quality & logic:** look for obvious bugs — geometry clipping through other geometry, objects floating in mid-air when they shouldn't be, wrong assets used, unnatural asset pose or size, text overflow, UI elements overlapping or cut off at screen edges. Don't add decorations or polish beyond the task scope, but do fix clear correctness issues.
+   Also check harness stdout for `ASSERT FAIL`.
    If either check fails, identify the issue, fix scene/script/test, and repeat from step 3.
+10. **Store final evidence** — save screenshots and `verification.md` in `screenshots/{task_folder}/` before reporting completion.
 
 ## Iteration Tracking
 
@@ -698,6 +700,18 @@ Where `{task_folder}` is derived from the task name/number (e.g., `task_01_terra
 - For UI/HUD: frames showing different states or interactions
 
 Think about **what would convince a skeptic** — someone who hasn't seen the code — that the task is done.
+
+**Write verification record:** after reviewing frames, save `screenshots/{task_folder}/verification.md` with concrete evidence.
+Template:
+```md
+# Verification
+- Task: {task_id_or_name}
+- Capture folder: screenshots/{task_folder}
+- Reviewed frames: frame0001.png, frame0004.png, frame0008.png
+- Verify criteria: {copied from PLAN.md task Verify}
+- Decision: PASS | FAIL
+- Notes: {visual findings, ASSERT FAIL/PASS summary, remaining caveats}
+```
 
 ### Simulated Input
 
