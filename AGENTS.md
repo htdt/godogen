@@ -14,7 +14,8 @@ Skills live under `.agents/skills/`.
 - `asset-planner` — plans and generates assets within a budget.
 - `godot-scaffold` — creates/updates project architecture and stubs.
 - `game-decomposer` — produces `game/PLAN.md` with isolated, testable tasks.
-- `godot-task` — executes one task with screenshot-based verification.
+- `godot-task` — executes one task with visual verification; loads capture workflow.
+- `godot-capture` — handles screenshot/video capture with GPU-first fallback logic.
 - `asset-gen` — CLI instructions for PNG, spritesheet, and GLB generation.
 - `gdscript-doc` — GDScript and Godot API local reference workflow.
 

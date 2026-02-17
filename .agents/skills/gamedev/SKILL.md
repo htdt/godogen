@@ -47,6 +47,7 @@ Apply the same env prefix to `--import`, scene builder runs, and test scripts.
 | `godot-scaffold` | New project creation or structural update |
 | `game-decomposer` | Build/update `game/PLAN.md` task DAG |
 | `godot-task` | Execute one concrete PLAN.md task |
+| `godot-capture` | GPU-first screenshot/video capture (loaded inside `godot-task`) |
 
 ## Pipeline
 
@@ -86,7 +87,12 @@ Apply the same env prefix to `--import`, scene builder runs, and test scripts.
   - Commit task changes in the per-game repo:
     - `cd $PROJECT_ROOT/game && git add -A && git commit -m "task <id>: <short outcome>"`.
 
-7. **Completion**
+7. **Presentation video (required final pass)**
+- After all gameplay tasks are complete, create `game/test/presentation.gd`.
+- Use `godot-task` + `godot-capture` guidance to produce a ~30s video at `screenshots/presentation/gameplay.mp4`.
+- If no GPU display is available, skip video capture and record the blocker in the run summary.
+
+8. **Completion**
 - Continue until no ready tasks remain.
 - Summarize completed work, caveats, and remaining blocked items.
 
@@ -106,6 +112,14 @@ After each task:
   3. Re-run scaffold/decomposer if architecture is the root blocker.
 
 Do not rerun unchanged failing specs repeatedly.
+
+## Presentation Video
+
+Create one final showcase capture after task completion:
+- Target file: `game/test/presentation.gd` (`extends SceneTree`)
+- Visual goals: smooth camera moves (orbit/tracking/dolly), strong scene lighting, representative gameplay moments
+- Capture: use `godot-capture` video flow (AVI from `--write-movie`, convert to MP4 with `ffmpeg`)
+- Output artifacts: `screenshots/presentation/gameplay.mp4` and a few validation frames before final encode
 
 ## Debugging
 
