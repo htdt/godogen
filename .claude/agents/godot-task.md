@@ -67,7 +67,7 @@ If rebase has conflicts, resolve them (this task's files are authoritative), the
 
 ## Workflow
 
-1. **Load GDScript docs** — `Skill(skill="gdscript-doc")`. Follow its instructions before writing any code.
+1. **Load skills** — `Skill(skill="gdscript-doc")` and `Skill(skill="godot-capture")`. Follow their instructions before writing code or capturing screenshots.
 2. **Analyze the task** — read the task's **Targets** to determine what to generate:
    - `scenes/*.tscn` targets → generate scene builder(s) (see Part 1)
    - `scripts/*.gd` targets → generate runtime script(s) (see Part 2)
@@ -77,7 +77,7 @@ If rebase has conflicts, resolve them (this task's files are authoritative), the
 5. **Validate** — run `godot --headless --quit` to check for parse errors across all project scripts
 6. **Fix errors** — if Godot reports errors, read output, fix files, re-run. Repeat until clean.
 7. **Generate test harness** — write `{game_dir}/test/test_task.gd` implementing the task's **Verify** scenario (see Part 3)
-8. **Capture screenshots** — run test with `xvfb-run` and `--write-movie` to produce PNGs (see Screenshot Capture)
+8. **Capture screenshots** — run test with GPU display (or xvfb fallback) and `--write-movie` to produce PNGs (see Screenshot Capture)
 9. **Verify visually** — read captured PNGs and check two things:
    - **Task goal:** does the screenshot match the **Verify** description?
    - **Visual quality & logic:** look for obvious bugs — geometry clipping through other geometry, objects floating in mid-air when they shouldn't be, wrong assets used, unnatural asset pose or size, text overflow, UI elements overlapping or cut off at screen edges. Don't add decorations or polish beyond the task scope, but do fix clear correctness issues.
@@ -128,7 +128,6 @@ Read `{game_dir}/MEMORY.md` before starting work — it contains discoveries fro
 - **`--import` for worktrees** — must run `godot --headless --import --quit` once per new worktree before scene builders can load GLB files. Already included in worktree setup above.
 - **`add_to_group()` in scene builders** — groups set at build-time persist in saved .tscn files.
 - **MultiMeshInstance3D + GLBs** — does NOT render after pack+save (mesh resource reference lost during serialization). Use individual GLB instances instead.
-- **Software renderer perf** — llvmpipe (software vulkan) gets ~3-4 FPS with ~150 GLB instances. Keep total draw calls under 200 for reasonable capture times.
 
 ## Type Inference Errors
 
@@ -670,47 +669,16 @@ The test harness stdout is captured alongside screenshots. Use `print("ASSERT PA
 
 ### Screenshot Capture
 
-Screenshots go in `screenshots/` — outside the Godot project and worktrees, always at the same path. Each task gets a subfolder. Resolve the absolute path before `cd $PROJECT_ROOT/{game_dir}`.
+Load `Skill(skill="godot-capture")` — it has GPU detection, capture commands (screenshots and video), and frame rate guidance. All commands use `{game_dir}` as the Godot project directory.
 
-```bash
-MOVIE=$PROJECT_ROOT/screenshots/{task_folder}
-rm -rf $MOVIE && mkdir -p $MOVIE
-cd $PROJECT_ROOT/{game_dir} && mkdir -p _captures && timeout 20 xvfb-run -s '-screen 0 1280x720x24' godot --rendering-driver vulkan \
-    --write-movie _captures/frame.png \
-    --fixed-fps 10 --quit-after {N} \
-    --script test/test_task.gd 2>&1
-mv $PROJECT_ROOT/{game_dir}/_captures/* $MOVIE/ && rm -rf $PROJECT_ROOT/{game_dir}/_captures
-```
-
-**`--write-movie` path:** MUST be relative and inside the Godot project directory. Absolute paths or paths outside the project resolve incorrectly. That's why we write to `_captures/` inside `{game_dir}` then move the frames out.
-
-Where `{task_folder}` is derived from the task name/number (e.g., `task_01_terrain`, `task_02_car_physics`). Use lowercase with underscores.
-
-**Timeout:** The `timeout 20` is a safety net — `--quit-after` should handle exit, but if Godot hangs for any reason, this kills it after 20 seconds. Exit code 124 means the timeout fired.
-
-**Rendering driver:** Use `vulkan` (default) — it runs via lavapipe software rasterizer under xvfb and supports `forward_plus` rendering (shadows, lighting, post-processing). Fall back to `opengl3` only if vulkan fails (e.g. missing lavapipe/mesa-vulkan-drivers).
-
-`--quit-after {N}` is the frame count. Choose FPS and duration based on scene type:
-- **Static scenes** (decoration, terrain, UI): use `--fixed-fps 1`. Higher FPS just produces duplicate screenshots and wastes time. Adjust `--quit-after` to however many distinct views you need (e.g. 8 frames for a full orbit at 1 FPS = 8s).
-- **Dynamic scenes** (physics, movement, gameplay): use `--fixed-fps 10`. Low FPS breaks physics and movement — `delta` becomes too large, causing objects to tunnel through collisions or behave erratically. Typical duration: 3-10s (30-100 frames).
-
-**Smart frame selection:** Don't read all frames — pick 3-5 that cover the verification:
-- For static/decoration: frames spread across a camera orbit (different angles)
-- For movement/physics: early (initial state), mid (action in progress), late (outcome)
-- For UI/HUD: frames showing different states or interactions
-
-Think about **what would convince a skeptic** — someone who hasn't seen the code — that the task is done.
-
-**Write verification record:** after reviewing frames, save `screenshots/{task_folder}/verification.md` with concrete evidence.
-Template:
+After reviewing captured frames (pick 3-5 that cover the verification), save `screenshots/{task_folder}/verification.md`:
 ```md
 # Verification
 - Task: {task_id_or_name}
-- Capture folder: screenshots/{task_folder}
 - Reviewed frames: frame0001.png, frame0004.png, frame0008.png
-- Verify criteria: {copied from PLAN.md task Verify}
+- Verify criteria: {from PLAN.md}
 - Decision: PASS | FAIL
-- Notes: {visual findings, ASSERT FAIL/PASS summary, remaining caveats}
+- Notes: {visual findings, ASSERT results, caveats}
 ```
 
 ### Simulated Input
@@ -725,3 +693,4 @@ For tests needing player input, use a Timer to trigger actions:
     root.add_child(timer)
     timer.start()
 ```
+

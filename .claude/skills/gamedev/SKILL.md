@@ -92,6 +92,8 @@ User request
     |   +- Summarize results to user
     |   +- Find next ready tasks
     |
+    +- Presentation video (see below)
+    |
     +- Summary of completed game
 ```
 
@@ -197,6 +199,34 @@ godot-task iterates internally and uses judgment to decide when to stop (it won'
 3. **Replan** — the task is fundamentally blocked. Re-run scaffold (to fix architecture) and/or decomposer (to restructure tasks), then resume from the new plan.
 
 Don't retry the same task with the same spec — that's what godot-task already tried.
+
+## Presentation Video
+
+After all tasks are complete, create a ~30-second cinematic gameplay video as the final deliverable. Dispatch as a godot-task sub-agent — it's just another task, but outputs video instead of screenshots.
+
+```
+Task(
+  subagent_type="godot-task",
+  description="godot-task: presentation video",
+  prompt="""
+## Presentation Video
+- **Goal:** Create a ~30-second cinematic video showcasing the completed game.
+- **Targets:** test/presentation.gd
+- **Requirements:**
+  - Write test/presentation.gd — a SceneTree script (extends SceneTree)
+  - Smooth camera work: orbits, tracking shots, dolly moves — show the world from its best angles
+  - Good lighting: DirectionalLight3D key (shadow-casting) + fill/rim, warm/cool contrast
+  - Post-processing: Environment + WorldEnvironment with glow/bloom, SSAO, SSR, ACES tonemapping, volumetric fog
+  - Showcase representative gameplay via simulated input or scripted animations
+  - ~900 frames at 30 FPS (30 seconds)
+  - Use Video Capture from godot-capture (AVI via --write-movie, convert to MP4 with ffmpeg)
+  - Output: screenshots/presentation/gameplay.mp4
+- **Verify:** Capture and verify screenshots before capturing the final video to verify the presentation.
+"""
+)
+```
+
+Commit after: `cd $PROJECT_ROOT/game && git add test/presentation.gd && git commit -m "add presentation video"`.
 
 ## Debugging
 
