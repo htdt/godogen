@@ -63,6 +63,14 @@ python3 .claude/skills/asset-gen/tools/asset_gen.py glb \
   --image assets/img/car.png --quality medium -o assets/glb/car.glb
 ```
 
+### Set budget
+
+```bash
+python3 .claude/skills/asset-gen/tools/asset_gen.py set_budget 500
+```
+
+Sets the generation budget to 500 cents. All subsequent generations check remaining budget and reject if insufficient. CRITICAL: only call once at the start, and only when the user explicitly provides a budget.
+
 ### Output format
 
 JSON to stdout: `{"ok": true, "path": "assets/img/car.png", "cost_cents": 4}`
