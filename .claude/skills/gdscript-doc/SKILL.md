@@ -1,14 +1,7 @@
 ---
-triggers:
-  - "gdscript reference"
-  - "gdscript syntax"
-  - "godot api docs"
-  - "look up godot class"
+name: gdscript-doc
 description: |
-  GDScript language reference and Godot API documentation.
-  Provides syntax reference, type system, and per-class API lookup.
-  Load this skill before writing any GDScript code.
-write_style: "imperative"
+  This skill should be used when writing GDScript code, looking up Godot class APIs, or needing GDScript syntax reference. Provides syntax reference, type system, and per-class API lookup. Load before writing any GDScript code.
 ---
 
 # GDScript Documentation

@@ -1,10 +1,7 @@
 ---
 name: godot-capture
 description: |
-  Screenshot and video capture commands for Godot projects.
-  Handles GPU detection, xvfb fallback, and ffmpeg conversion.
-
-  **When to use:** Loaded by godot-task for screenshot and video capture.
+  This skill should be used when capturing screenshots or video from a Godot project. Handles GPU detection, xvfb fallback, and ffmpeg conversion. Loaded by godot-task for screenshot and video capture.
 ---
 
 # Godot Capture

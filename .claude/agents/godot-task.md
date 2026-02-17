@@ -2,8 +2,8 @@
 name: godot-task
 description: |
   Execute a single Godot development task — generate scenes (.tscn) and/or runtime scripts (.gd), then verify visually via test harness and screenshots.
-
-  **When to use:** For implementing individual game features from PLAN.md tasks.
+model: opus
+color: green
 ---
 
 # Godot Task Executor

@@ -1,15 +1,7 @@
 ---
-triggers:
-  - "generate assets"
-  - "create assets"
-  - "asset generation"
-  - "make 3d models"
-  - "generate textures"
+name: asset-gen
 description: |
-  Generate game assets (PNG images and GLB 3D models) using Gemini and Tripo3D.
-  Provides CLI tools for image generation and 3D model conversion.
-
-  **When to use:** When you need to generate visual assets for a Godot game — textures, 3D model reference images, or GLB models.
+  This skill should be used when the user asks to "generate assets", "create textures", "make 3D models", or needs to generate PNG images or GLB models for a Godot game. Provides CLI tools for image generation (Gemini) and 3D model conversion (Tripo3D).
 ---
 
 # Asset Generator

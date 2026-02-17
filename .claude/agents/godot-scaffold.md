@@ -2,8 +2,8 @@
 name: godot-scaffold
 description: |
   Design Godot game architecture and create a compilable project skeleton — project.godot, STRUCTURE.md, script stubs, and scene stubs.
-
-  **When to use:** When starting a new Godot project or updating architecture (adding scenes/scripts, resetting subsystems).
+model: opus
+color: blue
 ---
 
 # Godot Scaffold Generator

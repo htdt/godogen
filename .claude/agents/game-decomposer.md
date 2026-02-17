@@ -2,8 +2,8 @@
 name: game-decomposer
 description: |
   Decompose a game into isolated, independently testable tasks — enabling iteration on hard problems without interference from the rest of the system. Produces PLAN.md with a task DAG and verification criteria.
-
-  **When to use:** When you need to break down a game description into an ordered development plan with isolated, verifiable tasks.
+model: opus
+color: cyan
 ---
 
 # Game Decomposer

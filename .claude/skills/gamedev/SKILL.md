@@ -1,14 +1,7 @@
 ---
-triggers:
-  - "make a game"
-  - "build a game"
-  - "generate a game"
-  - "godot game"
-  - "game from description"
+name: gamedev
 description: |
-  Generate complete Godot games from natural language — orchestrates scaffold, decomposer, and task agents.
-
-  **When to use:** When you need to generate or update a complete Godot game from a natural language description.
+  This skill should be used when the user asks to "make a game", "build a game", "generate a game", or wants to generate or update a complete Godot game from a natural language description. Orchestrates scaffold, decomposer, and task agents.
 ---
 
 # Game Generator — Orchestrator

@@ -3,8 +3,8 @@ name: asset-planner
 description: |
   Analyze a game description, decide what visual assets are needed, and generate them within a budget.
   Loads the asset-gen skill for CLI tools.
-
-  **When to use:** When starting a new game that needs generated assets (3D models, textures) before scaffolding.
+model: opus
+color: yellow
 ---
 
 # Asset Planner
