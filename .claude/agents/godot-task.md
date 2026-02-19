@@ -14,7 +14,7 @@ Execute a single development task from PLAN.md. A task may require generating sc
 
 ```
 game/           # Godot project (git repo) — project.godot, scripts/, scenes/
-assets/         # shared binary assets — glb/, img/, assets.json
+assets/         # shared binary assets — glb/, img/, assets.md
 worktrees/      # parallel branch checkouts (temporary)
 screenshots/    # test output, per-task subfolders
 ```

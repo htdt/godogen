@@ -48,6 +48,7 @@ Apply the same env prefix to `--import`, scene builder runs, and test scripts.
 | `game-decomposer` | Build/update `game/PLAN.md` task DAG |
 | `godot-task` | Execute one concrete PLAN.md task |
 | `godot-capture` | GPU-first screenshot/video capture (loaded inside `godot-task`) |
+| `visual-qa` | Optional post-task screenshot QA on mature visuals |
 
 ## Pipeline
 
@@ -87,12 +88,19 @@ Apply the same env prefix to `--import`, scene builder runs, and test scripts.
   - Commit task changes in the per-game repo:
     - `cd $PROJECT_ROOT/game && git add -A && git commit -m "task <id>: <short outcome>"`.
 
-7. **Presentation video (required final pass)**
+7. **Visual QA (optional on mature tasks)**
+- After a task completes, run visual QA when captures have representative gameplay visuals (not early greybox placeholders).
+- Choose 4 sequential PNG frames from that task and run:
+  - `python3 .agents/skills/visual-qa/scripts/visual_qa.py frame1.png frame2.png frame3.png frame4.png`
+- Treat findings as advisory; act on major correctness issues, ignore noisy/style-only feedback.
+- Keep budget reasonable (roughly up to 20 calls per full game generation).
+
+8. **Presentation video (required final pass)**
 - After all gameplay tasks are complete, create `game/test/presentation.gd`.
 - Use `godot-task` + `godot-capture` guidance to produce a ~30s video at `screenshots/presentation/gameplay.mp4`.
 - If no GPU display is available, skip video capture and record the blocker in the run summary.
 
-8. **Completion**
+9. **Completion**
 - Continue until no ready tasks remain.
 - Summarize completed work, caveats, and remaining blocked items.
 
@@ -112,6 +120,18 @@ After each task:
   3. Re-run scaffold/decomposer if architecture is the root blocker.
 
 Do not rerun unchanged failing specs repeatedly.
+
+## Visual QA
+
+Run visual QA after task completion only when visuals are sufficiently representative (textures/lighting/gameplay visible). Skip very early placeholder-heavy captures.
+
+Pick 4 representative sequential frames from the same task capture and run:
+
+```bash
+python3 .agents/skills/visual-qa/scripts/visual_qa.py frame1.png frame2.png frame3.png frame4.png
+```
+
+Cap usage to a small subset of important tasks (about 20 checks across a full run). Prioritize major correctness defects (clipping, broken transforms, obvious placeholder remnants, severe motion anomalies) over minor style noise.
 
 ## Presentation Video
 

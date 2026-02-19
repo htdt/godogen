@@ -16,6 +16,7 @@ Skills live under `.agents/skills/`.
 - `game-decomposer` — produces `game/PLAN.md` with isolated, testable tasks.
 - `godot-task` — executes one task with visual verification; loads capture workflow.
 - `godot-capture` — handles screenshot/video capture with GPU-first fallback logic.
+- `visual-qa` — analyzes 4 sequential screenshots for visual defects and motion anomalies.
 - `asset-gen` — CLI instructions for PNG, spritesheet, and GLB generation.
 - `gdscript-doc` — GDScript and Godot API local reference workflow.
 

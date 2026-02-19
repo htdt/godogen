@@ -30,7 +30,7 @@ Use `$PROJECT_ROOT` in every path. Never use `$(pwd)` inline — it breaks after
 Load the asset-gen skill for CLI reference:
 
 ```
-Skill("asset-gen")
+Skill(skill="asset-gen")
 ```
 
 ## Workflow
