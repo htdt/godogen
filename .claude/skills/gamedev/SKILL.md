@@ -193,6 +193,17 @@ godot-task iterates internally and uses judgment to decide when to stop (it won'
 
 Don't retry the same task with the same spec — that's what godot-task already tried.
 
+## Visual QA
+
+After a task completes, run visual QA on its screenshots if the game has progressed past early grey-box stage (real textures, lighting, gameplay visible). Skip it on early tasks that are still mostly placeholders.
+
+Pick 4 representative frames from the task's capture and run:
+```bash
+python3 .claude/skills/visual-qa/scripts/visual_qa.py frame1.png frame2.png frame3.png frame4.png
+```
+
+Budget ~20 calls across the entire generation — don't run on every task. The QA tends to be overly picky; use judgment on which issues actually warrant action vs. noise.
+
 ## Presentation Video
 
 After all tasks are complete, create a ~30-second cinematic gameplay video as the final deliverable. Dispatch as a godot-task sub-agent — it's just another task, but outputs video instead of screenshots.
