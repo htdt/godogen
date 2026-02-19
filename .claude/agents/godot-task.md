@@ -100,7 +100,7 @@ When you stop, report:
 - What you tried and why it didn't fix it
 - Your best guess at the root cause
 
-The caller (gamedev orchestrator) will decide whether to adjust the task, re-scaffold, or accept the current state.
+The caller (godogen orchestrator) will decide whether to adjust the task, re-scaffold, or accept the current state.
 
 ### Commands
 

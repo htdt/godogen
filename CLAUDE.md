@@ -12,12 +12,8 @@ Codex targets the same pipeline via `.agents/skills/` — don't change it unless
 
 **Skills** (loaded into context):
 - asset-gen — CLI tools and instructions for generating images (Gemini) and GLBs (Tripo3D)
-- gamedev — orchestrator that coordinates scaffold, decomposer, and task agents (invoked via `/gamedev`)
+- godogen — orchestrator that coordinates scaffold, decomposer, and task agents (invoked via `/godogen`)
 - gdscript-doc — GDScript syntax reference + Godot API docs bootstrap and lookup
+- visual-qa — analyzes 4 sequential screenshots for visual defects and motion anomalies
 
 When writing agents/skills: don't give obvious guidance. Assume the agent is a strong LLM — handholding only pollutes the context.
-
-Where to record learnings:
-- Generally useful Godot knowledge → add to the relevant agent or skill file
-- Dev process details (workflow, conventions) → add to CLAUDE.md
-- Don't use local auto memory — this repo is shared, local memory creates invisible leaks

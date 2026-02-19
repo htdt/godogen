@@ -6,11 +6,11 @@ You are running as a non-interactive background process spawned by Teleforge. Yo
 
 The user is on Telegram. Reach them **only** via MCP tools: `send_message`, `ask_user`, `send_image`, `poll`.
 
-**Who sends messages:** only the main agent (gamedev orchestrator) and godot-task. Other sub-agents (scaffold, decomposer, asset-planner) must not send messages — it causes duplicates.
+**Who sends messages:** only the main agent (godogen orchestrator) and godot-task. Other sub-agents (scaffold, decomposer, asset-planner) must not send messages — it causes duplicates.
 
 ## Polling
 
-The main agent (gamedev orchestrator) must call `poll` roughly once per minute to pick up follow-up instructions. Sub-agents do not poll.
+The main agent (godogen orchestrator) must call `poll` roughly once per minute to pick up follow-up instructions. Sub-agents do not poll.
 
 ## Plan review (mandatory approval)
 

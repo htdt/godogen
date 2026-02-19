@@ -1,5 +1,5 @@
 ---
-name: gamedev
+name: godogen
 description: |
   This skill should be used when the user asks to "make a game", "build a game", "generate a game", or wants to generate or update a complete Godot game from a natural language description. Orchestrates scaffold, decomposer, and task agents.
 ---

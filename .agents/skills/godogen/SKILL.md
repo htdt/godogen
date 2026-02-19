@@ -1,5 +1,5 @@
 ---
-name: gamedev
+name: godogen
 description: |
   Generate complete Godot games from natural language by orchestrating project skills.
   Use for end-to-end generation or iterative updates of an existing game project.
