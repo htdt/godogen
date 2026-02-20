@@ -63,7 +63,8 @@ Rules:
 - KEEP the red grid lines exactly where they are in the template — do not remove, shift, or paint over them
 - Each cell's content must be CENTERED in its cell and must NOT cross into adjacent cells
 - Fill all empty space in each cell with solid {bg_color} background
-- Maintain consistent style, lighting direction, and proportions across all 16 cells"""
+- Maintain consistent style, lighting direction, and proportions across all 16 cells
+- CRITICAL: do NOT draw the numbered circles from the template onto the output — replace them entirely with the actual drawing content"""
 
 QUALITY_PRESETS = {
     "lowpoly": {

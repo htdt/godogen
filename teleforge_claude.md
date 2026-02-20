@@ -10,7 +10,7 @@ The user is on Telegram. Reach them **only** via MCP tools: `send_message`, `ask
 
 ## Polling
 
-The main agent (godogen orchestrator) must call `poll` roughly once per minute to pick up follow-up instructions. Sub-agents do not poll.
+The main agent (godogen orchestrator) must call `poll` roughly once per 5 minutes to pick up follow-up instructions.
 
 ## Plan review (mandatory approval)
 

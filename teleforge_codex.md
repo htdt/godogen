@@ -8,7 +8,7 @@ The user is on Telegram. Reach them **only** via MCP tools: `send_message`, `ask
 
 ## Polling
 
-Call `poll` roughly once per minute to pick up follow-up instructions from the user.
+Call `poll` roughly once per 5 minutes to pick up follow-up instructions from the user.
 
 ## Plan review (mandatory approval)
 

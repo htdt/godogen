@@ -2,8 +2,8 @@
 name: godot-task
 description: |
   Execute a single Godot development task — generate scenes (.tscn) and/or runtime scripts (.gd), then verify visually via test harness and screenshots.
-model: opus
-color: green
+model: sonnet
+color: orange
 ---
 
 # Godot Task Executor
@@ -128,6 +128,11 @@ Read `{game_dir}/MEMORY.md` before starting work — it contains discoveries fro
 - **`--import` for worktrees** — must run `godot --headless --import --quit` once per new worktree before scene builders can load GLB files. Already included in worktree setup above.
 - **`add_to_group()` in scene builders** — groups set at build-time persist in saved .tscn files.
 - **MultiMeshInstance3D + GLBs** — does NOT render after pack+save (mesh resource reference lost during serialization). Use individual GLB instances instead.
+- **`_ready()` skipped in `_initialize()`** — when running `--script`, `_ready()` on instantiated scene nodes does NOT fire during `_initialize()`. Call `node.generate()` or other init methods manually after `root.add_child()`.
+- **`_process()` signature in SceneTree scripts** — must be `func _process(delta: float) -> bool:` (returns bool), not void.
+- **Autoloads in SceneTree scripts** — cannot reference autoload singletons by name (compile error). Find them via `root.get_children()` and match by `.name`.
+- **`free()` vs `queue_free()` in test harnesses** — `queue_free()` leaves the node in `root.get_children()` until frame end, blocking name reuse. Use `free()` when immediately replacing scenes.
+- **Camera2D has no `current` property** — use `make_current()`, and only after the node is in the scene tree.
 
 ## Type Inference Errors
 
@@ -146,6 +151,25 @@ var model := scene.instantiate()  # Error: Cannot infer type from Variant
 var scene: PackedScene = load("res://glb/car.glb")
 var model = scene.instantiate()  # Works: no type inference attempted
 ```
+
+## Common Runtime Pitfalls
+
+**init() vs _ready() timing:**
+- `init()` / `setup()` called before `add_child()` → `@onready` vars are null. Store params in plain vars, apply to nodes in `_ready()`.
+- `@onready var x = $Node if has_node("Node") else null` is unreliable. Declare `var x: Type = null` and resolve in `_ready()` with `get_node_or_null()`.
+- `get_path()` is a built-in Node method (returns NodePath). Cannot override — name yours `get_track_path()`, `get_road_path()`, etc.
+
+**Collision state changes in callbacks:**
+- Changing collision shape `.disabled` inside `body_entered`/`body_exited` → "Can't change state while flushing queries". Use `set_deferred("disabled", false)`.
+
+**Spawn immunity for revealed items:**
+- Items spawned inside an active Area2D (e.g., power-up revealed by explosion) get `area_entered` immediately → destroyed same frame.
+- Fix: track `_alive_time` in `_process()`, ignore `area_entered` for ~0.8s (longer than the triggering effect's lifetime).
+
+**Material visibility in forward_plus:**
+- `StandardMaterial3D` with `no_depth_test = true` + `TRANSPARENCY_ALPHA` → invisible. Use opaque + unshaded for overlays.
+- Z-fighting between layered surfaces (road on terrain): offset 0.15–0.30m vertically + `render_priority = 1`.
+- `cull_mode = CULL_DISABLED` as safety net on all procedural meshes until winding is confirmed correct.
 
 ---
 
