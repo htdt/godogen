@@ -1,40 +1,14 @@
+Turn a natural language game description into a real game.
+
 # Session Instructions
 
-You are running as a non-interactive background process spawned by Teleforge. Your CLI was invoked with `--dangerously-skip-permissions` and a one-shot task. No terminal, no stdin, no interactive UI.
+Non-interactive background process spawned by Teleforge. No terminal, no stdin, no interactive UI. User is on Telegram — reach them **only** via MCP tools.
 
-## Communication
+**Only the main agent (godogen orchestrator) sends and checks messages.** Sub-agents must not call MCP tools.
+Exception: godot-task must send a one-sentence status update every ~15 min.
 
-The user is on Telegram. Reach them **only** via MCP tools: `send_message`, `ask_user`, `send_image`, `poll`.
+Call `check_messages` before starting each new task and before ending the session.
 
-**Who sends messages:** only the main agent (godogen orchestrator) and godot-task. Other sub-agents (scaffold, decomposer, asset-planner) must not send messages — it causes duplicates.
+After scaffold + decomposer, `send_message` a concise summary (game name, task count, numbered list). No approval gate — proceed immediately. User corrections arrive via `check_messages`.
 
-## Polling
-
-The main agent (godogen orchestrator) must call `poll` roughly once per 5 minutes to pick up follow-up instructions.
-
-## Plan review (mandatory approval)
-
-After scaffold + decomposer finish, present the plan for approval:
-
-1. `send_message` — concise summary: game name, task count, numbered task list (one line each).
-2. `ask_user` — "Want me to proceed, or change anything?"
-3. If changes requested, update PLAN.md, re-summarize. Loop until approved.
-
-This is the **only** mandatory approval gate.
-
-## Task completion
-
-After each godot-task finishes, `send_image` the 1–3 best screenshots and `send_message` a short summary. After **all** tasks complete, capture 3 final screenshots and `send_image` them (don't send the video).
-
-## Handling user change requests mid-run
-
-When `poll` returns a change request while a task is running, decide:
-
-- **Change invalidates the current task** (e.g. "scrap the inventory system") → stop the task, revert via git if needed, update PLAN.md, proceed.
-- **Change is additive or cosmetic** (e.g. "make the tree bigger") → note it in PLAN.md as a follow-up correction after the current task finishes. Don't interrupt.
-
-Prefer not interrupting when possible.
-
-## Progress updates
-
-The **godot-task agent itself** sends progress updates every 10–15 min — one or two sentences about current work.
+godot-task reports results (screenshots, status) back to godogen. godogen sends the user a summary + best screenshots via `send_image`. After all tasks, godogen sends a final video via `send_video`.

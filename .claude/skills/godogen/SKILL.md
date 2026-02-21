@@ -197,16 +197,16 @@ Don't retry the same task with the same spec — that's what godot-task already 
 
 After a task completes, run visual QA on its screenshots if the game has progressed past early grey-box stage (real textures, lighting, gameplay visible). Skip it on early tasks that are still mostly placeholders.
 
-Pick 4 representative frames from the task's capture and run:
+Pick 7 frames: 4 consecutive (for motion analysis) + 3 from different parts of the game (for diversity):
 ```bash
-python3 .claude/skills/visual-qa/scripts/visual_qa.py frame1.png frame2.png frame3.png frame4.png
+python3 .claude/skills/visual-qa/scripts/visual_qa.py consec1.png consec2.png consec3.png consec4.png diverse1.png diverse2.png diverse3.png
 ```
 
 Budget ~20 calls across the entire generation — don't run on every task. The QA tends to be overly picky; use judgment on which issues actually warrant action vs. noise.
 
 ## Presentation Video
 
-After all tasks are complete, create a ~30-second cinematic gameplay video as the final deliverable. Dispatch as a godot-task sub-agent — it's just another task, but outputs video instead of screenshots.
+After all tasks are complete, create a ~30-second cinematic gameplay video as the final deliverable. Dispatch as a godot-task sub-agent — it's just another task, but outputs video instead of screenshots. Adapt the prompt to the game's dimension (3D or 2D):
 
 ```
 Task(
@@ -218,13 +218,22 @@ Task(
 - **Targets:** test/presentation.gd
 - **Requirements:**
   - Write test/presentation.gd — a SceneTree script (extends SceneTree)
-  - Smooth camera work: orbits, tracking shots, dolly moves — show the world from its best angles
-  - Good lighting: DirectionalLight3D key (shadow-casting) + fill/rim, warm/cool contrast
-  - Post-processing: Environment + WorldEnvironment with glow/bloom, SSAO, SSR, ACES tonemapping, volumetric fog
   - Showcase representative gameplay via simulated input or scripted animations
   - ~900 frames at 30 FPS (30 seconds)
   - Use Video Capture from godot-capture (AVI via --write-movie, convert to MP4 with ffmpeg)
   - Output: screenshots/presentation/gameplay.mp4
+
+  **3D games:**
+  - Smooth camera work: orbits, tracking shots, dolly moves — show the world from its best angles
+  - Good lighting: DirectionalLight3D key (shadow-casting) + fill/rim, warm/cool contrast
+  - Post-processing: Environment + WorldEnvironment with glow/bloom, SSAO, SSR, ACES tonemapping, volumetric fog
+
+  **2D games:**
+  - Camera pans and smooth scrolling across the game world — show key areas and variety
+  - Zoom transitions between overview and close-up to highlight detail
+  - Trigger representative gameplay sequences: player movement, enemies, pickups, scoring, level transitions
+  - Keep the viewport framing tight — no large empty regions
+
 - **Verify:** Capture and verify screenshots before capturing the final video to verify the presentation.
 """
 )
