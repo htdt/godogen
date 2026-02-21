@@ -12,14 +12,7 @@ Execute a single development task from PLAN.md. A task may require generating sc
 
 ## Project Layout
 
-```
-game/           # Godot project (git repo) — project.godot, scripts/, scenes/
-assets/         # shared binary assets — glb/, img/, assets.md
-worktrees/      # parallel branch checkouts (temporary)
-screenshots/    # test output, per-task subfolders
-```
-
-`{game_dir}` is where Godot runs — normally `game/`, or `worktrees/{branch}` when using a worktree.
+The Godot project is the working directory. Assets live in `assets/` (gitignored), loaded via `res://assets/glb/` and `res://assets/img/`. Screenshots go to `screenshots/`.
 
 ## First Step: Anchor the Project Root
 
@@ -29,41 +22,28 @@ PROJECT_ROOT=$(pwd)
 ```
 Use `$PROJECT_ROOT` in every path. Never use `$(pwd)` inline — it breaks after `cd`.
 
-## Worktree Lifecycle
+## Worktree Setup
 
-When the caller passes `worktree=true` with a `branch` name, handle the full git worktree lifecycle for isolated parallel execution. When `worktree` is not specified, `{game_dir}` = `game/` (no git operations).
+When dispatched with native worktree isolation, you run in a copy of the repo containing only tracked files. Gitignored content (`assets/`, `screenshots/`, `.godot` cache) is absent.
 
-**Setup (before starting work):**
+**After anchoring PROJECT_ROOT, set up missing content:**
 
-1. **Branch + worktree:**
-   ```bash
-   git -C $PROJECT_ROOT/game worktree add $PROJECT_ROOT/worktrees/{branch} -b {branch}
-   ```
-2. **Symlink assets:**
-   ```bash
-   ln -s $PROJECT_ROOT/assets/glb $PROJECT_ROOT/worktrees/{branch}/glb
-   ln -s $PROJECT_ROOT/assets/img $PROJECT_ROOT/worktrees/{branch}/img
-   ```
-3. **Import assets** — required once per new worktree so scene builders can load GLBs:
-   ```bash
-   cd $PROJECT_ROOT/worktrees/{branch} && godot --headless --import --quit 2>&1
-   ```
-4. **Set game_dir** — use `worktrees/{branch}` as `{game_dir}` for the rest of the workflow.
+```bash
+if [ ! -e assets ]; then
+  MAIN=$(git worktree list --porcelain | head -1 | sed 's/worktree //')
+  ln -s $MAIN/assets assets
+  mkdir -p screenshots
+  godot --headless --import --quit 2>&1
+fi
+```
 
-**Teardown (after work + commit):**
+**After all work is done, commit:**
 
-5. **Commit** — `cd $PROJECT_ROOT/{game_dir} && git add -A && git commit -m "task: {task_name}"`
-6. **Rebase + merge:**
-   ```bash
-   cd $PROJECT_ROOT/{game_dir} && git rebase master
-   cd $PROJECT_ROOT/game && git merge --ff-only {branch}
-   ```
-7. **Cleanup:**
-   ```bash
-   git -C $PROJECT_ROOT/game worktree remove $PROJECT_ROOT/worktrees/{branch} && git -C $PROJECT_ROOT/game branch -d {branch}
-   ```
+```bash
+git add -A && git commit -m "task: {task_name}"
+```
 
-If rebase has conflicts, resolve them (this task's files are authoritative), then continue: `git add <resolved> && GIT_EDITOR=true git rebase --continue`.
+The orchestrator handles merging the branch and cleaning up the worktree.
 
 ## Workflow
 
@@ -73,10 +53,10 @@ If rebase has conflicts, resolve them (this task's files are authoritative), the
    - `scripts/*.gd` targets → generate runtime script(s) (see Part 2)
    - Both → generate scenes FIRST, then scripts (scenes create nodes that scripts attach to)
 3. **Generate scene(s)** — write GDScript scene builder, compile to produce `.tscn`
-4. **Generate script(s)** — write `.gd` files to `{game_dir}/scripts/`
+4. **Generate script(s)** — write `.gd` files to `scripts/`
 5. **Validate** — run `godot --headless --quit` to check for parse errors across all project scripts
 6. **Fix errors** — if Godot reports errors, read output, fix files, re-run. Repeat until clean.
-7. **Generate test harness** — write `{game_dir}/test/test_task.gd` implementing the task's **Verify** scenario (see Part 3)
+7. **Generate test harness** — write `test/test_task.gd` implementing the task's **Verify** scenario (see Part 3)
 8. **Capture screenshots** — run test with GPU display (or xvfb fallback) and `--write-movie` to produce PNGs (see Screenshot Capture)
 9. **Verify visually** — read captured PNGs and check two things:
    - **Task goal:** does the screenshot match the **Verify** description?
@@ -106,10 +86,10 @@ The caller (godogen orchestrator) will decide whether to adjust the task, re-sca
 
 ```bash
 # Compile a scene builder (produces .tscn):
-cd $PROJECT_ROOT/{game_dir} && godot --headless --script <path_to_gd_builder>
+cd $PROJECT_ROOT && godot --headless --script <path_to_gd_builder>
 
 # Validate all project scripts (parse check):
-cd $PROJECT_ROOT/{game_dir} && godot --headless --quit 2>&1
+cd $PROJECT_ROOT && godot --headless --quit 2>&1
 ```
 
 **Error handling:** Parse Godot's stderr/stdout for error lines. Common issues:
@@ -120,7 +100,7 @@ cd $PROJECT_ROOT/{game_dir} && godot --headless --quit 2>&1
 
 ## Project Memory
 
-Read `{game_dir}/MEMORY.md` before starting work — it contains discoveries from previous tasks (workarounds, Godot quirks, asset details, architectural decisions). After completing your task, write back anything useful you learned: what worked, what failed, technical specifics others will need.
+Read `MEMORY.md` before starting work — it contains discoveries from previous tasks (workarounds, Godot quirks, asset details, architectural decisions). After completing your task, write back anything useful you learned: what worked, what failed, technical specifics others will need.
 
 ## Known Quirks
 
@@ -140,15 +120,15 @@ Two common issues with `load()` and `instantiate()` — applies in both scene bu
 
 ```gdscript
 # WRONG — load() returns Resource, which has no instantiate():
-var scene := load("res://glb/car.glb")
+var scene := load("res://assets/glb/car.glb")
 var model := scene.instantiate()  # Error: Resource has no instantiate()
 
 # WRONG — := with instantiate() causes Variant inference error:
-var scene: PackedScene = load("res://glb/car.glb")
+var scene: PackedScene = load("res://assets/glb/car.glb")
 var model := scene.instantiate()  # Error: Cannot infer type from Variant
 
 # CORRECT — type load() AND use = (not :=) for instantiate():
-var scene: PackedScene = load("res://glb/car.glb")
+var scene: PackedScene = load("res://assets/glb/car.glb")
 var model = scene.instantiate()  # Works: no type inference attempted
 ```
 
@@ -251,7 +231,7 @@ player_node.set_script(script)
 **3D models (GLB):**
 ```gdscript
 # MUST type as PackedScene, use = (not :=) for instantiate()
-var model_scene: PackedScene = load("res://glb/car.glb")
+var model_scene: PackedScene = load("res://assets/glb/car.glb")
 var model = model_scene.instantiate()
 model.name = "CarModel"
 
@@ -291,7 +271,7 @@ collision_shape.shape = box
 **Textures (PNG):**
 ```gdscript
 var mat := StandardMaterial3D.new()
-mat.albedo_texture = load("res://img/grass.png")
+mat.albedo_texture = load("res://assets/img/grass.png")
 mesh_instance.set_surface_override_material(0, mat)
 ```
 
@@ -565,7 +545,7 @@ func _ready() -> void:
 
 ## Part 3: Test Harness & Visual Verification
 
-Write `{game_dir}/test/test_task.gd` — a SceneTree script that loads the scene under test and **thoroughly verifies the task's goal**. Do NOT call `quit()` — the movie writer handles exit.
+Write `test/test_task.gd` — a SceneTree script that loads the scene under test and **thoroughly verifies the task's goal**. Do NOT call `quit()` — the movie writer handles exit.
 
 **Verify what the task actually asks for.** Read the Verify description and think about what would convince you — a skeptic, not the author — that the task is done. A decoration task needs multiple camera angles to check placement and scale. A movement task needs the camera to follow the action over time. A UI task needs the full interface visible. Match the test to the goal.
 
@@ -631,7 +611,7 @@ The test harness stdout is captured alongside screenshots. Use `print("ASSERT PA
 
 ### Screenshot Capture
 
-Load `Skill(skill="godot-capture")` — it has GPU detection, capture commands (screenshots and video), and frame rate guidance. All commands use `{game_dir}` as the Godot project directory.
+Load `Skill(skill="godot-capture")` — it has GPU detection, capture commands (screenshots and video), and frame rate guidance.
 
 After reviewing captured frames (pick 3-5 that cover the verification), save `screenshots/{task_folder}/verification.md`:
 ```md

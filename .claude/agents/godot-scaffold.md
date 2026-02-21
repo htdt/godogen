@@ -14,12 +14,7 @@ Works for both fresh projects and incremental changes (adding scenes/scripts, re
 
 ## Project Layout
 
-The Godot project lives at `game/` (`{game_dir}`). Assets at `assets/`.
-
-```
-game/           # Godot project (git repo) — created/updated by scaffold
-assets/         # shared binary assets — glb/, img/, assets.md
-```
+The Godot project is the working directory. Assets live in `assets/` (gitignored), loaded via `res://assets/glb/` and `res://assets/img/`.
 
 ## Workflow
 
@@ -31,26 +26,19 @@ Use `$PROJECT_ROOT` in every path. Never use `$(pwd)` inline — it breaks after
 
 1. **Read input** — game description (fresh) or change request (incremental). Read `assets/assets.md` if it exists to understand available models and textures.
 2. **Assess project state:**
-   - No project → create `{game_dir}` from scratch.
-   - Existing project, fresh start requested → delete everything in `{game_dir}`.
+   - No project → create from scratch.
+   - Existing project, fresh start requested → delete existing scenes/scripts.
    - Existing project, incremental change → read existing `STRUCTURE.md` and scripts. Identify what to add or replace. Preserve unchanged files.
 3. **Design / update architecture** — scenes, scripts, signals, input actions.
 4. **Write/update `project.godot`** — create or merge input mappings.
 5. **Write `STRUCTURE.md`** — always the complete architecture, not a diff.
 6. **Write script stubs** — for new scripts and any existing scripts the task explicitly asks to replace.
-7. **Symlink assets** — make assets accessible to Godot via symlinks:
-   ```bash
-   ln -sf $PROJECT_ROOT/assets/glb $PROJECT_ROOT/{game_dir}/glb
-   ln -sf $PROJECT_ROOT/assets/img $PROJECT_ROOT/{game_dir}/img
-   ```
-8. **Import assets** — `cd $PROJECT_ROOT/{game_dir} && timeout 60 godot --headless --import 2>&1`. Ensures all assets (`.glb`, `.png`, etc.) are imported before scene builders reference them.
-9. **Build scene stubs** — for each new/changed scene, write a scene builder script to `{game_dir}/scenes/build_{name}.gd` using the template below, then run in dependency order (leaf scenes first): `cd $PROJECT_ROOT/{game_dir} && godot --headless --script scenes/build_{name}.gd`
-10. **Verify** — `cd $PROJECT_ROOT/{game_dir} && godot --headless --quit 2>&1`. No `ERROR` or `Parser Error` lines. RID warnings are benign.
-11. **Git init** — initialize the project as a git repo:
+7. **Import assets** — `cd $PROJECT_ROOT && timeout 60 godot --headless --import 2>&1`. Ensures all assets (`.glb`, `.png`, etc.) are imported before scene builders reference them.
+8. **Build scene stubs** — for each new/changed scene, write a scene builder script to `scenes/build_{name}.gd` using the template below, then run in dependency order (leaf scenes first): `cd $PROJECT_ROOT && godot --headless --script scenes/build_{name}.gd`
+9. **Verify** — `cd $PROJECT_ROOT && godot --headless --quit 2>&1`. No `ERROR` or `Parser Error` lines. RID warnings are benign.
+10. **Git commit** — repo is already initialized before Claude Code starts:
     ```bash
-    cd $PROJECT_ROOT/{game_dir}
-    echo -e "glb\nimg\n*.png\n*.jpg\n*.import" > .gitignore
-    git init && git add -A && git commit -m "scaffold: project skeleton"
+    cd $PROJECT_ROOT && git add -A && git commit -m "scaffold: project skeleton"
     ```
 
 ## Output Files
@@ -166,7 +154,14 @@ No descriptions, no requirements, no asset assignments. Just the graph.
 
 ### 3. `.gitignore`
 
-Asset symlinks and binary files stay out of git — assets live in `assets/` and are symlinked in. No trailing slash on `glb`/`img` so both real dirs and symlinks match.
+Assets, tools, and build artifacts stay out of git:
+```
+.claude
+assets
+screenshots
+.godot
+*.import
+```
 
 ### 4. Script stubs: `scripts/*.gd`
 
@@ -198,7 +193,7 @@ Write each scene builder using this template — replace all UPPER_CASE placehol
 
 ```gdscript
 extends SceneTree
-## Scene builder — run: cd $PROJECT_ROOT/{game_dir} && godot --headless --script scenes/build_<name>.gd
+## Scene builder — run: cd $PROJECT_ROOT && godot --headless --script scenes/build_<name>.gd
 
 func _initialize() -> void:
 	var root := ROOT_TYPE.new()     # REPLACE ROOT_TYPE — e.g. CharacterBody3D
@@ -229,8 +224,8 @@ func _set_owners(node: Node, owner: Node) -> void:
 
 **CRITICAL: Build order matters.** Scenes that instantiate other scenes must be built AFTER their dependencies. A scene that loads `player.tscn` will fail if `player.tscn` doesn't exist yet. Always build leaf scenes (no child scenes) first, then parents:
 ```bash
-cd $PROJECT_ROOT/{game_dir} && godot --headless --script scenes/build_player.gd   # leaf — no children
-cd $PROJECT_ROOT/{game_dir} && godot --headless --script scenes/build_main.gd     # parent — loads player.tscn
+cd $PROJECT_ROOT && godot --headless --script scenes/build_player.gd   # leaf — no children
+cd $PROJECT_ROOT && godot --headless --script scenes/build_main.gd     # parent — loads player.tscn
 ```
 
 ## UI Overlay Architecture

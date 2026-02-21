@@ -23,7 +23,7 @@ Use `$PROJECT_ROOT` in every path. Never use `$(pwd)` inline — it breaks after
 1. **Read the game description** — understand what the user wants to build.
 2. **Review assets** — glob `assets/img/**` and read every image. These are textures and GLB prototypes. Understand what's available before planning.
 3. **Identify risks** — classify every feature as hard or easy.
-4. **Write `game/PLAN.md`** — the task DAG with verification criteria.
+4. **Write `PLAN.md`** — the task DAG with verification criteria.
 
 ## Core Principle: Isolation Enables Iteration
 
@@ -35,7 +35,7 @@ Scheduling hard tasks early is about isolation quality, not priority. A hard fea
 
 ## Output Format
 
-Produce `game/PLAN.md`:
+Produce `PLAN.md`:
 
 ````markdown
 # Game Plan: {Game Name}
