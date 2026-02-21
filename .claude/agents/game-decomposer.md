@@ -111,6 +111,18 @@ Before outputting, verify:
 3. **Every Verify is test-harness-ready** — concrete visual scenario with camera position, visible objects, and expected state
 4. All available assets assigned
 
+## Common Game Structures
+
+These are well-supported by the task executor. Reference them by name in task goals — don't explain implementation:
+
+- **Spawn system** — enemies/items appear at random positions along a path, auto-removed when off-screen.
+- **State machine** — character behaviors split into discrete states with transitions (idle, run, attack, stagger).
+- **Navigation/AI** — enemies pathfind around obstacles toward a target.
+- **HUD overlay** — score, health, and UI elements rendered on top of the game view, unaffected by camera.
+- **Pause** — game freezes, pause menu appears and remains interactive.
+- **Turn-based combat** — combatants take turns in a queue; each turn awaits player input or AI decision.
+- **Grid movement** — characters move tile-by-tile on a discrete grid with collision checks.
+
 ## What NOT to Include
 
 - GDScript code or implementation details (task executor handles that)

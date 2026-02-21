@@ -384,6 +384,80 @@ func set_owner_on_new_nodes(node: Node, scene_owner: Node) -> void:
 - **2D/3D consistency** — Use ONLY 2D nodes (Node2D, CharacterBody2D, Area2D, Camera2D) OR 3D nodes. Never mix dimensions in the same scene hierarchy.
 - **No spatial methods in `_initialize()`** — `look_at()`, `to_global()`, etc. fail because nodes aren't in the tree yet. Use `rotation_degrees` or compute transforms manually.
 
+### Environment & Lighting (3D Scenes)
+
+When building 3D scenes, set up environment and lighting programmatically:
+
+```gdscript
+# WorldEnvironment
+var world_env := WorldEnvironment.new()
+var env := Environment.new()
+env.background_mode = Environment.BG_SKY
+env.tonemap_mode = Environment.TONE_MAP_FILMIC
+env.ambient_light_color = Color.WHITE
+env.ambient_light_sky_contribution = 0.5
+var sky := Sky.new()
+sky.sky_material = ProceduralSkyMaterial.new()
+env.sky = sky
+world_env.environment = env
+root.add_child(world_env)
+
+# Sun (DirectionalLight3D)
+var sun := DirectionalLight3D.new()
+sun.shadow_enabled = true
+sun.shadow_bias = 0.05
+sun.shadow_blur = 2.0
+sun.directional_shadow_max_distance = 30.0
+sun.sky_mode = Light3D.SKY_MODE_LIGHT_AND_SKY
+sun.rotation_degrees = Vector3(-45, -30, 0)
+root.add_child(sun)
+```
+
+### CSG for Rapid Prototyping
+
+CSG nodes generate collision automatically — no separate CollisionShape needed:
+
+```gdscript
+var floor := CSGBox3D.new()
+floor.size = Vector3(20, 0.5, 20)
+floor.use_collision = true
+floor.material = ground_mat
+root.add_child(floor)
+
+# Subtraction (carve holes): child CSG on parent CSG
+var hole := CSGCylinder3D.new()
+hole.operation = CSGShape3D.OPERATION_SUBTRACTION
+hole.radius = 1.0
+hole.height = 1.0
+floor.add_child(hole)
+```
+
+### Noise/Procedural Textures
+
+```gdscript
+var noise := FastNoiseLite.new()
+noise.noise_type = FastNoiseLite.TYPE_CELLULAR
+noise.frequency = 0.02
+noise.fractal_type = FastNoiseLite.FRACTAL_FBM
+noise.fractal_octaves = 5
+
+var tex := NoiseTexture2D.new()
+tex.noise = noise
+tex.width = 1024
+tex.height = 1024
+tex.seamless = true       # tileable
+tex.as_normal_map = true  # for normal maps
+tex.bump_strength = 2.0
+```
+
+### StandardMaterial3D Extended Properties
+
+Beyond basic albedo, useful properties for richer materials:
+- `normal_enabled = true` + `normal_texture` + `normal_scale = 2.0`
+- `rim_enabled = true` + `rim_tint = 1.0` — silhouette glow
+- `emission_enabled = true` + `emission_texture` — self-illumination
+- `texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS_ANISOTROPIC`
+
 ---
 
 ## Part 2: Script Generation
@@ -424,167 +498,31 @@ func _physics_process(delta: float) -> void:
 
 **Script section ordering:** signals → @onready vars → private state → lifecycle methods → public methods → private methods → signal handlers
 
-### Movement Patterns
+### VehicleBody3D
 
-**CharacterBody2D/3D (Kinematic):**
 ```gdscript
-extends CharacterBody2D
+extends VehicleBody3D
 
-var speed: float = 200.0
-var jump_velocity: float = -400.0
+@export var max_engine_force := 150.0
+@export var max_steer := 0.5
+var _steer_target := 0.0
 
 func _physics_process(delta: float) -> void:
-    if not is_on_floor():
-        velocity += get_gravity() * delta
-    if Input.is_action_just_pressed("jump") and is_on_floor():
-        velocity.y = jump_velocity
-    var direction := Input.get_axis("move_left", "move_right")
-    velocity.x = direction * speed
-    move_and_slide()
-```
-
-**RigidBody3D (Physics-driven):**
-```gdscript
-extends RigidBody3D
-
-var move_force: float = 10.0
-
-func _physics_process(_delta: float) -> void:
-    var input := Vector3.ZERO
-    input.x = Input.get_axis("move_left", "move_right")
-    input.z = Input.get_axis("move_forward", "move_back")
-    if input.length() > 0:
-        apply_central_force(input.normalized() * move_force)
-```
-
-### Input Handling
-
-ONLY use input actions declared in the plan's `inputs[]` array.
-
-**Action-based:**
-```gdscript
-if Input.is_action_just_pressed("jump"):
-    jump()
-if Input.is_action_pressed("fire"):  # Held
-    fire()
-var axis := Input.get_axis("move_left", "move_right")  # -1 to 1
-var vec := Input.get_vector("left", "right", "up", "down")  # Vector2
-```
-
-**If no inputs declared in plan, use direct key checks:**
-```gdscript
-if Input.is_key_pressed(KEY_W):
-    move_forward()
-```
-
-**Event-based:**
-```gdscript
-func _input(event: InputEvent) -> void:
-    if event.is_action_pressed("interact"):
-        interact()
-    if event is InputEventMouseButton and event.pressed:
-        if event.button_index == MOUSE_BUTTON_LEFT:
-            shoot()
-```
-
-### Signal Patterns
-
-**Define and emit:**
-```gdscript
-signal health_changed(new_health: int)
-signal item_collected(item_type: String, value: int)
-signal died
-
-health_changed.emit(current_health)
-died.emit()
-```
-
-**Connect in _ready():**
-```gdscript
-func _ready() -> void:
-    # Connect child's signal to our method
-    $Area2D.body_entered.connect(_on_body_entered)
-
-    # Connect to sibling (via parent)
-    var player = get_parent().get_node("Player")
-    player.died.connect(_on_player_died)
-
-func _on_body_entered(body: Node2D) -> void:
-    if body.is_in_group("enemies"):
-        take_damage(10)
-```
-
-**Sibling signal timing:** Scene tree calls `_ready()` on children in order. If sibling A emits a signal in its `_ready()`, sibling B (added later) hasn't connected yet and misses it. Fix: after connecting, check if the emitter already has data and call the handler manually.
-
-### Node References
-
-```gdscript
-# Children (via @onready)
-@onready var sprite: Sprite2D = $Sprite2D
-@onready var hitbox: Area2D = $Hitbox
-@onready var muzzle: Marker3D = $Arm/Gun/Muzzle
-
-# Siblings (via parent)
-@onready var level_manager: Node = get_parent().get_node("LevelManager")
-
-# Groups
-func get_all_enemies() -> Array[Node]:
-    return get_tree().get_nodes_in_group("enemies")
-```
-
-### Timer Patterns
-
-```gdscript
-# One-shot timer
-await get_tree().create_timer(1.5).timeout
-
-# Repeating (Timer node)
-@onready var spawn_timer: Timer = $SpawnTimer
-
-func _ready() -> void:
-    spawn_timer.timeout.connect(_on_spawn_timer)
-    spawn_timer.start()
-
-func _on_spawn_timer() -> void:
-    spawn_enemy()
-```
-
-### Tween Animations
-
-```gdscript
-func flash_damage() -> void:
-    var tween := create_tween()
-    tween.tween_property(sprite, "modulate", Color.RED, 0.1)
-    tween.tween_property(sprite, "modulate", Color.WHITE, 0.1)
-
-func move_to(target: Vector2) -> void:
-    var tween := create_tween()
-    tween.tween_property(self, "position", target, 0.5)\
-        .set_ease(Tween.EASE_OUT)\
-        .set_trans(Tween.TRANS_CUBIC)
-```
-
-### Scene Instantiation (Runtime Spawning)
-
-```gdscript
-# Load at top of script (use load(), NOT preload() — scenes may not exist at parse time)
-var BulletScene: PackedScene = load("res://scenes/bullet.tscn")
-
-func shoot() -> void:
-    var bullet := BulletScene.instantiate()
-    bullet.position = $Muzzle.global_position
-    bullet.rotation = rotation
-    get_parent().add_child(bullet)  # Add to parent, not self
+    var fwd: float = Input.get_axis("brake", "accelerate")
+    _steer_target = Input.get_axis("steer_right", "steer_left") * max_steer
+    steering = move_toward(steering, _steer_target, 2.0 * delta)
+    var spd: float = linear_velocity.length()
+    engine_force = fwd * max_engine_force * clampf(5.0 / maxf(spd, 0.1), 0.5, 5.0)
 ```
 
 ### Script Constraints
 
 - `extends` MUST match the node type this script attaches to
 - Use `@onready` for node refs, NOT `get_node()` in `_process()`
-- ONLY use input actions from plan's `inputs[]`, never invent action names
-- Use typed variables and return types for clarity
-- Signal handler names: `_on_{source}_{signal}` by convention
-- Do NOT use `preload()` for scenes/resources that may not exist yet — use `load()`
+- ONLY use input actions from plan's `inputs[]`, never invent action names. If none declared, use direct key checks.
+- Connect signals in `_ready()`, NOT in scene builders (scripts aren't instantiated at build-time)
+- **Sibling signal timing:** `_ready()` fires on children in order. If sibling A emits in its `_ready()`, sibling B hasn't connected yet. Fix: after connecting, check if the emitter already has data and call the handler manually.
+- Do NOT use `preload()` for scenes/resources that may not exist yet — use `load()`. Add spawned children to `get_parent()`, not `self`.
 - When "Available Nodes" section is provided, use ONLY the exact paths and types listed — do not guess or invent node names
 - **CRITICAL: NEVER use `:=` with polymorphic math functions** — `abs`, `sign`, `clamp`, `min`, `max`, `floor`, `ceil`, `round`, `lerp`, `smoothstep`, `move_toward`, `wrap`, `snappedf`, `randf_range`, `randi_range` return Variant (work on multiple types). Use explicit types: `var x: float = abs(y)` not `var x := abs(y)`
 

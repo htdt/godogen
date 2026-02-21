@@ -522,9 +522,10 @@ await get_tree().create_timer(1.0).timeout
 call_deferred("my_method")
 set_deferred("property", value)
 
-# Process modes
-process_mode = Node.PROCESS_MODE_PAUSABLE  # Pause with tree
-process_mode = Node.PROCESS_MODE_ALWAYS    # Ignore pause
+# Pause
+get_tree().paused = true                   # Pause everything
+process_mode = Node.PROCESS_MODE_ALWAYS    # Exempt node from pause (for pause menu UI)
+process_mode = Node.PROCESS_MODE_PAUSABLE  # Pause with tree (default)
 ```
 
 ## Math Constants & Functions
@@ -590,9 +591,205 @@ func _unhandled_input(event: InputEvent) -> void:
     pass
 ```
 
+## Spawning Patterns
+
+```gdscript
+# Path-based random spawning (enemies, pickups):
+# Path2D/3D defines the spawn curve, PathFollow randomizes position
+var spawn_loc: PathFollow2D = $SpawnPath/SpawnLocation
+spawn_loc.progress_ratio = randf()  # random point on path
+var mob = MobScene.instantiate()
+mob.position = spawn_loc.position
+
+# Auto-cleanup off-screen objects:
+# Add VisibleOnScreenNotifier2D as child, connect screen_exited signal
+$VisibleOnScreenNotifier2D.screen_exited.connect(queue_free)
+
+# Screen bounds clamping:
+position = position.clamp(Vector2.ZERO, screen_size)
+```
+
+## Animation Patterns
+
+```gdscript
+# AnimationPlayer:
+$AnimationPlayer.play("run")
+$AnimationPlayer.speed_scale = velocity.length() / max_speed  # tie to movement
+
+# AnimatedSprite2D — pick random animation:
+$AnimatedSprite2D.play(anim_names.pick_random())
+
+# AnimationTree blend parameters (3D):
+$AnimationTree.set("parameters/speed/blend_amount", velocity.length() / max_speed)
+
+# animation_finished signal for state transitions:
+$AnimationPlayer.animation_finished.connect(_on_animation_finished)
+```
+
+## Character Facing/Rotation
+
+```gdscript
+# 3D — face movement direction:
+if direction != Vector3.ZERO:
+    basis = Basis.looking_at(direction)
+
+# Isometric 8-directional animation index:
+var angle: float = rad_to_deg(direction.angle()) + 22.5
+var dir_index: int = int(floor(angle / 45.0)) % 8
+```
+
+## Jump/Gravity Patterns
+
+```gdscript
+# Terminal velocity:
+velocity.y = minf(TERMINAL_VELOCITY, velocity.y + gravity * delta)
+
+# Early jump release (variable jump height):
+if Input.is_action_just_released("jump") and velocity.y < 0:
+    velocity.y *= 0.6
+
+# Gravity from ProjectSettings (3D):
+var gravity: float = float(ProjectSettings.get_setting("physics/3d/default_gravity"))
+
+# Slide collision detection (e.g., stomp enemies):
+for i in range(get_slide_collision_count()):
+    var col = get_slide_collision(i)
+    if col.get_normal().dot(Vector3.UP) > 0.7:
+        col.get_collider().squash()  # landed on top
+```
+
+## Movement Feel
+
+```gdscript
+# Walk/stop force asymmetry for momentum:
+if abs(input_dir) > 0.2:
+    velocity.x = move_toward(velocity.x, input_dir * MAX_SPEED, WALK_FORCE * delta)
+else:
+    velocity.x = move_toward(velocity.x, 0, STOP_FORCE * delta)
+
+# Velocity clamping:
+velocity.x = clamp(velocity.x, -MAX_SPEED, MAX_SPEED)
+
+# 3D smooth acceleration:
+horizontal_vel = horizontal_vel.lerp(target_vel, accel * delta)
+
+# Analog input (triggers, sticks):
+var throttle: float = Input.get_action_strength("accelerate")  # 0.0–1.0
+```
+
+## State Machine Pattern
+
+```gdscript
+# Node-based hierarchical state machine:
+class State extends Node:
+    signal finished(next_state: StringName)
+    func enter() -> void: pass
+    func exit() -> void: pass
+    func handle_input(_event: InputEvent) -> void: pass
+    func update(_delta: float) -> void: pass
+
+# State machine manages current + stack for push/pop (temp states like attack, stagger):
+var current_state: State
+var states_stack: Array[State]  # push_front for temp, pop_front to return
+```
+
+## Navigation Patterns
+
+```gdscript
+# 2D: NavigationAgent2D as child of CharacterBody2D
+func set_target(pos: Vector2) -> void:
+    $NavigationAgent2D.target_position = pos
+
+func _physics_process(_delta: float) -> void:
+    if $NavigationAgent2D.is_navigation_finished():
+        return
+    var next = $NavigationAgent2D.get_next_path_position()
+    velocity = global_position.direction_to(next) * speed
+    move_and_slide()
+
+# 3D: same pattern with NavigationAgent3D, or use server directly:
+var path = NavigationServer3D.map_get_path(nav_map, start, target, true)
+```
+
+## RigidBody _integrate_forces
+
+```gdscript
+# Low-level physics control (called before engine applies forces):
+func _integrate_forces(state: PhysicsDirectBodyState2D) -> void:
+    var lv = state.get_linear_velocity()
+    # Modify velocity based on input...
+    state.set_linear_velocity(lv)
+    # Contact info:
+    for i in range(state.get_contact_count()):
+        var normal = state.get_contact_local_normal(i)
+        var collider = state.get_contact_collider_object(i)
+
+# Collision exceptions (e.g., bullet ignores shooter):
+bullet.add_collision_exception_with(shooter)
+```
+
+## Server API (Performance)
+
+```gdscript
+# PhysicsServer2D for 500+ objects without nodes (bullets, particles):
+var shape = PhysicsServer2D.circle_shape_create()
+var body = PhysicsServer2D.body_create()
+PhysicsServer2D.body_add_shape(body, shape)
+PhysicsServer2D.body_set_state(body, PhysicsServer2D.BODY_STATE_TRANSFORM, xform)
+PhysicsServer2D.body_set_collision_mask(body, 0)  # no inter-object collision
+# MUST cleanup: PhysicsServer2D.free_rid(body) in _exit_tree()
+
+# Custom drawing for server-managed objects:
+func _process(_delta: float) -> void:
+    queue_redraw()
+func _draw() -> void:
+    for bullet in bullets:
+        draw_texture(bullet_tex, bullet.position)
+```
+
+## Custom Drawing
+
+```gdscript
+# Key _draw() methods on any CanvasItem:
+draw_line(from, to, color, width, antialiased)
+draw_circle(pos, radius, color, filled, width, antialiased)
+draw_rect(Rect2(pos, size), color, filled, width, antialiased)
+draw_polygon(points, colors)
+draw_texture(texture, pos, modulate)
+draw_set_transform(pos, rotation, scale)  # stateful — affects subsequent draws
+queue_redraw()  # call in _process() to trigger redraw
+```
+
+## Tween Advanced
+
+```gdscript
+var tween = create_tween()
+tween.set_loops(3)           # loop count (0 = infinite)
+tween.set_speed_scale(2.0)
+# Parallel tweens:
+tween.parallel().tween_property(node, ^"position", target, 0.5)
+tween.parallel().tween_property(node, ^"modulate", Color.RED, 0.5)
+# Callbacks:
+tween.tween_callback(method.bind(args))
+# Method tween (non-property interpolation):
+tween.tween_method(callable, start_val, end_val, duration)
+# Relative motion:
+tween.tween_property(node, ^"position", offset, 0.5).as_relative()
+# State: tween.is_valid(), .is_running(), .pause(), .play(), .kill()
+```
+
+## File I/O
+
+```gdscript
+var f = FileAccess.open(path, FileAccess.WRITE)
+f.store_string(data)
+var text = FileAccess.get_file_as_string(path)
+```
+
 ## Physics Gotchas
 
 - BoxShape3D on RigidBody3D snags on trimesh collision edges (well-known Godot/Jolt bug). Use CapsuleShape3D for objects that slide across trimesh surfaces (vehicles, rolling objects).
+- `reset_physics_interpolation()` — call when teleporting or switching cameras to prevent visible interpolation glitch.
 
 ## MultiMeshInstance3D Gotchas
 
@@ -611,13 +808,22 @@ func _unhandled_input(event: InputEvent) -> void:
 - Collision shape slightly smaller than tile (e.g., 48px in 64px grid) allows smooth cornering through 1-tile corridors.
 - Grid alignment assist: when moving horizontally, snap Y to nearest row center (`round(pos.y / tile_size) * tile_size + tile_size / 2`), and vice versa. Prevents snagging on corridor entrances.
 - For modifiable grids (breakable blocks), Sprite2D + StaticBody2D per cell is simpler than TileMapLayer — allows individual node removal without atlas manipulation.
+- TileMapLayer coordinate conversion: `local_to_map(position)` → cell coords, `map_to_local(cell)` → world position.
 
 ## Camera Patterns
 
 - **Detach child camera:** Set `top_level = true` in `_ready()` on a Camera3D that's a child of a moving node. It operates in world space while remaining a scene child.
+- **Smooth follow (3D):** `camera.position = camera.position.lerp(target.position + offset, smooth * delta)`, then `camera.look_at(target.position)`.
+- **Camera-relative input:** Remove pitch from camera basis, multiply input by it for world-space direction:
+  ```gdscript
+  var cam_basis = camera.global_basis
+  cam_basis = cam_basis.rotated(cam_basis.x, -cam_basis.get_euler().x)
+  var world_dir = cam_basis * Vector3(input.x, 0, input.y)
+  ```
 - **Smooth yaw tracking:** Wrap angle difference to [-PI, PI] before lerping to avoid 360-degree spin-arounds:
   ```gdscript
   var diff: float = fmod(target_yaw - current_yaw + 3.0 * PI, TAU) - PI
   current_yaw += diff * rotation_speed * delta
   ```
 - **Snap on first frame:** Use an `_initialized` flag to skip lerp on the first `_physics_process()` call — prevents camera starting at origin and visibly swooping to the target.
+- **Dynamic FOV:** `camera.fov = clamp(base_fov + (speed - threshold) * factor, base_fov, max_fov)` — speed-based for vehicles.

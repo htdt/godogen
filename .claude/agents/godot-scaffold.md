@@ -66,6 +66,41 @@ Use `$PROJECT_ROOT` in every path. Never use `$(pwd)` inline — it breaks after
 config/name="{ProjectName}"
 run/main_scene="res://scenes/main.tscn"
 
+[display]
+
+window/size/viewport_width=1280
+window/size/viewport_height=720
+window/stretch/mode="canvas_items"
+window/stretch/aspect="expand"
+
+[physics]
+
+common/physics_ticks_per_second=120
+common/physics_interpolation=true
+; 3D only — omit for 2D projects:
+3d/physics_engine="Jolt Physics"
+
+[rendering]
+
+; 3D games:
+lights_and_shadows/directional_shadow/soft_shadow_filter_quality=3
+anti_aliasing/quality/msaa_3d=2
+; 2D pixel art (instead of above):
+; textures/canvas_textures/default_texture_filter=0
+; 2d/snap/snap_2d_transforms_to_pixel=true
+
+[layer_names]
+
+; Name collision layers used by the game:
+2d_physics/layer_1="player"
+2d_physics/layer_2="enemies"
+; (add as needed)
+
+[autoload]
+
+; Singletons — asterisk prefix means script (not scene):
+; GameManager="*res://scripts/game_manager.gd"
+
 [input]
 
 move_forward={
@@ -197,6 +232,31 @@ func _set_owners(node: Node, owner: Node) -> void:
 cd $PROJECT_ROOT/{game_dir} && godot --headless --script scenes/build_player.gd   # leaf — no children
 cd $PROJECT_ROOT/{game_dir} && godot --headless --script scenes/build_main.gd     # parent — loads player.tscn
 ```
+
+## UI Overlay Architecture
+
+For HUD/menus, add to the main scene:
+
+```
+Main (Node3D or Node2D)
+├── ... game nodes ...
+└── CanvasLayer (layer=1)
+    └── Control (anchors_preset=15, full rect)
+        ├── VBoxContainer or HBoxContainer
+        │   ├── Label (score)
+        │   ├── ProgressBar (health)
+        │   └── Button (pause)
+        └── ...
+```
+
+**Layout containers:**
+- `VBoxContainer` — vertical stack; `HBoxContainer` — horizontal
+- `GridContainer` — grid (set `columns` property)
+- `MarginContainer` — padding; `CenterContainer` — centering; `PanelContainer` — with background
+- `size_flags_horizontal/vertical = 3` (SIZE_EXPAND_FILL)
+- `custom_minimum_size` for fixed dimensions
+
+For pause menus, set `process_mode = Node.PROCESS_MODE_ALWAYS` on the CanvasLayer so it runs during pause.
 
 ## Architecture Rules
 
