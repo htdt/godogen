@@ -10,13 +10,22 @@ Generate PNG images (Gemini) and GLB 3D models (Tripo3D) from text prompts.
 
 ## CLI Reference
 
-The tool lives at `.claude/skills/asset-gen/tools/asset_gen.py`. Run from the project root.
+Tools live at `.claude/skills/asset-gen/tools/`. Run from the project root.
 
 ### Generate image (4 cents)
 
 ```bash
 python3 .claude/skills/asset-gen/tools/asset_gen.py image \
   --prompt "the full prompt" -o assets/img/car.png
+```
+
+### Remove background
+
+Uses rembg mask + alpha matting. Handles semi-transparent objects, fine edges, hair, glass, particles. Auto-detects the background color from corner pixels. Dependencies in `.claude/skills/asset-gen/tools/requirements.txt`.
+
+```bash
+python3 .claude/skills/asset-gen/tools/rembg_matting.py \
+  assets/img/car.png -o assets/img/car_nobg.png
 ```
 
 ### Generate sprite sheet (14 cents)
@@ -26,7 +35,7 @@ Always 4x4 = exactly 16 cells. All 16 must be used — no more, no less. Templat
 ```bash
 python3 .claude/skills/asset-gen/tools/asset_gen.py spritesheet \
   --prompt "Animation: a knight swinging a sword" \
-  --bg "#FF00FF" -o assets/img/knight_swing_raw.png
+  --bg "#4A6741" -o assets/img/knight_swing_raw.png
 ```
 
 - `--prompt` — subject only. Don't specify frame count (system prompt handles it). For animations describe the action; for collections number each item 1-16.
@@ -34,19 +43,17 @@ python3 .claude/skills/asset-gen/tools/asset_gen.py spritesheet \
 
 ### Clean sprite sheet
 
-Crops red grid lines. Optionally removes BG color via color-key. Output: single PNG for `Sprite2D` (`hframes=4, vframes=4`, frames 0-15).
+Crops red grid lines. Two modes: `keep-bg` keeps the background, `clean-bg` also removes background per frame via rembg and reassembles. Output: single PNG for `Sprite2D` (`hframes=4, vframes=4`).
 
 ```bash
-# Keep BG
-python3 .claude/skills/asset-gen/tools/spritesheet_slice.py \
+# Keep background (textures, solid-color game BG)
+python3 .claude/skills/asset-gen/tools/spritesheet_slice.py keep-bg \
   assets/img/knight_raw.png -o assets/img/knight.png
 
-# Remove BG → transparent
-python3 .claude/skills/asset-gen/tools/spritesheet_slice.py \
-  assets/img/knight_raw.png -o assets/img/knight.png --remove-bg "#FF00FF"
+# Remove background (sprites, characters, items — preferred)
+python3 .claude/skills/asset-gen/tools/spritesheet_slice.py clean-bg \
+  assets/img/knight_raw.png -o assets/img/knight.png
 ```
-
-Optional: `--gif preview.gif --fps 10` for preview, `--frames dir/` for individual PNGs.
 
 ### Convert image to GLB (30-60 cents)
 
@@ -84,9 +91,21 @@ Progress goes to stderr.
 
 A full 3D asset (image + GLB) costs 34 cents at medium quality. A texture is 4 cents. A sprite sheet is 14 cents for 16 frames/items.
 
+## Style
+
+Before generating any assets, choose an interesting visual style for the game. Bake the style into every prompt to keep all assets visually consistent. Include `{style}` as the first element in all prompts.
+
+## Image Resolution
+
+Use the full generation resolution — don't downscale for aesthetic reasons.
+- Single images / textures / 3D references: **1024x1024**
+- Sprite sheets: 2048x2048 total → **512x512 per cell** (after grid crop ~500x500)
+
 ## Prompt Construction
 
 You build the full prompt and pass it via `--prompt`. Use the templates below as a starting point — adapt as needed for the specific game.
+
+**Never ask the generator to produce a "transparent background"** — it will draw a checkerboard pattern imitating transparency, which is useless. Always generate with a solid background color and remove it with `rembg_matting.py` afterwards.
 
 ### 3D model images
 
@@ -109,6 +128,8 @@ Recommended prompt template:
 {style}, {name}, {description}. Top-down view, uniform lighting, no shadows, seamless tileable texture, suitable for game engine tiling, clean edges.
 ```
 
+Textures are the one case where background removal does NOT apply — keep the background as-is.
+
 ### Sprite sheets
 
 Prompt examples (don't specify frame count — system prompt handles it):
@@ -117,11 +138,13 @@ Animation: a slime bouncing
 Items in flat vector style: 1: red apple 2: banana 3: orange 4: grape ...
 ```
 
-**BG strategy — two scenarios:**
+**BG strategy:** Choose a `--bg` color that is (1) distinct from the subject so rembg can separate cleanly, and (2) close to the expected in-game environment background so any residual fringe blends naturally. Examples: forest game → muted green `#4A6741`; sky/water → muted blue `#4A6B8A`; dungeon → dark gray `#2A2A2A`. Avoid pure chromakey colors like `#00FF00` — they create unnatural fringing.
 
-**1. Opaque BG (easy, stable):** The game has a solid-color background (white, black, sky blue, etc.). Use that color as `--bg`, generate, clean grid lines only (no `--remove-bg`). The BG stays and matches the game. No artifacts, no hassle.
+Prefer `clean-bg` — keeping the background almost always looks bad in-game (padding around the object).
 
-**2. Transparent BG (fragile):** Pick a `--bg` color absent from the subject, then clean with `--remove-bg`. Color-key removal has limitations: it can clip subject pixels that happen to match the BG color, and often leaves a faint contour tinted with the BG color around sprites. Creative workaround: use green (`#00FF00`) as BG and place the sprites on grass or a green surface in-game — the green contour blends naturally instead of looking like an artifact. Same idea applies to other colors (blue BG → water/sky scene, etc.).
+### Single images (sprites, UI, items)
+
+For non-texture single images, prefer to remove the background. Generate with a background color that contrasts with the subject but is close to the expected environment, then run `rembg_matting.py`.
 
 ## Tips
 

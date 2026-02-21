@@ -1,19 +1,23 @@
 #!/usr/bin/env python3
-"""Clean a 4x4 sprite sheet: crop out grid lines, optionally remove BG color.
+"""Process a 4x4 sprite sheet for Godot: crop grid lines, optionally remove backgrounds.
 
-Primary output: a single sprite sheet for Godot (Sprite2D hframes=4 vframes=4).
-Grid lines are removed by cropping at known positions (not color detection).
-Optional: --gif for preview, --frames to also export individual PNGs.
+Two modes:
+  keep-bg:  crop red grid lines only, output clean sheet
+  clean-bg: crop grid lines, run rembg_matting on each frame, reassemble
 """
 
 import argparse
+import subprocess
+import sys
+import tempfile
 from pathlib import Path
 
 from PIL import Image
-import numpy as np
 
 GRID = 4
-LINE_W = 6  # pixels to crop from each cell edge to remove grid lines
+LINE_W = 8  # pixels to crop from each cell edge (line is ~4px, extra margin for artifacts)
+TOOLS_DIR = Path(__file__).parent
+REMBG_SCRIPT = TOOLS_DIR / "rembg_matting.py"
 
 
 def crop_grid_lines(sheet: Image.Image, margin: int = LINE_W) -> Image.Image:
@@ -33,92 +37,86 @@ def crop_grid_lines(sheet: Image.Image, margin: int = LINE_W) -> Image.Image:
     return out
 
 
-def remove_bg_color(img: Image.Image, hex_color: str, tolerance: int = 30) -> Image.Image:
-    """Remove pixels matching a specific hex color (e.g. '#00FF00')."""
-    hex_color = hex_color.lstrip("#")
-    tr, tg, tb = int(hex_color[0:2], 16), int(hex_color[2:4], 16), int(hex_color[4:6], 16)
+def extract_frames(sheet: Image.Image) -> list[Image.Image]:
+    """Split a clean sheet into 16 individual frame images."""
+    w, h = sheet.size
+    fw, fh = w // GRID, h // GRID
+    frames = []
+    for row in range(GRID):
+        for col in range(GRID):
+            x0, y0 = col * fw, row * fh
+            frames.append(sheet.crop((x0, y0, x0 + fw, y0 + fh)))
+    return frames
 
-    rgba = img.convert("RGBA")
-    data = np.array(rgba, dtype=np.int16)
-    r, g, b = data[:, :, 0], data[:, :, 1], data[:, :, 2]
 
-    mask = (
-        (np.abs(r - tr) < tolerance) &
-        (np.abs(g - tg) < tolerance) &
-        (np.abs(b - tb) < tolerance)
+def reassemble(frames: list[Image.Image]) -> Image.Image:
+    """Reassemble 16 frame images into a 4x4 sheet."""
+    fw, fh = frames[0].size
+    sheet = Image.new("RGBA", (fw * GRID, fh * GRID), (0, 0, 0, 0))
+    for i, frame in enumerate(frames):
+        row, col = divmod(i, GRID)
+        sheet.paste(frame, (col * fw, row * fh))
+    return sheet
+
+
+def rembg_frame(input_path: Path, output_path: Path):
+    """Run rembg_matting.py on a single frame."""
+    subprocess.run(
+        [sys.executable, str(REMBG_SCRIPT), str(input_path), "-o", str(output_path)],
+        check=True,
     )
-    data[mask, 3] = 0
-    return Image.fromarray(data.astype(np.uint8))
 
 
-def clean_sheet(src: Path, output: Path, bg_color: str | None = None,
-                frames_dir: Path | None = None,
-                gif_path: Path | None = None, fps: int = 10):
+def process_sheet(src: Path, output: Path, clean: bool):
     sheet = Image.open(src).convert("RGBA")
     w, h = sheet.size
     cell_w, cell_h = w // GRID, h // GRID
     print(f"Sheet: {w}x{h}, cell: {cell_w}x{cell_h}")
 
-    # Crop grid lines by position
+    # Crop grid lines
     cleaned = crop_grid_lines(sheet)
     cw, ch = cleaned.size
-    inner_w, inner_h = cw // GRID, ch // GRID
-    print(f"After grid crop: {cw}x{ch}, cell: {inner_w}x{inner_h}")
+    print(f"After grid crop: {cw}x{ch}, cell: {cw // GRID}x{ch // GRID}")
 
-    # Optionally remove BG color
-    if bg_color:
-        cleaned = remove_bg_color(cleaned, bg_color)
-        print(f"Removed BG color: {bg_color}")
+    if not clean:
+        # keep-bg: just save the grid-cropped sheet
+        output.parent.mkdir(parents=True, exist_ok=True)
+        cleaned.save(output)
+        print(f"Output: {output}")
+        return
 
+    # clean-bg: slice → rembg each frame → reassemble
+    frames = extract_frames(cleaned)
+    processed = []
+
+    with tempfile.TemporaryDirectory() as tmp:
+        tmp_dir = Path(tmp)
+        for i, frame in enumerate(frames):
+            idx = i + 1
+            in_path = tmp_dir / f"frame_{idx:02d}.png"
+            out_path = tmp_dir / f"frame_{idx:02d}_clean.png"
+            frame.save(in_path)
+            print(f"  rembg frame {idx}/16...", end=" ", flush=True)
+            rembg_frame(in_path, out_path)
+            processed.append(Image.open(out_path).convert("RGBA"))
+            print("done")
+
+    result = reassemble(processed)
     output.parent.mkdir(parents=True, exist_ok=True)
-    cleaned.save(output)
+    result.save(output)
     print(f"Output: {output}")
-
-    # Optional: extract individual frames or GIF
-    if frames_dir or gif_path:
-        frames = []
-        for row in range(GRID):
-            for col in range(GRID):
-                idx = row * GRID + col + 1
-                x0, y0 = col * inner_w, row * inner_h
-                cell = cleaned.crop((x0, y0, x0 + inner_w, y0 + inner_h))
-                frames.append(cell)
-
-                if frames_dir:
-                    frames_dir.mkdir(parents=True, exist_ok=True)
-                    cell.save(frames_dir / f"frame_{idx:02d}.png")
-
-        if gif_path:
-            gif_frames = []
-            for f in frames:
-                bg = Image.new("RGBA", f.size, (255, 255, 255, 255))
-                bg.paste(f, mask=f)
-                gif_frames.append(bg.convert("RGB"))
-
-            gif_path.parent.mkdir(parents=True, exist_ok=True)
-            gif_frames[0].save(
-                gif_path, save_all=True, append_images=gif_frames[1:],
-                duration=1000 // fps, loop=0,
-            )
-            print(f"GIF: {gif_path} ({len(gif_frames)} frames, {fps} fps)")
 
 
 def main():
-    p = argparse.ArgumentParser(description="Clean 4x4 sprite sheet: crop grid lines, optionally remove BG")
+    p = argparse.ArgumentParser(
+        description="Process 4x4 sprite sheet: crop grid lines, optionally remove backgrounds")
+    p.add_argument("mode", choices=["keep-bg", "clean-bg"],
+                   help="keep-bg: crop grid lines only. clean-bg: also remove background per frame via rembg.")
     p.add_argument("input", help="Input sprite sheet image")
-    p.add_argument("-o", "--output", required=True, help="Output cleaned sprite sheet PNG")
-    p.add_argument("--remove-bg", default=None, metavar="COLOR",
-                   help="Hex color to remove (e.g. '#00FF00'). If omitted, BG is kept as-is.")
-    p.add_argument("--frames", default=None, help="Also export individual frames to this directory")
-    p.add_argument("--gif", default=None, help="Also export animated GIF for preview")
-    p.add_argument("--fps", type=int, default=10, help="GIF frame rate")
+    p.add_argument("-o", "--output", required=True, help="Output sprite sheet PNG")
     args = p.parse_args()
-    clean_sheet(
-        Path(args.input), Path(args.output), args.remove_bg,
-        Path(args.frames) if args.frames else None,
-        Path(args.gif) if args.gif else None,
-        args.fps,
-    )
+
+    process_sheet(Path(args.input), Path(args.output), clean=(args.mode == "clean-bg"))
 
 
 if __name__ == "__main__":
