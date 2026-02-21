@@ -2,8 +2,6 @@ The goal is to develop Claude Code agents and skills for Godot game development.
 We take a natural language game description and turn it into a real game.
 We iterate via building games and updating agents/skills.
 
-Codex targets the same pipeline via `.agents/skills/` — don't change it unless asked.
-
 **Agents** (autonomous, run via Task tool):
 - asset-planner — analyzes game, allocates budget, generates assets (images + GLBs)
 - game-decomposer — decomposes a game into isolated, testable tasks (PLAN.md)

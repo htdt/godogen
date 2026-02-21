@@ -1,5 +1,0 @@
-Top-down racing game with procedural terrain.
-Primary technical focus: Road must visually conform to terrain surface using decal projection (not floating geometry). The track is painted onto the heightmap terrain, following its contours naturally over hills and through valleys.
-Track: Closed-loop circuit with natural winding layout—hairpins, sweeping turns, S-curves. Road surface affects gameplay: fast on track, slow on grass/dirt.
-Terrain: Heightmap with distinct elevation changes. Hills create ramps where the car can catch air (visible jumping/landing physics). Mountain walls as track borders.
-Environment: Instanced tree forests lining the track, properly scaled.
