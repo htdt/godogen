@@ -51,19 +51,11 @@ Prioritize by visual impact — what makes the game recognizable. Cut low-impact
 
 ### 3. Establish style
 
-Choose a style string that fits the game description. Prepend it to every prompt. This goes into `ASSETS.md` in step 5.
+Invent a style that makes this specific game visually distinctive — mix media, reference art movements, blend unexpected influences. The generators handle any style well, so be bold.
 
 If `ASSETS.md` already exists, read it and reuse the existing **Style:** string.
 
-Recommended default:
-```
-Stylized realism, soft lighting, muted saturated colors, smooth clean surfaces, subtle material definition, rounded geometry with beveled edges
-```
-
-Example alternatives:
-- `Low-poly flat-shaded, bright primary colors, geometric shapes, minimal detail`
-- `Pixel art 3D, voxel-like, limited palette, chunky proportions`
-- `Watercolor painterly, soft edges, pastel palette, hand-drawn feel`
+Write the style as a comma-separated string of visual attributes (lighting, palette, surfaces, proportions, mood). Prepend it to every prompt. This goes into `ASSETS.md` in step 5.
 
 ### 4. Generate images, review, convert to GLBs
 
