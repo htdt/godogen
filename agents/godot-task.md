@@ -56,7 +56,7 @@ The orchestrator handles merging the branch and cleaning up the worktree.
 4. **Generate script(s)** — write `.gd` files to `scripts/`
 5. **Validate** — run `godot --headless --quit` to check for parse errors across all project scripts
 6. **Fix errors** — if Godot reports errors, read output, fix files, re-run. Repeat until clean.
-7. **Generate test harness** — write `test/test_task.gd` implementing the task's **Verify** scenario (see Part 3)
+7. **Generate test harness** — write `test/test_{task_id}.gd` implementing the task's **Verify** scenario (see Part 3). Use the task ID from PLAN.md (e.g., `test_T3.gd` for task T3) to avoid collisions when tasks run in parallel worktrees.
 8. **Capture screenshots** — run test with GPU display (or xvfb fallback) and `--write-movie` to produce PNGs (see Screenshot Capture)
 9. **Verify visually** — read captured PNGs and check two things:
    - **Task goal:** does the screenshot match the **Verify** description?
@@ -545,7 +545,7 @@ func _ready() -> void:
 
 ## Part 3: Test Harness & Visual Verification
 
-Write `test/test_task.gd` — a SceneTree script that loads the scene under test and **thoroughly verifies the task's goal**. Do NOT call `quit()` — the movie writer handles exit.
+Write `test/test_{task_id}.gd` (e.g., `test/test_T3.gd`) — a SceneTree script that loads the scene under test and **thoroughly verifies the task's goal**. Use the task ID from PLAN.md to name the file so multiple tasks can coexist after worktree merges. Do NOT call `quit()` — the movie writer handles exit.
 
 **Verify what the task actually asks for.** Read the Verify description and think about what would convince you — a skeptic, not the author — that the task is done. A decoration task needs multiple camera angles to check placement and scale. A movement task needs the camera to follow the action over time. A UI task needs the full interface visible. Match the test to the goal.
 

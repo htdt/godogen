@@ -162,7 +162,7 @@ After each worktree sub-agent completes, the Task result includes the worktree p
    If conflicts arise, the task's files are authoritative — accept theirs for conflicting paths.
 3. **Clean up:**
    ```bash
-   git worktree remove <worktree_path> && git branch -d <branch>
+   git worktree remove --force <worktree_path> && git branch -d <branch>
    ```
 
 If the agent made no changes, the worktree is auto-deleted — no merge needed.
