@@ -2,11 +2,11 @@
 # Publish godogen agents + skills into a target project directory.
 # Creates .claude/{agents,skills}/ and a game-oriented CLAUDE.md.
 #
-# Usage: ./tools/publish.sh [--teleforge] <target_dir>
+# Usage: ./publish.sh [--teleforge] <target_dir>
 #   --teleforge  Use teleforge.md as CLAUDE.md (for Telegram bot server)
 set -euo pipefail
 
-REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+REPO_ROOT="$(cd "$(dirname "$0")" && pwd)"
 
 TELEFORGE=false
 while [[ "${1:-}" == --* ]]; do
