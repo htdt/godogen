@@ -2,6 +2,8 @@ The goal is to develop Claude Code agents and skills for Godot game development.
 We take a natural language game description and turn it into a real game.
 We iterate via building games and updating agents/skills.
 
+This file is for local development of godogen itself. `teleforge.md` is the CLAUDE.md deployed to the Telegram bot server.
+
 ## Layout
 
 Source code lives at the repo root:
