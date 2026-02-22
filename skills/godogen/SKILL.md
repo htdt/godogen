@@ -74,6 +74,8 @@ User request
     |   +- Summarize results to user
     |   +- Find next ready tasks
     |
+    +- Visual QA (mandatory — run at least once here before video)
+    |
     +- Presentation video (see below)
     |
     +- Summary of completed game
@@ -169,7 +171,9 @@ If the agent made no changes, the worktree is auto-deleted — no merge needed.
 
 ## Visual QA
 
-After a task completes, run visual QA on its screenshots if the game has progressed past early grey-box stage (real textures, lighting, gameplay visible). Skip it on early tasks that are still mostly placeholders.
+**Mandatory:** Run visual QA at least once after all tasks complete (before the presentation video). Running it earlier — after mid-pipeline tasks once the game has real visuals — is strongly recommended to catch problems before they compound.
+
+Skip it only on early grey-box tasks that are still mostly placeholders.
 
 Pick 7 frames: 4 consecutive (for motion analysis) + 3 from different parts of the game (for diversity). Save the report to `visual-qa/{N}.md` where N is the next sequential number:
 ```bash
@@ -185,7 +189,7 @@ After capture, read the report and act on the verdict:
 
 Commit reports alongside task work: `git add visual-qa/ && git commit -m "visual-qa: report N"`.
 
-Budget ~20 calls across the entire generation — don't run on every task. The QA tends to be overly picky; use judgment on which issues actually warrant action vs. noise.
+The QA tends to be overly picky; use judgment on which issues actually warrant action vs. noise.
 
 ## Presentation Video
 
