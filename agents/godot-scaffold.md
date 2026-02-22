@@ -157,6 +157,7 @@ No descriptions, no requirements, no asset assignments. Just the graph.
 Assets, tools, and build artifacts stay out of git:
 ```
 .claude
+CLAUDE.md
 assets
 screenshots
 .godot

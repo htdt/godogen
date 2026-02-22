@@ -42,6 +42,18 @@ CLAUDE_EOF
     echo "Created CLAUDE.md"
 fi
 
+if [ ! -f "$TARGET/.gitignore" ]; then
+    cat > "$TARGET/.gitignore" << 'GI_EOF'
+.claude
+CLAUDE.md
+assets
+screenshots
+.godot
+*.import
+GI_EOF
+    echo "Created .gitignore"
+fi
+
 git -C "$TARGET" init -q 2>/dev/null || true
 
 echo "Done. agents: $(ls "$TARGET/.claude/agents/" | wc -l), skills: $(ls "$TARGET/.claude/skills/" | wc -l)"
