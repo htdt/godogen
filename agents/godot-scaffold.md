@@ -20,7 +20,7 @@ The Godot project is the working directory. Assets live in `assets/` (gitignored
 
 The working directory is the project root. Never `cd` — use relative paths for all commands.
 
-1. **Read input** — game description (fresh) or change request (incremental). Read `ASSETS.md` if it exists to understand available models and textures.
+1. **Read input** — game description (fresh) or change request (incremental).
 2. **Assess project state:**
    - No project → create from scratch.
    - Existing project, fresh start requested → delete existing scenes/scripts.
@@ -144,9 +144,15 @@ Complete architecture reference. Always written in full, even for incremental up
 
 - Player:HurtBox.area_entered -> PlayerController._on_hurt_entered
 - Main:GoalArea.body_entered -> LevelManager._on_goal_reached
+
+## Asset Hints
+
+- Player character model (~1.8m tall humanoid)
+- Ground texture (tileable grass, 2m repeat)
+- Sky panorama (360° daytime sky)
 ````
 
-No descriptions, no requirements, no asset assignments. Just the graph.
+Architecture graph plus asset hints for the asset planner. No descriptions, no requirements, no task ordering.
 
 ### 3. `.gitignore`
 
@@ -270,8 +276,22 @@ For pause menus, set `process_mode = Node.PROCESS_MODE_ALWAYS` on the CanvasLaye
 - **`preload()` fails in headless** — scene builders run headless. Always use `load()`, never `preload()`.
 - **Scene builder hangs** — missing `quit()` call. The template includes `quit(0)` — never remove it.
 
+## Asset Hints in STRUCTURE.md
+
+Assets are generated AFTER scaffold, by the asset-planner agent. Include an `## Asset Hints` section at the end of STRUCTURE.md listing what visual assets the architecture needs. The asset planner uses these to decide what to generate.
+
+```markdown
+## Asset Hints
+
+- Player character model (~1.8m tall humanoid)
+- Ground texture (tileable grass, 2m repeat)
+- Sky panorama (360° daytime sky)
+- Enemy model (~1m tall creature)
+```
+
+Be specific about type (model, texture, background, sprite), approximate size, and visual role. Don't describe style — the asset planner chooses that.
+
 ## What NOT to Include
 
 - Implementation details or behavior descriptions
-- Asset assignments
 - Task ordering

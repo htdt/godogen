@@ -17,9 +17,8 @@ The working directory is the project root. Never `cd` — use relative paths for
 ## Workflow
 
 1. **Read the game description** — understand what the user wants to build.
-2. **Review assets** — glob `assets/img/**` and read every image. These are textures and GLB prototypes. Understand what's available before planning.
-3. **Identify risks** — classify every feature as hard or easy.
-4. **Write `PLAN.md`** — the task DAG with verification criteria.
+2. **Identify risks** — classify every feature as hard or easy.
+3. **Write `PLAN.md`** — the task DAG with verification criteria.
 
 ## Core Principle: Isolation Enables Iteration
 
@@ -36,12 +35,17 @@ Produce `PLAN.md`:
 ````markdown
 # Game Plan: {Game Name}
 
+## Game Description
+
+{Original game description from the user, preserved verbatim.}
+
 ## 1. {Task Name}
 - **Depends on:** (none)
 - **Goal:** {What this task achieves and why it matters}
 - **Requirements:**
   - {High-level, testable behavior — what the player should experience}
   - {High-level, testable behavior — what the player should experience}
+- **Assets needed:** {What visual assets this task needs — type, approximate size, visual role. Omit if task needs no assets.}
 - **Placeholder:** {Minimal environment to test in isolation. Must exercise the real challenge, not dodge it.}
 - **Verify:** {What screenshots should show. Specific and unambiguous.}
 
@@ -56,15 +60,19 @@ Produce `PLAN.md`:
 - **Depends on** — task numbers that must complete before this starts. `(none)` for root tasks.
 - **Goal** — what this task achieves and why it matters for the game.
 - **Requirements** — high-level behaviors the task must achieve. Focus on *what* the player experiences, not *how* to implement it. The task executor is a strong LLM — it doesn't need pixel-exact dimensions or implementation recipes. Specify concrete values only when they matter for game feel (e.g., "car should feel heavy, not twitchy") or correctness (e.g., "arena is 50m wide to fit 4 players").
+- **Assets needed** — visual assets this task requires, described by type, approximate size, and visual role. Omit for tasks that don't need assets (pure logic, UI-only, etc.). The asset planner reads these and generates the actual files, then replaces this field with concrete **Assets:** assignments.
 - **Placeholder** — minimal throwaway environment to test this feature in isolation. Must exercise the real challenge, not avoid it. `(none)` for merge tasks that inherit real environments.
 - **Verify** — a concrete visual scenario for the test harness. The task executor generates a SceneTree script from this: it loads the scene, positions a camera, captures screenshots via `--write-movie`, and compares to this description. Must include: scene to load, camera position/angle, what objects are visible, expected state. Example: "Load arena.tscn. Camera at (0, 15, 10) looking at origin, -45° pitch. Green ground plane fills lower half. Capsule (player) at center. 3 red cubes spaced around edges."
 
-### Asset Assignment
+### Asset Recommendations
 
-If provided, assign available assets to specific tasks:
+Assets are generated AFTER the plan, by a separate asset-planner agent. For each task, add an `**Assets needed:**` field listing what visual assets that task would benefit from. Be specific about type, approximate size, and visual role:
 
-- "Use `car` GLB model for the player vehicle, scale to 4m long"
-- "Apply `grass` texture to ground plane, tile every 2m"
+- "Player character 3D model (~1.8m tall) for the vehicle"
+- "Tileable grass texture (2m repeat) for ground plane"
+- "Explosion sprite sheet (128x128 per frame) for enemy defeat"
+
+The asset planner reads these recommendations and generates the actual files, then updates PLAN.md with concrete asset assignments.
 
 ## Decomposition Strategy
 
@@ -105,7 +113,7 @@ Before outputting, verify:
 1. **Hard tasks have clean isolation** — complex features are independent early tasks, not buried behind easy ones
 2. **Placeholders exercise real challenges** — no flat planes for games about terrain
 3. **Every Verify is test-harness-ready** — concrete visual scenario with camera position, visible objects, and expected state
-4. All available assets assigned
+4. **Asset needs are captured** — every task that needs visual assets has an `**Assets needed:**` field
 
 ## Common Game Structures
 

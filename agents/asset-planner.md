@@ -14,8 +14,10 @@ Analyze a game, decide what assets it needs, and generate them within a budget.
 ## Input
 
 The caller provides:
-- `budget_cents` — total budget for asset generation
-- Game description — what the game is about
+- `budget_cents` — total budget (or remaining budget for iterations)
+- For iterations: a specific task description (e.g. "regenerate car model" or "add missing explosion sprite")
+
+The game description is in `PLAN.md` under **Game Description**.
 
 ## Working Directory
 
@@ -31,12 +33,14 @@ Skill(skill="asset-gen")
 
 ## Workflow
 
-### 1. Analyze game → identify visual elements
+### 1. Analyze inputs → identify visual elements
 
-Read the game description. List every distinct visual element:
+Read `STRUCTURE.md` (especially **Asset Hints**) and `PLAN.md` (especially **Assets needed** per task). Cross-reference both with the game description to build the complete asset list:
 - **3D models**: characters, vehicles, key props, buildings — anything that needs geometry
 - **Textures**: ground surfaces, walls, UI backgrounds — flat materials that tile
 - **Backgrounds**: sky panoramas, parallax layers, title screens, large scenic images — use pro image with `--size 2K` and an appropriate `--aspect-ratio`
+
+The scaffold's Asset Hints describe what the architecture needs. The decomposer's Assets needed fields describe what each task needs. Reconcile both — they may overlap or one may mention assets the other missed.
 
 ### 2. Prioritize and budget
 
@@ -98,9 +102,33 @@ Every asset row **must** include a **Size** column — the intended in-game dime
 | knight | armored knight walk cycle | 128x128 px per frame | assets/img/knight.png |
 ```
 
-## Budget Tracking
+### Budget Tracking
 
 Sum `cost_cents` from each CLI JSON output. Stop generating if remaining budget can't cover the next asset. Report final spend to the caller.
+
+### 6. Update PLAN.md with asset assignments
+
+After generating assets, read PLAN.md and add concrete asset assignments to each task that needs them. For tasks with an **Assets needed** field, replace or augment it with an **Assets:** field listing the actual generated files:
+
+```markdown
+- **Assets:**
+  - `car` GLB model (`assets/glb/car.glb`) — scale to 4m long
+  - `grass` texture (`assets/img/grass.png`) — tile every 2m via UV scale
+```
+
+This ensures no asset is lost in the process — every generated file is assigned to the task that uses it. An asset may appear in multiple tasks.
+
+Write the updated PLAN.md. Do NOT change anything else in PLAN.md (goals, requirements, dependencies, status).
+
+## Iteration Mode
+
+The orchestrator may call asset-planner again mid-pipeline with a targeted request (e.g., "regenerate car model" or "add missing explosion sprite"). When the prompt contains an existing `ASSETS.md`:
+
+1. Read existing ASSETS.md — reuse the **Style** string for consistency.
+2. Read the specific task/request from the caller.
+3. Generate only the requested assets within the remaining budget.
+4. Update ASSETS.md — add new rows or replace regenerated ones.
+5. Update PLAN.md — adjust asset assignments for affected tasks.
 
 ## Output
 

@@ -18,9 +18,9 @@ The working directory is the project root. Never `cd` — use relative paths for
 
 | Agent | When | How |
 |-------|------|-----|
-| **asset-planner** | New project, no assets, budget provided | Sub-agent via Task tool (runs before scaffold) |
-| **godot-scaffold** | New project OR update | Sub-agent via Task tool |
+| **godot-scaffold** | New project OR update | Sub-agent via Task tool (parallel with decomposer) |
 | **game-decomposer** | New project OR update | Sub-agent via Task tool (parallel with scaffold) |
+| **asset-planner** | After scaffold + decomposer, budget provided | Sub-agent via Task tool (reads STRUCTURE.md + PLAN.md) |
 | **godot-task** | Per task from PLAN.md | Sub-agent via Task tool (parallel when independent) |
 
 Scaffold and decomposer work for both fresh projects and updates. When updating, explicitly tell the agent it's an update — pass existing STRUCTURE.md and describe what's changing vs. what's preserved.
@@ -35,13 +35,14 @@ User request
     |   +- If yes: read PLAN.md, STRUCTURE.md, MEMORY.md -> skip to task execution
     |   +- If no: continue with fresh pipeline below
     |
-    +- If no ASSETS.md AND budget provided:
-    |   +- Task(subagent_type="asset-planner")
-    |       prompt: budget_cents, game description
-    |
     +- In parallel (two Task calls in one message):
     |   +- Task(subagent_type="godot-scaffold") -> STRUCTURE.md + project.godot + stubs
     |   +- Task(subagent_type="game-decomposer") -> PLAN.md
+    |
+    +- If budget provided (and no ASSETS.md):
+    |   +- Task(subagent_type="asset-planner")
+    |       prompt: budget_cents
+    |       -> ASSETS.md + updated PLAN.md with asset assignments
     |
     +- Plan normalization (required):
     |   +- Read PLAN.md and STRUCTURE.md together
@@ -102,6 +103,40 @@ Task(
 """
 )
 ```
+
+## Launching Asset Planner
+
+After scaffold and decomposer complete, launch the asset planner. It reads STRUCTURE.md and PLAN.md itself.
+
+```
+Task(
+  subagent_type="asset-planner",
+  description="assets: {game_name}",
+  prompt="""
+Budget: {budget_cents} cents
+"""
+)
+```
+
+The asset planner writes ASSETS.md and updates PLAN.md with asset assignments per task. It does NOT modify source code or scenes — godot-task handles integration.
+
+### Iterative Asset Calls
+
+During task execution, if assets need regeneration or additions (visual QA finds issues, a task needs something missing), re-invoke the asset planner with a targeted request:
+
+```
+Task(
+  subagent_type="asset-planner",
+  description="assets: fix {issue}",
+  prompt="""
+Budget: {remaining_cents} cents
+
+{what needs to change — e.g. "regenerate car model, it's too low-poly" or "add missing explosion sprite"}
+"""
+)
+```
+
+The planner reads existing ASSETS.md and PLAN.md, preserves style consistency, and works within the remaining budget.
 
 ## Running Tasks as Sub-Agents
 
