@@ -42,4 +42,6 @@ CLAUDE_EOF
     echo "Created CLAUDE.md"
 fi
 
+git -C "$TARGET" init -q 2>/dev/null || true
+
 echo "Done. agents: $(ls "$TARGET/.claude/agents/" | wc -l), skills: $(ls "$TARGET/.claude/skills/" | wc -l)"
