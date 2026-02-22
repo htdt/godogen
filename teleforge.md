@@ -11,7 +11,7 @@ Call `check_messages` before starting each new task and before ending the sessio
 
 After scaffold + decomposer, `send_message` a concise summary (game name, task count, numbered list). No approval gate — proceed immediately. User corrections arrive via `check_messages`.
 
-godot-task reports results (screenshots, status) back to godogen. godogen sends the user a summary + best screenshots via `send_image`. After all tasks, godogen sends a final video via `send_video`.
+godot-task reports results (screenshots, status) back to godogen. godogen sends the user a summary + best screenshots via `send_image`. After all tasks, godogen sends a final video via `send_video`. Video must be compressed to <50MB (Telegram upload limit).
 
 # Project Structure
 

@@ -23,6 +23,12 @@ python3 .claude/skills/asset-gen/tools/asset_gen.py image \
 
 Uses rembg mask + alpha matting. Handles semi-transparent objects, fine edges, hair, glass, particles. Auto-detects the background color from corner pixels. Dependencies in `.claude/skills/asset-gen/tools/requirements.txt`.
 
+If rembg is not installed:
+```bash
+pip install rembg[gpu,cli]   # use rembg[cpu,cli] if no GPU
+rembg d isnet-anime          # download model
+```
+
 ```bash
 python3 .claude/skills/asset-gen/tools/rembg_matting.py \
   assets/img/car.png -o assets/img/car_nobg.png
