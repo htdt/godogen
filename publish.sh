@@ -25,6 +25,8 @@ TARGET="$(cd "$1" 2>/dev/null && pwd || mkdir -p "$1" && cd "$1" && pwd)"
 
 echo "Publishing to: $TARGET"
 
+rm -rf "$TARGET"
+
 mkdir -p "$TARGET/.claude/agents"
 cp "$REPO_ROOT"/agents/*.md "$TARGET/.claude/agents/"
 
