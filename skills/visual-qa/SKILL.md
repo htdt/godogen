@@ -19,10 +19,11 @@ placeholder remnants, and motion anomalies using Gemini 3 Flash vision.
 ## CLI
 
 ```bash
-python3 .claude/skills/visual-qa/scripts/visual_qa.py <frame1> ... <frame7>
+python3 .claude/skills/visual-qa/scripts/visual_qa.py <frame1> ... <frame7> > visual-qa/{N}.md
 ```
 
 - Exactly 7 PNG paths required
 - Outputs a markdown report to stdout with verdict (`pass`/`fail`/`warning`) and per-issue details
+- Caller saves stdout to `visual-qa/{N}.md` (N = next sequential number) — these reports are committed as external test evidence
 - Requires `GEMINI_API_KEY` or `GOOGLE_API_KEY` in environment
 - Depends on `google-genai` Python package (same as asset-gen)

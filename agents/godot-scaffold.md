@@ -24,7 +24,7 @@ PROJECT_ROOT=$(pwd)
 ```
 Use `$PROJECT_ROOT` in every path. Never use `$(pwd)` inline — it breaks after `cd`.
 
-1. **Read input** — game description (fresh) or change request (incremental). Read `assets/assets.md` if it exists to understand available models and textures.
+1. **Read input** — game description (fresh) or change request (incremental). Read `ASSETS.md` if it exists to understand available models and textures.
 2. **Assess project state:**
    - No project → create from scratch.
    - Existing project, fresh start requested → delete existing scenes/scripts.

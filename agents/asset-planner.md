@@ -51,9 +51,9 @@ Prioritize by visual impact — what makes the game recognizable. Cut low-impact
 
 ### 3. Establish style
 
-Choose a style string that fits the game description. Prepend it to every prompt. This goes into `assets/assets.md` in step 7.
+Choose a style string that fits the game description. Prepend it to every prompt. This goes into `ASSETS.md` in step 5.
 
-If `assets/assets.md` already exists, read it and reuse the existing **Style:** string.
+If `ASSETS.md` already exists, read it and reuse the existing **Style:** string.
 
 Recommended default:
 ```
@@ -69,7 +69,7 @@ Example alternatives:
 
 Use the asset-gen skill for prompt templates, CLI commands, and review guidance. Generate all images in parallel, review each PNG, regenerate bad ones (max 1 retry each), then convert approved 3D images to GLBs in parallel.
 
-### 5. Write assets/assets.md
+### 5. Write ASSETS.md
 
 ```markdown
 # Assets
@@ -99,4 +99,4 @@ Report back to the caller:
 - Total assets generated (N images, M GLBs)
 - Total cost vs budget
 - Any assets that failed or were cut for budget
-- Path to `assets/assets.md`
+- Path to `ASSETS.md`

@@ -35,7 +35,7 @@ User request
     |   +- If yes: read PLAN.md, STRUCTURE.md, MEMORY.md -> skip to task execution
     |   +- If no: continue with fresh pipeline below
     |
-    +- If no assets/assets.md AND budget provided:
+    +- If no ASSETS.md AND budget provided:
     |   +- Task(subagent_type="asset-planner")
     |       prompt: budget_cents, game description
     |
@@ -208,10 +208,19 @@ Don't retry the same task with the same spec — that's what godot-task already 
 
 After a task completes, run visual QA on its screenshots if the game has progressed past early grey-box stage (real textures, lighting, gameplay visible). Skip it on early tasks that are still mostly placeholders.
 
-Pick 7 frames: 4 consecutive (for motion analysis) + 3 from different parts of the game (for diversity):
+Pick 7 frames: 4 consecutive (for motion analysis) + 3 from different parts of the game (for diversity). Save the report to `visual-qa/{N}.md` where N is the next sequential number:
 ```bash
-python3 .claude/skills/visual-qa/scripts/visual_qa.py consec1.png consec2.png consec3.png consec4.png diverse1.png diverse2.png diverse3.png
+mkdir -p visual-qa
+N=$(ls visual-qa/*.md 2>/dev/null | wc -l); N=$((N + 1))
+python3 .claude/skills/visual-qa/scripts/visual_qa.py consec1.png consec2.png consec3.png consec4.png diverse1.png diverse2.png diverse3.png > visual-qa/${N}.md
 ```
+
+After capture, read the report and act on the verdict:
+- **pass** — move on. The report serves as proof the feature was externally tested.
+- **warning** — read the issues. Fix anything that's a real correctness problem; ignore stylistic nitpicks.
+- **fail** — read the issues. Decide whether to fix in the current task (adjust + re-run godot-task) or defer to a follow-up task in PLAN.md.
+
+Commit reports alongside task work: `git add visual-qa/ && git commit -m "visual-qa: report N"`.
 
 Budget ~20 calls across the entire generation — don't run on every task. The QA tends to be overly picky; use judgment on which issues actually warrant action vs. noise.
 
