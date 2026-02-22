@@ -21,7 +21,7 @@ if [ $# -lt 1 ]; then
     exit 1
 fi
 
-TARGET="$(cd "$1" 2>/dev/null && pwd || mkdir -p "$1" && cd "$1" && pwd)"
+TARGET="$(cd "$1" 2>/dev/null && pwd || (mkdir -p "$1" && cd "$1" && pwd))
 
 echo "Publishing to: $TARGET"
 
