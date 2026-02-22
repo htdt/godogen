@@ -51,15 +51,11 @@ User request
     |   |   +- Fill Targets with concrete project-relative files expected to change
     |   |     (e.g. scenes/main.tscn, scripts/player_controller.gd, project.godot)
     |   |     inferred from task text + scene/script mappings in STRUCTURE.md
-    |   +- Save the normalized plan before review
+    |   +- Save the normalized plan
     |
-    +- Enter plan mode (EnterPlanMode)
-    |   +- Read PLAN.md
-    |   +- Show user a concise summary of the plan
-    |   +- User reviews / requests changes
-    |   +- ExitPlanMode — show full task list to user
-    |
+    +- Show user a concise plan summary (game name, numbered task list)
     +- Create CLI todo list from PLAN.md tasks (TaskCreate)
+    +- Proceed immediately to task execution
     |
     +- Find ready tasks (pending, deps all done)
     +- While ready tasks exist:
@@ -71,11 +67,9 @@ User request
     |   +- For each task in wave:
     |   |   +- Update PLAN.md: mark task status -> in_progress
     |   |   +- Mark task in_progress (TaskUpdate)
-    |   +- Launch godot-task sub-agent(s) (see Running Tasks)
-    |   +- Read sub-agent results — check for success/failure
-    |   +- Handle results (see Handling Task Results below)
-    |   +- Update PLAN.md: mark task statuses -> done / done (partial) / skipped
-    |   +- Mark tasks completed (TaskUpdate)
+    |   +- Launch godot-task sub-agent(s) (see Running Tasks), then read the outcome
+    |   +- Run Visual QA if needed
+    |   +- Mark tasks completed (PLAN.md, TaskUpdate) OR replan based on the outcome
     |   +- git add PLAN.md && git commit -m "plan: wave N done"
     |   +- Summarize results to user
     |   +- Find next ready tasks
@@ -107,16 +101,6 @@ Task(
 )
 ```
 
-## Plan Mode
-
-After both agents complete, enter plan mode for user review.
-
-1. Call `EnterPlanMode`
-2. Read `PLAN.md`
-3. Show the user a **concise summary**: game name, risk assessment, and a numbered list of tasks (one line each: task name + goal)
-4. Let the user review. If they request changes, update PLAN.md accordingly.
-5. Call `ExitPlanMode` — in the exit message, list all tasks with their dependencies so the user sees the full scope.
-
 ## Running Tasks as Sub-Agents
 
 Each task runs as a **sub-agent** via the Task tool. This gives each task a clean context window, preventing accumulated state from earlier tasks from polluting later ones.
@@ -131,8 +115,6 @@ Task(
   description="godot-task: {task_name}",
   prompt="""
 {task block from PLAN.md}
-
-{relevant STRUCTURE.md sections}
 """
 )
 ```
@@ -150,8 +132,6 @@ Task(
   description="godot-task: {task_A_name}",
   prompt="""
 {task A block from PLAN.md}
-
-{relevant STRUCTURE.md sections}
 """
 )
 
@@ -161,8 +141,6 @@ Task(
   description="godot-task: {task_B_name}",
   prompt="""
 {task B block from PLAN.md}
-
-{relevant STRUCTURE.md sections}
 """
 )
 ```
@@ -188,21 +166,6 @@ After each worktree sub-agent completes, the Task result includes the worktree p
    ```
 
 If the agent made no changes, the worktree is auto-deleted — no merge needed.
-
-## Handling Task Results
-
-After each sub-agent completes, read its result message and summarize to the user (what succeeded, what's broken, any caveats).
-
-godot-task iterates internally and uses judgment to decide when to stop (it won't spin forever — it stops when it recognizes a fundamental blocker or lack of convergence). When the sub-agent reports back:
-
-**Task succeeded** — mark completed, move on.
-
-**Task stopped with partial results** — read the report (what works, what's broken, root cause guess) and decide:
-1. **Good enough** — the core goal is met even if imperfect. Mark completed, note caveats.
-2. **Adjust task** — simplify requirements or change approach. Update the task in PLAN.md and launch a new sub-agent with the revised spec.
-3. **Replan** — the task is fundamentally blocked. Re-run scaffold (to fix architecture) and/or decomposer (to restructure tasks), then resume from the new plan.
-
-Don't retry the same task with the same spec — that's what godot-task already tried.
 
 ## Visual QA
 
