@@ -2,7 +2,7 @@
 """Asset Generator CLI - creates images (Gemini) and GLBs (Tripo3D).
 
 Subcommands:
-  image        Generate a PNG from a prompt via Gemini 2.5 Flash (4 cents)
+  image        Generate a PNG from a prompt (4 cents flash / 14 cents pro with --size)
   spritesheet  Generate a 4x4 sprite sheet via Gemini 3 Pro with template (14 cents)
   glb          Convert a PNG to a GLB 3D model via Tripo3D (30-40 cents)
 
@@ -62,7 +62,7 @@ Replace each numbered cell with the corresponding content, reading left-to-right
 Rules:
 - KEEP the red grid lines exactly where they are in the template — do not remove, shift, or paint over them
 - Each cell's content must be CENTERED in its cell and must NOT cross into adjacent cells
-- Fill all empty space in each cell with solid {bg_color} background
+- CRITICAL: fill ALL empty space in every cell with flat solid {bg_color} — no gradients, no scenery, no patterns, just the plain color
 - Maintain consistent style, lighting direction, and proportions across all 16 cells
 - CRITICAL: do NOT draw the numbered circles from the template onto the output — replace them entirely with the actual drawing content"""
 
@@ -107,18 +107,41 @@ def result_json(ok: bool, path: str | None = None, cost_cents: int = 0, error: s
     print(json.dumps(d))
 
 
+IMAGE_SIZES = ["1K", "2K"]
+IMAGE_ASPECT_RATIOS = ["1:1", "2:3", "3:2", "3:4", "4:3", "4:5", "5:4", "9:16", "16:9"]
+
+
 def cmd_image(args):
-    check_budget(4)
+    use_pro = args.size is not None
+    cost = 14 if use_pro else 4
+    check_budget(cost)
     output = Path(args.output)
     output.parent.mkdir(parents=True, exist_ok=True)
 
-    print(f"Generating image...", file=sys.stderr)
+    if use_pro:
+        model = "gemini-3-pro-image-preview"
+        config = types.GenerateContentConfig(
+            response_modalities=["image"],
+            image_config=types.ImageConfig(
+                image_size=args.size,
+                aspect_ratio=args.aspect_ratio,
+            ),
+        )
+        label = f"pro {args.size} {args.aspect_ratio}"
+        service = "gemini-pro"
+    else:
+        model = "gemini-2.5-flash-image"
+        config = types.GenerateContentConfig(response_modalities=["image"])
+        label = "flash 1024x1024"
+        service = "gemini-flash"
+
+    print(f"Generating image ({label})...", file=sys.stderr)
 
     client = genai.Client()
     response = client.models.generate_content(
-        model="gemini-2.5-flash-image",
+        model=model,
         contents=[args.prompt],
-        config=types.GenerateContentConfig(response_modalities=["image"]),
+        config=config,
     )
 
     if response.parts is None:
@@ -132,8 +155,8 @@ def cmd_image(args):
         if part.inline_data is not None:
             output.write_bytes(part.inline_data.data)
             print(f"Saved: {output}", file=sys.stderr)
-            record_spend(4, "gemini-flash")
-            result_json(True, path=str(output), cost_cents=4)
+            record_spend(cost, service)
+            result_json(True, path=str(output), cost_cents=cost)
             return
 
     result_json(False, error="No image returned")
@@ -249,8 +272,12 @@ def main():
     parser = argparse.ArgumentParser(description="Asset Generator — images (Gemini) and GLBs (Tripo3D)")
     sub = parser.add_subparsers(dest="command", required=True)
 
-    p_img = sub.add_parser("image", help="Generate a PNG image (4 cents)")
+    p_img = sub.add_parser("image", help="Generate a PNG image (4¢ flash, 14¢ pro with --size)")
     p_img.add_argument("--prompt", required=True, help="Full image generation prompt")
+    p_img.add_argument("--size", choices=IMAGE_SIZES, default=None,
+                       help="Use Gemini 3 Pro at this resolution (14¢). Omit for Flash (4¢).")
+    p_img.add_argument("--aspect-ratio", choices=IMAGE_ASPECT_RATIOS, default="1:1",
+                       help="Aspect ratio (only with --size). Default: 1:1")
     p_img.add_argument("-o", "--output", required=True, help="Output PNG path")
     p_img.set_defaults(func=cmd_image)
 

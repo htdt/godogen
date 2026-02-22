@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 """Process a 4x4 sprite sheet for Godot: crop grid lines, optionally remove backgrounds.
 
-Two modes:
-  keep-bg:  crop red grid lines only, output clean sheet
-  clean-bg: crop grid lines, run rembg_matting on each frame, reassemble
+Modes:
+  keep-bg:    crop grid lines, output clean sheet (animation)
+  clean-bg:   crop grid lines, rembg each frame, reassemble sheet (animation)
+  split-bg:   crop grid lines, save 16 individual PNGs with background (items/objects)
+  split-clean: crop grid lines, rembg each frame, save 16 individual PNGs (items/objects)
 """
 
 import argparse
@@ -67,7 +69,17 @@ def rembg_frame(input_path: Path, output_path: Path):
     )
 
 
-def process_sheet(src: Path, output: Path, clean: bool):
+def save_split(frames: list[Image.Image], output_dir: Path, names: list[str] | None):
+    """Save 16 frames as individual PNGs into output_dir."""
+    output_dir.mkdir(parents=True, exist_ok=True)
+    for i, frame in enumerate(frames):
+        name = names[i] if names else f"{i + 1:02d}"
+        path = output_dir / f"{name}.png"
+        frame.save(path)
+        print(f"  {path}")
+
+
+def process_sheet(src: Path, output: Path, mode: str, names: list[str] | None):
     sheet = Image.open(src).convert("RGBA")
     w, h = sheet.size
     cell_w, cell_h = w // GRID, h // GRID
@@ -78,17 +90,20 @@ def process_sheet(src: Path, output: Path, clean: bool):
     cw, ch = cleaned.size
     print(f"After grid crop: {cw}x{ch}, cell: {cw // GRID}x{ch // GRID}")
 
-    if not clean:
-        # keep-bg: just save the grid-cropped sheet
+    if mode == "keep-bg":
         output.parent.mkdir(parents=True, exist_ok=True)
         cleaned.save(output)
         print(f"Output: {output}")
         return
 
-    # clean-bg: slice → rembg each frame → reassemble
     frames = extract_frames(cleaned)
-    processed = []
 
+    if mode == "split-bg":
+        save_split(frames, output, names)
+        return
+
+    # clean-bg / split-clean: rembg each frame
+    processed = []
     with tempfile.TemporaryDirectory() as tmp:
         tmp_dir = Path(tmp)
         for i, frame in enumerate(frames):
@@ -101,22 +116,38 @@ def process_sheet(src: Path, output: Path, clean: bool):
             processed.append(Image.open(out_path).convert("RGBA"))
             print("done")
 
-    result = reassemble(processed)
-    output.parent.mkdir(parents=True, exist_ok=True)
-    result.save(output)
-    print(f"Output: {output}")
+    if mode == "split-clean":
+        save_split(processed, output, names)
+    else:
+        result = reassemble(processed)
+        output.parent.mkdir(parents=True, exist_ok=True)
+        result.save(output)
+        print(f"Output: {output}")
+
+
+def parse_names(names_str: str) -> list[str]:
+    """Parse comma-separated names into a list of 16 filenames."""
+    names = [n.strip() for n in names_str.split(",")]
+    if len(names) != 16:
+        print(f"Error: --names must have exactly 16 entries, got {len(names)}", file=sys.stderr)
+        sys.exit(1)
+    return names
 
 
 def main():
     p = argparse.ArgumentParser(
-        description="Process 4x4 sprite sheet: crop grid lines, optionally remove backgrounds")
-    p.add_argument("mode", choices=["keep-bg", "clean-bg"],
-                   help="keep-bg: crop grid lines only. clean-bg: also remove background per frame via rembg.")
+        description="Process 4x4 sprite sheet: crop grid lines, optionally remove backgrounds or split into individual images")
+    p.add_argument("mode", choices=["keep-bg", "clean-bg", "split-bg", "split-clean"],
+                   help="keep-bg/clean-bg: output single sheet. split-bg/split-clean: output 16 individual PNGs.")
     p.add_argument("input", help="Input sprite sheet image")
-    p.add_argument("-o", "--output", required=True, help="Output sprite sheet PNG")
+    p.add_argument("-o", "--output", required=True,
+                   help="Output PNG path (keep-bg/clean-bg) or output directory (split-bg/split-clean)")
+    p.add_argument("--names", default=None,
+                   help="Comma-separated 16 filenames (without .png) for split modes. Default: 01..16")
     args = p.parse_args()
 
-    process_sheet(Path(args.input), Path(args.output), clean=(args.mode == "clean-bg"))
+    names = parse_names(args.names) if args.names else None
+    process_sheet(Path(args.input), Path(args.output), mode=args.mode, names=names)
 
 
 if __name__ == "__main__":
