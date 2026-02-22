@@ -18,11 +18,7 @@ The Godot project is the working directory. Assets live in `assets/` (gitignored
 
 ## Workflow
 
-**First: anchor the project root** — run before any other command:
-```bash
-PROJECT_ROOT=$(pwd)
-```
-Use `$PROJECT_ROOT` in every path. Never use `$(pwd)` inline — it breaks after `cd`.
+The working directory is the project root. Never `cd` — use relative paths for all commands.
 
 1. **Read input** — game description (fresh) or change request (incremental). Read `ASSETS.md` if it exists to understand available models and textures.
 2. **Assess project state:**
@@ -33,12 +29,12 @@ Use `$PROJECT_ROOT` in every path. Never use `$(pwd)` inline — it breaks after
 4. **Write/update `project.godot`** — create or merge input mappings.
 5. **Write `STRUCTURE.md`** — always the complete architecture, not a diff.
 6. **Write script stubs** — for new scripts and any existing scripts the task explicitly asks to replace.
-7. **Import assets** — `cd $PROJECT_ROOT && timeout 60 godot --headless --import 2>&1`. Ensures all assets (`.glb`, `.png`, etc.) are imported before scene builders reference them.
-8. **Build scene stubs** — for each new/changed scene, write a scene builder script to `scenes/build_{name}.gd` using the template below, then run in dependency order (leaf scenes first): `cd $PROJECT_ROOT && godot --headless --script scenes/build_{name}.gd`
-9. **Verify** — `cd $PROJECT_ROOT && godot --headless --quit 2>&1`. No `ERROR` or `Parser Error` lines. RID warnings are benign.
+7. **Import assets** — `timeout 60 godot --headless --import 2>&1`. Ensures all assets (`.glb`, `.png`, etc.) are imported before scene builders reference them.
+8. **Build scene stubs** — for each new/changed scene, write a scene builder script to `scenes/build_{name}.gd` using the template below, then run in dependency order (leaf scenes first): `godot --headless --script scenes/build_{name}.gd`
+9. **Verify** — `godot --headless --quit 2>&1`. No `ERROR` or `Parser Error` lines. RID warnings are benign.
 10. **Git commit** — repo is already initialized before Claude Code starts:
     ```bash
-    cd $PROJECT_ROOT && git add -A && git commit -m "scaffold: project skeleton"
+    git add -A && git commit -m "scaffold: project skeleton"
     ```
 
 ## Output Files
@@ -194,7 +190,7 @@ Write each scene builder using this template — replace all UPPER_CASE placehol
 
 ```gdscript
 extends SceneTree
-## Scene builder — run: cd $PROJECT_ROOT && godot --headless --script scenes/build_<name>.gd
+## Scene builder — run: godot --headless --script scenes/build_<name>.gd
 
 func _initialize() -> void:
 	var root := ROOT_TYPE.new()     # REPLACE ROOT_TYPE — e.g. CharacterBody3D
@@ -225,8 +221,8 @@ func _set_owners(node: Node, owner: Node) -> void:
 
 **CRITICAL: Build order matters.** Scenes that instantiate other scenes must be built AFTER their dependencies. A scene that loads `player.tscn` will fail if `player.tscn` doesn't exist yet. Always build leaf scenes (no child scenes) first, then parents:
 ```bash
-cd $PROJECT_ROOT && godot --headless --script scenes/build_player.gd   # leaf — no children
-cd $PROJECT_ROOT && godot --headless --script scenes/build_main.gd     # parent — loads player.tscn
+godot --headless --script scenes/build_player.gd   # leaf — no children
+godot --headless --script scenes/build_main.gd     # parent — loads player.tscn
 ```
 
 ## UI Overlay Architecture

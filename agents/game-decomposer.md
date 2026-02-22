@@ -12,11 +12,7 @@ Decompose a game into a development plan — a sequence of small tasks, each ind
 
 ## First Step: Anchor the Project Root
 
-Run this FIRST, before any other command:
-```bash
-PROJECT_ROOT=$(pwd)
-```
-Use `$PROJECT_ROOT` in every path. Never use `$(pwd)` inline — it breaks after `cd`.
+The working directory is the project root. Never `cd` — use relative paths for all commands.
 
 ## Workflow
 

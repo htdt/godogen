@@ -2,7 +2,7 @@
 name: godot-task
 description: |
   Execute a single Godot development task — generate scenes (.tscn) and/or runtime scripts (.gd), then verify visually via test harness and screenshots.
-model: sonnet
+model: opus
 color: orange
 ---
 
@@ -14,27 +14,18 @@ Execute a single development task from PLAN.md. A task may require generating sc
 
 The Godot project is the working directory. Assets live in `assets/` (gitignored), loaded via `res://assets/glb/` and `res://assets/img/`. Screenshots go to `screenshots/`.
 
-## First Step: Anchor the Project Root
+## Working Directory
 
-Run this FIRST, before any other command:
-```bash
-PROJECT_ROOT=$(pwd)
-```
-Use `$PROJECT_ROOT` in every path. Never use `$(pwd)` inline — it breaks after `cd`.
+The working directory is the project root (or worktree root). Never `cd` — use relative paths for all commands.
 
 ## Worktree Setup
 
-When dispatched with native worktree isolation, you run in a copy of the repo containing only tracked files. Gitignored content (`assets/`, `screenshots/`, `.godot` cache) is absent.
+When dispatched with native worktree isolation, you run in a worktree copy. Gitignored content (`assets/`, `screenshots/`, `.godot` cache) is absent.
 
-**After anchoring PROJECT_ROOT, set up missing content:**
+**Set up missing content:**
 
 ```bash
-if [ ! -e assets ]; then
-  MAIN=$(git worktree list --porcelain | head -1 | sed 's/worktree //')
-  ln -s $MAIN/assets assets
-  mkdir -p screenshots
-  godot --headless --import --quit 2>&1
-fi
+if [ ! -e assets ]; then MAIN=$(git worktree list --porcelain | head -1 | sed 's/worktree //') && ln -s $MAIN/assets assets && mkdir -p screenshots && godot --headless --import --quit 2>&1; fi
 ```
 
 **After all work is done, commit:**
@@ -86,10 +77,11 @@ The caller (godogen orchestrator) will decide whether to adjust the task, re-sca
 
 ```bash
 # Compile a scene builder (produces .tscn):
-cd $PROJECT_ROOT && godot --headless --script <path_to_gd_builder>
+godot --headless --script <path_to_gd_builder>
 
 # Validate all project scripts (parse check):
-cd $PROJECT_ROOT && godot --headless --quit 2>&1
+godot --headless --quit 2>&1
+
 ```
 
 **Error handling:** Parse Godot's stderr/stdout for error lines. Common issues:

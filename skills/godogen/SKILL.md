@@ -12,7 +12,7 @@ Generate and update Godot games from natural language. Coordinate specialized ag
 
 The Godot project is the working directory (and the git repo). Binary assets live in `assets/` (gitignored), loaded via `res://assets/glb/` and `res://assets/img/`. Screenshots go to `screenshots/` (gitignored).
 
-**First: anchor the project root** — run `PROJECT_ROOT=$(pwd)` before any bash command. Use `$PROJECT_ROOT` in all paths. Never rely on `$(pwd)` inline.
+The working directory is the project root. Never `cd` — use relative paths for all commands.
 
 ## Agents
 
@@ -153,7 +153,7 @@ After each worktree sub-agent completes, the Task result includes the worktree p
 
 1. **Copy screenshots** from the worktree before they're lost:
    ```bash
-   cp -r <worktree_path>/screenshots/* $PROJECT_ROOT/screenshots/ 2>/dev/null
+   cp -r <worktree_path>/screenshots/* screenshots/ 2>/dev/null
    ```
 2. **Merge the branch:**
    ```bash
@@ -229,7 +229,7 @@ Commit after: `git add test/presentation.gd && git commit -m "add presentation v
 If a task reports failure or you suspect integration issues:
 - Read `MEMORY.md` — task execution logs discoveries and workarounds
 - Read screenshots in `screenshots/{task_folder}/`
-- Run `cd $PROJECT_ROOT && timeout 30 godot --headless --quit 2>&1` to check cross-project compilation
+- Run `timeout 30 godot --headless --quit 2>&1` to check cross-project compilation
 
 ## PLAN.md Task Contract
 

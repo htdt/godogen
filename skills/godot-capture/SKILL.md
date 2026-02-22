@@ -8,7 +8,7 @@ description: |
 
 Screenshot and video capture for Godot projects. Detects GPU (T4 via headless Xorg) and falls back to xvfb + lavapipe.
 
-The Godot project is the working directory. `$PROJECT_ROOT` must be set before using any commands below.
+The Godot project is the working directory. All paths below are relative to it.
 
 ## GPU Detection
 
@@ -26,12 +26,11 @@ When `GPU_DISPLAY` is set, Godot uses hardware Vulkan (NVIDIA T4) with `--render
 
 ## Screenshot Capture
 
-Screenshots go in `$PROJECT_ROOT/screenshots/` (gitignored). Each task gets a subfolder.
+Screenshots go in `screenshots/` (gitignored). Each task gets a subfolder.
 
 ```bash
-MOVIE=$PROJECT_ROOT/screenshots/{task_folder}
-rm -rf $MOVIE && mkdir -p $MOVIE
-cd $PROJECT_ROOT && mkdir -p _captures
+MOVIE=screenshots/{task_folder}
+rm -rf $MOVIE && mkdir -p $MOVIE && mkdir -p _captures
 if [ -n "$GPU_DISPLAY" ]; then
   timeout 20 DISPLAY=$GPU_DISPLAY godot --rendering-method forward_plus \
       --write-movie _captures/frame.png \
@@ -43,7 +42,7 @@ else
       --fixed-fps 10 --quit-after {N} \
       --script test/test_task.gd 2>&1
 fi
-mv $PROJECT_ROOT/_captures/* $MOVIE/ && rm -rf $PROJECT_ROOT/_captures
+mv _captures/* $MOVIE/ && rm -rf _captures
 ```
 
 Where `{task_folder}` is derived from the task name/number (e.g., `task_01_terrain`). Use lowercase with underscores.
@@ -63,19 +62,18 @@ Where `{task_folder}` is derived from the task name/number (e.g., `task_01_terra
 **Requires GPU** — video capture only works with a GPU display (`$GPU_DISPLAY` set). Software rendering is too slow and low quality for video. If no GPU is available, skip video capture and report that to the caller.
 
 ```bash
-VIDEO=$PROJECT_ROOT/screenshots/presentation
-rm -rf $VIDEO && mkdir -p $VIDEO
-cd $PROJECT_ROOT && mkdir -p _captures
+VIDEO=screenshots/presentation
+rm -rf $VIDEO && mkdir -p $VIDEO && mkdir -p _captures
 timeout 60 DISPLAY=$GPU_DISPLAY godot --rendering-method forward_plus \
     --write-movie _captures/output.avi \
     --fixed-fps 30 --quit-after 900 \
     --script test/presentation.gd 2>&1
 # Convert AVI (MJPEG) to MP4 (H.264)
-ffmpeg -i $PROJECT_ROOT/_captures/output.avi \
+ffmpeg -i _captures/output.avi \
     -c:v libx264 -pix_fmt yuv420p -crf 20 \
     $VIDEO/gameplay.mp4 2>&1
-mv $PROJECT_ROOT/_captures/output.avi $VIDEO/
-rm -rf $PROJECT_ROOT/_captures
+mv _captures/output.avi $VIDEO/
+rm -rf _captures
 ```
 
 **AVI to MP4:** Godot outputs MJPEG AVI. ffmpeg converts to H.264 MP4 (~5-10x smaller). Requires `ffmpeg`.
