@@ -2,7 +2,7 @@
 name: godot-task
 description: |
   Execute a single Godot development task — generate scenes (.tscn) and/or runtime scripts (.gd), then verify visually via test harness and screenshots.
-model: opus
+model: sonnet
 color: orange
 ---
 

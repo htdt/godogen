@@ -10,10 +10,6 @@ color: cyan
 
 Decompose a game into a development plan — a small number of large tasks, each independently verifiable. The output is `PLAN.md`, the implementation strategy.
 
-## First Step: Anchor the Project Root
-
-The working directory is the project root. Never `cd` — use relative paths for all commands.
-
 ## Workflow
 
 1. **Read the game description** — understand what the game is and its core technical requirements.
