@@ -206,11 +206,11 @@ Run visual QA after every wave that produces visible output, and once more after
 
 ### Capture
 
-Pick 7 frames: 4 consecutive (for motion analysis) + 3 from different parts of the game (for diversity). Save the report to `visual-qa/{N}.md`:
+Pick 6 game frames: 4 consecutive from the **middle** of the capture (for motion analysis) + 2 from different parts of the game (for diversity). Pass `reference.png` as the first argument. Save the report to `visual-qa/{N}.md`:
 ```bash
 mkdir -p visual-qa
 N=$(ls visual-qa/*.md 2>/dev/null | wc -l); N=$((N + 1))
-python3 .claude/skills/visual-qa/scripts/visual_qa.py consec1.png consec2.png consec3.png consec4.png diverse1.png diverse2.png diverse3.png > visual-qa/${N}.md
+python3 .claude/skills/visual-qa/scripts/visual_qa.py reference.png consec1.png consec2.png consec3.png consec4.png diverse1.png diverse2.png > visual-qa/${N}.md
 ```
 
 ### Act on the verdict
