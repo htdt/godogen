@@ -31,6 +31,7 @@ Screenshots go in `screenshots/` (gitignored). Each task gets a subfolder.
 ```bash
 MOVIE=screenshots/{task_folder}
 rm -rf $MOVIE && mkdir -p $MOVIE && mkdir -p _captures
+touch screenshots/.gdignore _captures/.gdignore
 if [ -n "$GPU_DISPLAY" ]; then
   timeout 20 DISPLAY=$GPU_DISPLAY godot --rendering-method forward_plus \
       --write-movie _captures/frame.png \
@@ -64,6 +65,7 @@ Where `{task_folder}` is derived from the task name/number (e.g., `task_01_terra
 ```bash
 VIDEO=screenshots/presentation
 rm -rf $VIDEO && mkdir -p $VIDEO && mkdir -p _captures
+touch screenshots/.gdignore _captures/.gdignore
 timeout 60 DISPLAY=$GPU_DISPLAY godot --rendering-method forward_plus \
     --write-movie _captures/output.avi \
     --fixed-fps 30 --quit-after 900 \

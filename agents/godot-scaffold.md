@@ -166,6 +166,13 @@ screenshots
 *.import
 ```
 
+### 3b. `screenshots/.gdignore`
+
+Create `screenshots/` with an empty `.gdignore` so Godot's resource importer skips it (otherwise every captured PNG/WAV gets imported into `.godot/imported/`, bloating the cache):
+```bash
+mkdir -p screenshots && touch screenshots/.gdignore
+```
+
 ### 4. Script stubs: `scripts/*.gd`
 
 ```gdscript

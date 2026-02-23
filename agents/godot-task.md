@@ -25,7 +25,7 @@ When dispatched with native worktree isolation, you run in a worktree copy. Giti
 **Set up missing content:**
 
 ```bash
-if [ ! -e assets ]; then MAIN=$(git worktree list --porcelain | head -1 | sed 's/worktree //') && ln -s $MAIN/assets assets && mkdir -p screenshots && godot --headless --import --quit 2>&1; fi
+if [ ! -e assets ]; then MAIN=$(git worktree list --porcelain | head -1 | sed 's/worktree //') && ln -s $MAIN/assets assets && mkdir -p screenshots && touch screenshots/.gdignore && godot --headless --import --quit 2>&1; fi
 ```
 
 **After all work is done, commit:**
