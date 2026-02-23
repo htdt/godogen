@@ -85,7 +85,7 @@ Otherwise:
 
 #### Issue {N}: {short title}
 - **Type:** style mismatch | visual bug | logical inconsistency | motion anomaly | placeholder
-- **Severity:** major | minor
+- **Severity:** major | minor | note (major/minor = must fix; note = cosmetic nitpick, acceptable to ship)
 - **Frames:** {which frames, e.g., "1-2", "all", "5 only"}
 - **Location:** {where in frame}
 - **Description:** {one or two sentences}

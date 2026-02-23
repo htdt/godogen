@@ -28,7 +28,7 @@ python3 .claude/skills/visual-qa/scripts/visual_qa.py reference.png <consec1..4.
 - Exactly 7 PNG paths: 1 reference + 4 consecutive + 2 diverse
 - First argument must be `reference.png` (the visual target generated at pipeline start)
 - Pick the 4 consecutive frames from the **middle** of the capture (not the very first or last frames)
-- Outputs a markdown report to stdout with verdict (`pass`/`fail`/`warning`), reference match assessment, and per-issue details
+- Outputs a markdown report to stdout with verdict (`pass`/`fail`/`warning`), reference match assessment, and per-issue details (severity: major/minor = must fix, note = can skip)
 - Caller saves stdout to `visual-qa/{N}.md` (N = next sequential number) — committed as test evidence
 - Requires `GEMINI_API_KEY` or `GOOGLE_API_KEY` in environment
 - Depends on `google-genai` Python package (same as asset-gen)
