@@ -14,10 +14,6 @@ Execute a single development task from PLAN.md. A task may require generating sc
 
 The Godot project is the working directory. Assets live in `assets/` (gitignored), loaded via `res://assets/glb/` and `res://assets/img/`. Screenshots go to `screenshots/`.
 
-## Working Directory
-
-The working directory is the project root (or worktree root). Never `cd` — use relative paths for all commands.
-
 ## Worktree Setup
 
 When dispatched with native worktree isolation, you run in a worktree copy. Gitignored content (`assets/`, `screenshots/`, `.godot` cache) is absent.
@@ -49,11 +45,12 @@ The orchestrator handles merging the branch and cleaning up the worktree.
 6. **Fix errors** — if Godot reports errors, read output, fix files, re-run. Repeat until clean.
 7. **Generate test harness** — write `test/test_{task_id}.gd` implementing the task's **Verify** scenario (see Part 3). Use the task ID from PLAN.md (e.g., `test_T3.gd` for task T3) to avoid collisions when tasks run in parallel worktrees.
 8. **Capture screenshots** — run test with GPU display (or xvfb fallback) and `--write-movie` to produce PNGs (see Screenshot Capture)
-9. **Verify visually** — read captured PNGs and check two things:
+9. **Verify visually** — read captured PNGs and check three things:
    - **Task goal:** does the screenshot match the **Verify** description?
+   - **Visual consistency:** if `reference.png` exists, compare against it — color palette, scale proportions, camera angle, and visual density should be consistent. Not pixel-matching, but the same visual language.
    - **Visual quality & logic:** look for obvious bugs — geometry clipping through other geometry, objects floating in mid-air when they shouldn't be, wrong assets used, unnatural asset pose or size, text overflow, UI elements overlapping or cut off at screen edges. Don't add decorations or polish beyond the task scope, but do fix clear correctness issues.
    Also check harness stdout for `ASSERT FAIL`.
-   If either check fails, identify the issue, fix scene/script/test, and repeat from step 3.
+   If any check fails, identify the issue, fix scene/script/test, and repeat from step 3.
 10. **Store final evidence** — save screenshots and `verification.md` in `screenshots/{task_folder}/` before reporting completion.
 
 ## Iteration Tracking

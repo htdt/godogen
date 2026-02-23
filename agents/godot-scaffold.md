@@ -18,9 +18,7 @@ The Godot project is the working directory. Assets live in `assets/` (gitignored
 
 ## Workflow
 
-The working directory is the project root. Never `cd` — use relative paths for all commands.
-
-1. **Read input** — game description (fresh) or change request (incremental).
+1. **Read input** — game description (fresh) or change request (incremental). If `reference.png` exists, read it — use it to inform camera setup (angle, distance, FOV), lighting direction, and environment structure.
 2. **Assess project state:**
    - No project → create from scratch.
    - Existing project, fresh start requested → delete existing scenes/scripts.

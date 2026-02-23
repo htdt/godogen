@@ -12,8 +12,6 @@ Generate and update Godot games from natural language. Coordinate specialized ag
 
 The Godot project is the working directory (and the git repo). Binary assets live in `assets/` (gitignored), loaded via `res://assets/glb/` and `res://assets/img/`. Screenshots go to `screenshots/` (gitignored).
 
-The working directory is the project root. Never `cd` — use relative paths for all commands.
-
 ## Agents
 
 | Agent | When | How |
@@ -35,13 +33,15 @@ User request
     |   +- If yes: read PLAN.md, STRUCTURE.md, MEMORY.md -> skip to task execution
     |   +- If no: continue with fresh pipeline below
     |
+    +- Visual target (Skill "visual-target") -> reference.png + style string
+    |
     +- In parallel (two Task calls in one message):
     |   +- Task(subagent_type="godot-scaffold") -> STRUCTURE.md + project.godot + stubs
     |   +- Task(subagent_type="game-decomposer") -> PLAN.md
     |
     +- If budget provided (and no ASSETS.md):
     |   +- Task(subagent_type="asset-planner")
-    |       prompt: budget_cents
+    |       prompt: budget_cents + style string from visual target
     |       -> ASSETS.md + updated PLAN.md with asset assignments
     |
     +- Plan normalization (required):
@@ -69,7 +69,8 @@ User request
     |   |   +- Update PLAN.md: mark task status -> in_progress
     |   |   +- Mark task in_progress (TaskUpdate)
     |   +- Launch godot-task sub-agent(s) (see Running Tasks), then read the outcome
-    |   +- Run Visual QA if needed
+    |   +- Run Visual QA after any wave that produces visible output
+    |   |   +- If QA reports issues: spawn godot-task fix agent, then re-run QA
     |   +- Mark tasks completed (PLAN.md, TaskUpdate) OR replan based on the outcome
     |   +- git add PLAN.md && git commit -m "plan: wave N done"
     |   +- Summarize results to user
@@ -82,11 +83,13 @@ User request
     +- Summary of completed game
 ```
 
+## Generating Visual Target
+
+Before scaffold and decomposer. Load `Skill(skill="visual-target")` and follow its instructions. Save the style string for the asset planner.
+
 ## Launching Scaffold + Decomposer in Parallel
 
 ```
-# Send BOTH Task calls in a single message:
-
 Task(
   subagent_type="godot-scaffold",
   description="scaffold: {game_name}",
@@ -106,7 +109,7 @@ Task(
 
 ## Launching Asset Planner
 
-After scaffold and decomposer complete, launch the asset planner. It reads STRUCTURE.md and PLAN.md itself.
+After scaffold and decomposer complete. It reads STRUCTURE.md, PLAN.md, and reference.png itself.
 
 ```
 Task(
@@ -114,29 +117,22 @@ Task(
   description="assets: {game_name}",
   prompt="""
 Budget: {budget_cents} cents
+Art style: {style_string}
 """
 )
 ```
 
 The asset planner writes ASSETS.md and updates PLAN.md with asset assignments per task. It does NOT modify source code or scenes — godot-task handles integration.
 
-### Iterative Asset Calls
+### Mid-Pipeline Re-invocation
 
-During task execution, if assets need regeneration or additions (visual QA finds issues, a task needs something missing), re-invoke the asset planner with a targeted request:
+Scaffold, decomposer, and asset-planner can be re-dispatched at any point during task execution — not just at the start.
 
-```
-Task(
-  subagent_type="asset-planner",
-  description="assets: fix {issue}",
-  prompt="""
-Budget: {remaining_cents} cents
+**Scaffold** — reset or add scripts/scenes when a task has corrupted or outgrown them. Describe exactly which files to regenerate and why; scaffold reads existing STRUCTURE.md and preserves everything else.
 
-{what needs to change — e.g. "regenerate car model, it's too low-poly" or "add missing explosion sprite"}
-"""
-)
-```
+**Decomposer** — replan when something large-scale changes: a task reveals the approach is wrong, a major feature needs rethinking, or new requirements emerge. Don't use for basic tweaks — just edit PLAN.md directly for those.
 
-The planner reads existing ASSETS.md and PLAN.md, preserves style consistency, and works within the remaining budget.
+**Asset planner** — generate new assets or regenerate broken ones mid-run. Pass a targeted description of what's needed.
 
 ## Running Tasks as Sub-Agents
 
@@ -206,25 +202,44 @@ If the agent made no changes, the worktree is auto-deleted — no merge needed.
 
 ## Visual QA
 
-**Mandatory:** Run visual QA at least once after all tasks complete (before the presentation video). Running it earlier — after mid-pipeline tasks once the game has real visuals — is strongly recommended to catch problems before they compound.
+Run visual QA after every wave that produces visible output, and once more after all tasks complete (before the presentation video). Skip only on early grey-box waves that have no real visuals yet. The QA provides a clear signal — its findings reliably indicate real quality issues.
 
-Skip it only on early grey-box tasks that are still mostly placeholders.
+### Capture
 
-Pick 7 frames: 4 consecutive (for motion analysis) + 3 from different parts of the game (for diversity). Save the report to `visual-qa/{N}.md` where N is the next sequential number:
+Pick 7 frames: 4 consecutive (for motion analysis) + 3 from different parts of the game (for diversity). Save the report to `visual-qa/{N}.md`:
 ```bash
 mkdir -p visual-qa
 N=$(ls visual-qa/*.md 2>/dev/null | wc -l); N=$((N + 1))
 python3 .claude/skills/visual-qa/scripts/visual_qa.py consec1.png consec2.png consec3.png consec4.png diverse1.png diverse2.png diverse3.png > visual-qa/${N}.md
 ```
 
-After capture, read the report and act on the verdict:
-- **pass** — move on. The report serves as proof the feature was externally tested.
-- **warning** — read the issues. Fix anything that's a real correctness problem; ignore stylistic nitpicks.
-- **fail** — read the issues. Decide whether to fix in the current task (adjust + re-run godot-task) or defer to a follow-up task in PLAN.md.
+### Act on the verdict
+
+- **pass** — move on.
+- **warning** — fix correctness issues. Only skip a finding if you can articulate why it's wrong.
+- **fail** — blocking. Fix before proceeding to the next wave.
+
+For **warning** and **fail**: spawn a godot-task sub-agent with the issues as its prompt. No need to add a PLAN.md task for this — just dispatch directly and track that you need to re-run QA on completion:
+
+```
+Task(
+  subagent_type="godot-task",
+  description="godot-task: visual QA fixes",
+  prompt="""
+## Visual QA Fixes
+- **Goal:** Fix issues found by visual QA report {N}.
+- **Issues:**
+{paste issues from the report}
+- **Targets:** {affected files}
+"""
+)
+```
+
+After the fix agent completes, **re-run QA** (new report N+1) and check the verdict again. Repeat until pass or warning-with-no-correctness-issues.
+
+### Commit
 
 Commit reports alongside task work: `git add visual-qa/ && git commit -m "visual-qa: report N"`.
-
-The QA tends to be overly picky; use judgment on which issues actually warrant action vs. noise.
 
 ## Presentation Video
 
