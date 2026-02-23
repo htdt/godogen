@@ -95,25 +95,53 @@ def remove_background(img: np.ndarray, mask: np.ndarray) -> np.ndarray:
     band_px = max(3, round(dim * 0.02))
     trimap, definite_fg = build_trimap(mask, alpha_color, band_px)
     print(f"Trimap: band={band_px}px, unknown={((trimap > 0) & (trimap < 1)).sum()}")
-    print("Running pymatting (closed-form)...")
-    alpha_matted = np.clip(pymatting.estimate_alpha_cf(img, trimap), 0.0, 1.0)
+    if definite_fg.any():
+        print("Running pymatting (closed-form)...")
+        alpha_matted = np.clip(pymatting.estimate_alpha_cf(img, trimap), 0.0, 1.0)
+    else:
+        print("No foreground in mask — skipping pymatting, using color-only alpha")
+        alpha_matted = alpha_color
 
     # 3. Heavily blurred mask floor (preserves small elements, smooth edges)
     blur_sigma = max(1.0, dim * 0.012)
     mask_floor = gaussian_filter(mask.astype(np.float64), sigma=blur_sigma)
 
     # --- Merge ---
-    is_bg = alpha_color < BG_THRESH
-    alpha = np.where(
-        is_bg,
-        alpha_color,
-        np.maximum(np.maximum(alpha_matted, alpha_color), mask_floor),
-    )
-    alpha[definite_fg & ~is_bg] = 1.0
-    alpha[alpha < 0.01] = 0.0
+    mask_has_fg = definite_fg.any()
+    if mask_has_fg:
+        is_bg = alpha_color < BG_THRESH
+        alpha = np.where(
+            is_bg,
+            alpha_color,
+            np.maximum(np.maximum(alpha_matted, alpha_color), mask_floor),
+        )
+        alpha[definite_fg & ~is_bg] = 1.0
+        alpha[alpha < 0.01] = 0.0
+    else:
+        # Mask failed — use color distance (not compositing math) for alpha
+        dist = np.sqrt(np.sum((img - bg_color[None, None, :]) ** 2, axis=2))
+
+        # Noise floor from corner regions (known background)
+        corner = max(4, dim // 16)
+        corner_dist = np.concatenate([
+            dist[:corner, :corner].ravel(),
+            dist[:corner, -corner:].ravel(),
+            dist[-corner:, :corner].ravel(),
+            dist[-corner:, -corner:].ravel(),
+        ])
+        noise = max(float(np.percentile(corner_dist, 99)), 0.03)
+        low = noise * 1.5   # below → fully transparent
+        high = noise * 4.0  # above → fully opaque
+        print(f"Color distance: noise={noise:.3f}, low={low:.3f}, high={high:.3f}")
+        alpha = np.clip((dist - low) / (high - low), 0.0, 1.0)
 
     # --- Foreground recovery & output ---
-    fg = recover_foreground(img, alpha, bg_color)
+    if mask_has_fg:
+        fg = recover_foreground(img, alpha, bg_color)
+    else:
+        # No mask — glow/color is intentional paint, not compositing artifact
+        fg = img.copy()
+        fg[alpha < 0.01] = 0.0
 
     out = np.zeros((h, w, 4), dtype=np.uint8)
     out[:, :, :3] = (fg * 255).clip(0, 255).astype(np.uint8)
