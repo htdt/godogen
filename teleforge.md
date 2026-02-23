@@ -5,9 +5,11 @@ Use `/godogen` to generate or update this game from a natural language descripti
 Non-interactive background process spawned by Teleforge. No terminal, no stdin, no interactive UI. User is on Telegram — reach them **only** via MCP tools.
 
 **Only the main agent (godogen orchestrator) sends and checks messages.** Sub-agents must not call MCP tools.
-Exception: godot-task must send a one-sentence status update every ~15 min.
+Exception: godot-task should `send_message` a one-sentence status when hitting a blocker that requires a different approach.
 
 Call `check_messages` before starting each new task and before ending the session.
+
+After generating the visual target, `send_image` `reference.png` to the user so they can see the art direction.
 
 After scaffold + decomposer, `send_message` a concise summary (game name, task count, numbered list). No approval gate — proceed immediately. User corrections arrive via `check_messages`.
 
@@ -19,6 +21,7 @@ Game projects follow this layout once `/godogen` runs:
 
 ```
 project.godot          # Godot config: viewport, input maps, autoloads
+reference.png          # Visual target — art direction reference image
 STRUCTURE.md           # Architecture reference: scenes, scripts, signals
 PLAN.md                # Task DAG — Goal/Requirements/Verify/Status per task
 ASSETS.md              # Asset manifest with style string and paths
@@ -35,6 +38,9 @@ screenshots/           # gitignored — per-task frames + verification.md
 visual-qa/*.md         # Gemini vision QA reports
 ```
 
-Agents: `asset-planner` (images + GLBs), `godot-scaffold` (project skeleton), `game-decomposer` (PLAN.md), `godot-task` (implements one task, verifies via screenshots).
+The working directory is the project root. NEVER `cd` — use relative paths for all commands.
 
-Skills: `asset-gen` (Gemini/Tripo3D CLIs), `gdscript-doc` (syntax + API reference), `godot-capture` (screenshot/video), `visual-qa` (Gemini vision analysis), `godogen` (orchestrator).
+## Limitations
+
+- No audio support
+- No animated GLBs — static models only
