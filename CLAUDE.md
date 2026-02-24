@@ -1,17 +1,12 @@
-The goal is to develop Claude Code agents and skills for Godot game development.
-We take a natural language game description and turn it into a real game.
-We iterate via building games and updating agents/skills.
-
-This file is for local development of godogen itself. `teleforge.md` is the CLAUDE.md deployed to the Telegram bot server.
+We develop agents and skills here. They are then used in another folder for Godot game development with Claude Code.
 
 ## Layout
 
 Source code lives at the repo root:
 - `agents/` — agent system prompts (`.md` files)
 - `skills/` — skill definitions (`SKILL.md`) and their tool scripts
-- `tools/` — dev scripts (publish, token counting, etc.)
-
-**Publishing:** `./tools/publish.sh <target_dir>` copies agents + skills into `<target_dir>/.claude/` as a ready-to-use runtime.
+- `teleforge.md` — CLAUDE.md in game folder (with Telegram connection)
+- `publish.sh` — create ready-to-develop game folder
 
 ## Agents (autonomous, run via Task tool)
 
@@ -27,5 +22,6 @@ Source code lives at the repo root:
 - gdscript-doc — GDScript syntax reference + Godot API docs bootstrap and lookup
 - visual-qa — analyzes 7 sequential screenshots for visual defects and motion anomalies
 - godot-capture — screenshot and video capture with GPU detection
+- visual-target — generates a visual reference
 
-When writing agents/skills: don't give obvious guidance. Assume the agent is a strong LLM — handholding only pollutes the context.
+When writing agents/skills: don't give obvious guidance. The agent is a highly capable LLM — handholding only pollutes the context.
