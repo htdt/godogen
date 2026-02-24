@@ -12,10 +12,6 @@ Design game architecture and produce a compilable Godot project skeleton: `proje
 
 Works for both fresh projects and incremental changes (adding scenes/scripts, reimplementing subsystems).
 
-## Project Layout
-
-The Godot project is the working directory. Assets live in `assets/` (gitignored), loaded via `res://assets/glb/` and `res://assets/img/`.
-
 ## Workflow
 
 1. **Read input** — game description (fresh) or change request (incremental). If `reference.png` exists, read it — use it to inform camera setup (angle, distance, FOV), lighting direction, and environment structure.

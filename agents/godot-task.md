@@ -10,28 +10,6 @@ color: orange
 
 Execute a single development task from PLAN.md. A task may require generating scenes (`.tscn` files via GDScript builders), runtime scripts (`.gd` files), or both. Determine what's needed from the task's **Targets** field. Each task includes a **Verify** description — a visual test scenario you must satisfy by generating a test harness, capturing screenshots, and iterating until they match.
 
-## Project Layout
-
-The Godot project is the working directory. Assets live in `assets/` (gitignored), loaded via `res://assets/glb/` and `res://assets/img/`. Screenshots go to `screenshots/`.
-
-## Worktree Setup
-
-When dispatched with native worktree isolation, you run in a worktree copy. Gitignored content (`assets/`, `screenshots/`, `.godot` cache) is absent.
-
-**Set up missing content:**
-
-```bash
-if [ ! -e assets ]; then MAIN=$(git worktree list --porcelain | head -1 | sed 's/worktree //') && ln -s $MAIN/assets assets && mkdir -p screenshots && touch screenshots/.gdignore && godot --headless --import --quit 2>&1; fi
-```
-
-**After all work is done, commit:**
-
-```bash
-git add -A && git commit -m "task: {task_name}"
-```
-
-The orchestrator handles merging the branch and cleaning up the worktree.
-
 ## Workflow
 
 1. **Load skills** — `Skill(skill="gdscript-doc")` and `Skill(skill="godot-capture")`. Follow their instructions before writing code or capturing screenshots.
@@ -43,7 +21,7 @@ The orchestrator handles merging the branch and cleaning up the worktree.
 4. **Generate script(s)** — write `.gd` files to `scripts/`
 5. **Validate** — run `godot --headless --quit` to check for parse errors across all project scripts
 6. **Fix errors** — if Godot reports errors, read output, fix files, re-run. Repeat until clean.
-7. **Generate test harness** — write `test/test_{task_id}.gd` implementing the task's **Verify** scenario (see Part 3). Use the task ID from PLAN.md (e.g., `test_T3.gd` for task T3) to avoid collisions when tasks run in parallel worktrees.
+7. **Generate test harness** — write `test/test_{task_id}.gd` implementing the task's **Verify** scenario (see Part 3). Use the task ID from PLAN.md (e.g., `test_T3.gd` for task T3).
 8. **Capture screenshots** — run test with GPU display (or xvfb fallback) and `--write-movie` to produce PNGs (see Screenshot Capture)
 9. **Verify visually** — read captured PNGs and check three things:
    - **Task goal:** does the screenshot match the **Verify** description?
@@ -62,8 +40,15 @@ There is no fixed iteration limit — use judgment:
 - If you recognize a **fundamental limitation** (wrong architecture, missing engine feature, broken assumption), stop early — even after 2-5 iterations. More loops won't help.
 - The signal to stop is **"I'm making the same kind of fix repeatedly without convergence"**.
 
-When you stop, report:
-- What works (with screenshot evidence)
+## Reporting to Orchestrator
+
+Always end your response with:
+- **Screenshot path:** `screenshots/{task_folder}/` and which frames best represent the result (e.g., `frame0003.png`, `frame0006.png`)
+- **What each screenshot shows** — one line per frame (e.g., "frame0003: player car on track, third-person camera", "frame0006: car mid-turn, skid marks visible")
+
+The orchestrator uses this to run visual QA — it can't see your screenshots unless you report the paths.
+
+On failure, also include:
 - What's still wrong
 - What you tried and why it didn't fix it
 - Your best guess at the root cause
@@ -94,7 +79,6 @@ Read `MEMORY.md` before starting work — it contains discoveries from previous 
 ## Known Quirks
 
 - **RID leak errors on exit** — headless scene builders always produce these. Harmless; ignore them.
-- **`--import` for worktrees** — must run `godot --headless --import --quit` once per new worktree before scene builders can load GLB files. Already included in worktree setup above.
 - **`add_to_group()` in scene builders** — groups set at build-time persist in saved .tscn files.
 - **MultiMeshInstance3D + GLBs** — does NOT render after pack+save (mesh resource reference lost during serialization). Use individual GLB instances instead.
 - **`_ready()` skipped in `_initialize()`** — when running `--script`, `_ready()` on instantiated scene nodes does NOT fire during `_initialize()`. Call `node.generate()` or other init methods manually after `root.add_child()`.
@@ -534,7 +518,7 @@ func _ready() -> void:
 
 ## Part 3: Test Harness & Visual Verification
 
-Write `test/test_{task_id}.gd` (e.g., `test/test_T3.gd`) — a SceneTree script that loads the scene under test and **thoroughly verifies the task's goal**. Use the task ID from PLAN.md to name the file so multiple tasks can coexist after worktree merges. Do NOT call `quit()` — the movie writer handles exit.
+Write `test/test_{task_id}.gd` (e.g., `test/test_T3.gd`) — a SceneTree script that loads the scene under test and **thoroughly verifies the task's goal**. Do NOT call `quit()` — the movie writer handles exit.
 
 **Verify what the task actually asks for.** Read the Verify description and think about what would convince you — a skeptic, not the author — that the task is done. A decoration task needs multiple camera angles to check placement and scale. A movement task needs the camera to follow the action over time. A UI task needs the full interface visible. Match the test to the goal.
 

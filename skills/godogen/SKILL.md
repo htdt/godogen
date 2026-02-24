@@ -8,10 +8,6 @@ description: |
 
 Generate and update Godot games from natural language. Coordinate specialized agents and keep project documents current.
 
-## Project Layout
-
-The Godot project is the working directory (and the git repo). Binary assets live in `assets/` (gitignored), loaded via `res://assets/glb/` and `res://assets/img/`. Screenshots go to `screenshots/` (gitignored).
-
 ## Agents
 
 | Agent | When | How |
@@ -19,7 +15,7 @@ The Godot project is the working directory (and the git repo). Binary assets liv
 | **godot-scaffold** | New project OR update | Sub-agent via Task tool (parallel with decomposer) |
 | **game-decomposer** | New project OR update | Sub-agent via Task tool (parallel with scaffold) |
 | **asset-planner** | After scaffold + decomposer, budget provided | Sub-agent via Task tool (reads STRUCTURE.md + PLAN.md) |
-| **godot-task** | Per task from PLAN.md | Sub-agent via Task tool (parallel when independent) |
+| **godot-task** | Per task from PLAN.md | Sub-agent via Task tool (sequential) |
 
 Scaffold and decomposer work for both fresh projects and updates. When updating, explicitly tell the agent it's an update — pass existing STRUCTURE.md and describe what's changing vs. what's preserved.
 
@@ -55,30 +51,22 @@ User request
     |   +- Save the normalized plan
     |
     +- Show user a concise plan summary (game name, numbered task list)
-    +- Create CLI todo list from PLAN.md tasks (TaskCreate)
     +- Proceed immediately to task execution
     |
-    +- Find ready tasks (pending, deps all done)
-    +- While ready tasks exist:
-    |   +- If 2+ independent tasks ready:
-    |   |   +- Dispatch all as parallel Task() calls in one message
-    |   |   +- Each godot-task runs in an isolated worktree
-    |   +- Else (1 task or merge task):
-    |   |   +- Run directly on main (no worktree)
-    |   +- For each task in wave:
-    |   |   +- Update PLAN.md: mark task status -> in_progress
-    |   |   +- Mark task in_progress (TaskUpdate)
-    |   +- Launch godot-task sub-agent(s) (see Running Tasks), then read the outcome
+    +- Find next ready task (pending, deps all done)
+    +- While a ready task exists:
+    |   +- Update PLAN.md: mark task status -> in_progress
+    |   +- Launch godot-task sub-agent (see Running Tasks), then read the outcome
     |   +- Visual QA (see Visual QA section):
-    |   |   +- Skip for non-visual waves (script-only, audio, project config)
-    |   |   +- Skip for grey-box waves (placeholder geometry, no real art yet)
-    |   |   +- Mandatory for final wave
-    |   |   +- Capture screenshots, run visual_qa.py, save report
+    |   |   +- Skip for non-visual tasks (script-only, audio, project config)
+    |   |   +- Skip for grey-box tasks (placeholder geometry, no real art yet)
+    |   |   +- Mandatory for final task
+    |   |   +- Find screenshots, run visual_qa.py, save report
     |   |   +- Fix major/minor issues (spawn godot-task), re-run QA until clean
-    |   +- Mark tasks completed (PLAN.md, TaskUpdate) OR replan based on the outcome
-    |   +- git add PLAN.md && git commit -m "plan: wave N done"
+    |   +- Mark task completed in PLAN.md OR replan based on the outcome
+    |   +- git add PLAN.md && git commit -m "plan: task N done"
     |   +- Summarize results to user
-    |   +- Find next ready tasks
+    |   +- Find next ready task
     |
     +- Presentation video (see below)
     |
@@ -138,11 +126,7 @@ Scaffold, decomposer, and asset-planner can be re-dispatched at any point during
 
 ## Running Tasks as Sub-Agents
 
-Each task runs as a **sub-agent** via the Task tool. This gives each task a clean context window, preventing accumulated state from earlier tasks from polluting later ones.
-
-### Single task (or only 1 ready)
-
-Run directly on main — no worktree:
+Each task runs as a **sub-agent** via the Task tool. This gives each task a clean context window, preventing accumulated state from earlier tasks from polluting later ones. Tasks run sequentially on main.
 
 ```
 Task(
@@ -154,63 +138,15 @@ Task(
 )
 ```
 
-### Parallel wave (2+ independent tasks ready)
-
-Send ALL ready tasks as parallel Task() calls in a single message. Each gets `isolation: "worktree"` for native git worktree isolation:
-
-```
-# All in ONE message — parallel dispatch:
-
-Task(
-  subagent_type="godot-task",
-  isolation="worktree",
-  description="godot-task: {task_A_name}",
-  prompt="""
-{task A block from PLAN.md}
-"""
-)
-
-Task(
-  subagent_type="godot-task",
-  isolation="worktree",
-  description="godot-task: {task_B_name}",
-  prompt="""
-{task B block from PLAN.md}
-"""
-)
-```
-
-Each agent runs in an isolated worktree copy. After the wave completes, merge results and clean up (see Post-Task Merge below). Then commit PLAN.md status updates: `git add PLAN.md && git commit -m "plan: wave N done"`.
-
-### Post-Task Merge (worktree agents only)
-
-After each worktree sub-agent completes, the Task result includes the worktree path and branch name (if changes were committed). For each:
-
-1. **Copy screenshots** from the worktree before they're lost:
-   ```bash
-   cp -r <worktree_path>/screenshots/* screenshots/ 2>/dev/null
-   ```
-2. **Merge the branch:**
-   ```bash
-   git merge <branch>
-   ```
-   If conflicts arise, the task's files are authoritative — accept theirs for conflicting paths.
-3. **Clean up:**
-   ```bash
-   git worktree remove --force <worktree_path> && git branch -d <branch>
-   ```
-
-If the agent made no changes, the worktree is auto-deleted — no merge needed.
-
 ## Visual QA
 
-Run after every wave that produces visible output. Skip for non-visual waves (script-only, audio, project config) and grey-box waves (placeholder geometry, no real art yet). Load `Skill(skill="visual-qa")` for capture instructions and CLI usage.
+Run after every task that produces visible output. Skip for non-visual tasks (script-only, audio, project config) and grey-box tasks (placeholder geometry, no real art yet). Load `Skill(skill="visual-qa")` for capture instructions and CLI usage.
 
 ### Act on issues by severity
 
 - **major** / **minor** — must fix. Spawn a godot-task fix agent.
 - **note** — cosmetic nitpick. Review, fix only if trivial. Don't block the pipeline for notes.
-- If no major/minor issues, move on to next wave.
+- If no major/minor issues, move on to next task.
 
 ### Fix loop
 
@@ -228,7 +164,7 @@ Run after every wave that produces visible output. Skip for non-visual waves (sc
    """
    )
    ```
-2. Re-run QA after fixes (new report N+1). Repeat until no major/minor issues remain. Max 10 attempts per wave.
+2. Re-run QA after fixes (new report N+1). Repeat until no major/minor issues remain. Max 10 attempts per task.
 
 ## Presentation Video
 
