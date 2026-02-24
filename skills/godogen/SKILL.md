@@ -69,14 +69,16 @@ User request
     |   |   +- Update PLAN.md: mark task status -> in_progress
     |   |   +- Mark task in_progress (TaskUpdate)
     |   +- Launch godot-task sub-agent(s) (see Running Tasks), then read the outcome
-    |   +- Run Visual QA after any wave that produces visible output
-    |   |   +- If QA reports issues: spawn godot-task fix agent, then re-run QA
+    |   +- Visual QA (see Visual QA section):
+    |   |   +- Skip for non-visual waves (script-only, audio, project config)
+    |   |   +- Skip for grey-box waves (placeholder geometry, no real art yet)
+    |   |   +- Mandatory for final wave
+    |   |   +- Capture screenshots, run visual_qa.py, save report
+    |   |   +- Fix major/minor issues (spawn godot-task), re-run QA until clean
     |   +- Mark tasks completed (PLAN.md, TaskUpdate) OR replan based on the outcome
     |   +- git add PLAN.md && git commit -m "plan: wave N done"
     |   +- Summarize results to user
     |   +- Find next ready tasks
-    |
-    +- Visual QA (mandatory — run at least once here before video)
     |
     +- Presentation video (see below)
     |
@@ -202,44 +204,31 @@ If the agent made no changes, the worktree is auto-deleted — no merge needed.
 
 ## Visual QA
 
-Run visual QA after every wave that produces visible output, and once more after all tasks complete (before the presentation video). Skip only on early grey-box waves that have no real visuals yet. The QA provides a clear signal — its findings reliably indicate real quality issues.
+Run after every wave that produces visible output. Skip for non-visual waves (script-only, audio, project config) and grey-box waves (placeholder geometry, no real art yet). Load `Skill(skill="visual-qa")` for capture instructions and CLI usage.
 
-### Capture
+### Act on issues by severity
 
-Pick 6 game frames: 4 consecutive from the **middle** of the capture (for motion analysis) + 2 from different parts of the game (for diversity). Pass `reference.png` as the first argument. Save the report to `visual-qa/{N}.md`:
-```bash
-mkdir -p visual-qa
-N=$(ls visual-qa/*.md 2>/dev/null | wc -l); N=$((N + 1))
-python3 .claude/skills/visual-qa/scripts/visual_qa.py reference.png consec1.png consec2.png consec3.png consec4.png diverse1.png diverse2.png > visual-qa/${N}.md
-```
+- **major** / **minor** — must fix. Spawn a godot-task fix agent.
+- **note** — cosmetic nitpick. Review, fix only if trivial. Don't block the pipeline for notes.
+- If no major/minor issues, move on to next wave.
 
-### Act on the verdict
+### Fix loop
 
-- **pass** — move on.
-- **warning** — fix correctness issues. Only skip a finding if you can articulate why it's wrong.
-- **fail** — blocking. Fix before proceeding to the next wave.
-
-For **warning** and **fail**: spawn a godot-task sub-agent with the issues as its prompt. No need to add a PLAN.md task for this — just dispatch directly and track that you need to re-run QA on completion:
-
-```
-Task(
-  subagent_type="godot-task",
-  description="godot-task: visual QA fixes",
-  prompt="""
-## Visual QA Fixes
-- **Goal:** Fix issues found by visual QA report {N}.
-- **Issues:**
-{paste issues from the report}
-- **Targets:** {affected files}
-"""
-)
-```
-
-After the fix agent completes, **re-run QA** (new report N+1) and check the verdict again. Repeat until pass or warning-with-no-correctness-issues.
-
-### Commit
-
-Commit reports alongside task work: `git add visual-qa/ && git commit -m "visual-qa: report N"`.
+1. Spawn a godot-task sub-agent with the major/minor issues:
+   ```
+   Task(
+     subagent_type="godot-task",
+     description="godot-task: visual QA fixes",
+     prompt="""
+   ## Visual QA Fixes
+   - **Goal:** Fix issues found by visual QA report {N}.
+   - **Issues:**
+   {paste major/minor issues from the report}
+   - **Targets:** {affected files}
+   """
+   )
+   ```
+2. Re-run QA after fixes (new report N+1). Repeat until no major/minor issues remain. Max 10 attempts per wave.
 
 ## Presentation Video
 

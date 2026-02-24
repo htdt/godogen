@@ -22,7 +22,9 @@ using Gemini 3 Flash vision.
 ## CLI
 
 ```bash
-python3 .claude/skills/visual-qa/scripts/visual_qa.py reference.png <consec1..4.png> <diverse1.png> <diverse2.png> > visual-qa/{N}.md
+mkdir -p visual-qa
+N=$(ls visual-qa/*.md 2>/dev/null | wc -l); N=$((N + 1))
+python3 .claude/skills/visual-qa/scripts/visual_qa.py reference.png <consec1..4.png> <diverse1.png> <diverse2.png> > visual-qa/${N}.md
 ```
 
 - Exactly 7 PNG paths: 1 reference + 4 consecutive + 2 diverse
