@@ -1,27 +1,20 @@
 #!/usr/bin/env bash
 # Publish godogen agents + skills into a target project directory.
-# Creates .claude/{agents,skills}/ and a game-oriented CLAUDE.md.
+# Creates .claude/{agents,skills}/ and copies a CLAUDE.md.
 #
-# Usage: ./publish.sh [--teleforge] <target_dir>
-#   --teleforge  Use teleforge.md as CLAUDE.md (for Telegram bot server)
+# Usage: ./publish.sh <target_dir> [claude_md]
+#   claude_md  Path to CLAUDE.md to use (default: teleforge.md)
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "$0")" && pwd)"
 
-TELEFORGE=false
-while [[ "${1:-}" == --* ]]; do
-    case "$1" in
-        --teleforge) TELEFORGE=true; shift ;;
-        *) echo "Unknown option: $1"; exit 1 ;;
-    esac
-done
-
 if [ $# -lt 1 ]; then
-    echo "Usage: $0 [--teleforge] <target_dir>"
+    echo "Usage: $0 <target_dir> [claude_md]"
     exit 1
 fi
 
 TARGET="$(cd "$1" 2>/dev/null && pwd || (mkdir -p "$1" && cd "$1" && pwd))"
+CLAUDE_MD="${2:-$REPO_ROOT/teleforge.md}"
 
 echo "Publishing to: $TARGET"
 
@@ -34,15 +27,8 @@ mkdir -p "$TARGET/.claude/skills"
 rsync -a --exclude='doc_source/' --exclude='__pycache__/' \
     "$REPO_ROOT/skills/" "$TARGET/.claude/skills/"
 
-if [ "$TELEFORGE" = true ]; then
-    cp "$REPO_ROOT/teleforge.md" "$TARGET/CLAUDE.md"
-    echo "Created CLAUDE.md (from teleforge.md)"
-elif [ ! -f "$TARGET/CLAUDE.md" ]; then
-    cat > "$TARGET/CLAUDE.md" << 'CLAUDE_EOF'
-Use `/godogen` to generate or update this game from a natural language description.
-CLAUDE_EOF
-    echo "Created CLAUDE.md"
-fi
+cp "$CLAUDE_MD" "$TARGET/CLAUDE.md"
+echo "Created CLAUDE.md (from $CLAUDE_MD)"
 
 if [ ! -f "$TARGET/.gitignore" ]; then
     cat > "$TARGET/.gitignore" << 'GI_EOF'
