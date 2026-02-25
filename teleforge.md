@@ -14,11 +14,9 @@ Exception: godot-task should `send_message` a one-sentence status when hitting a
 
 Call `check_messages` before starting each new task and before ending the session.
 
-After generating the visual target, godogen `send_image` `reference.png` to the user so they can see the art direction.
+After scaffold + decomposer, `send_image` `reference.png` with a summary of the PLAN.md. User corrections arrive via `check_messages`.
 
-After scaffold + decomposer, `send_message` a summary of the PLAN.md. User corrections arrive via `check_messages`.
-
-godot-task reports results (screenshots, status) back to godogen. godogen sends the user a summary + best screenshots via `send_image`. After all tasks, godogen sends a final video via `send_video`. Video must be compressed to <50MB (Telegram upload limit).
+godot-task reports results (screenshots, status) back to godogen. godogen sends the user a summary + best screenshots via `send_image`. After visual-qa and triage, `send_message` a brief summary of the QA verdict and any rebuilds triggered. After all tasks, godogen sends a final video via `send_video`. Video must be compressed to <50MB (Telegram upload limit).
 
 # Project Structure
 
