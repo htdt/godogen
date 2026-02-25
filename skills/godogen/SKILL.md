@@ -140,31 +140,12 @@ Task(
 
 ## Visual QA
 
-Run after every task that produces visible output. Skip for non-visual tasks (script-only, audio, project config) and grey-box tasks (placeholder geometry, no real art yet). Load `Skill(skill="visual-qa")` for capture instructions and CLI usage.
+Run after every task that produces visible output. Skip for non-visual tasks (script-only, audio, project config) and grey-box tasks (placeholder geometry, no real art yet). Load `Skill(skill="visual-qa")` for capture instructions, CLI usage, and triage process.
 
-### Act on issues by severity
-
-- **major** / **minor** — must fix. Spawn a godot-task fix agent.
-- **note** — cosmetic nitpick. Review, fix only if trivial. Don't block the pipeline for notes.
-- If no major/minor issues, move on to next task.
-
-### Fix loop
-
-1. Spawn a godot-task sub-agent with the major/minor issues:
-   ```
-   Task(
-     subagent_type="godot-task",
-     description="godot-task: visual QA fixes",
-     prompt="""
-   ## Visual QA Fixes
-   - **Goal:** Fix issues found by visual QA report {N}.
-   - **Issues:**
-   {paste major/minor issues from the report}
-   - **Targets:** {affected files}
-   """
-   )
-   ```
-2. Re-run QA after fixes (new report N+1). Repeat until no major/minor issues remain. Max 10 attempts per task.
+- **pass/warning** — move on to next task.
+- **fail** — triage the report per visual-qa skill before delegating any fixes. Write the triage file, then act on the triage result:
+  - **fix/mitigate** — spawn a godot-task sub-agent with the triage file path. Re-run QA after fixes. Max 3 cycles before escalating to replan.
+  - **replan** — re-invoke scaffold, decomposer, and/or asset-planner as needed. Fresh VQA cycle after rebuild.
 
 ## Presentation Video
 
