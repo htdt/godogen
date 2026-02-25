@@ -134,4 +134,3 @@ Report back to the caller:
 - Total assets generated (N images, M GLBs)
 - Total cost vs budget
 - Any assets that failed or were cut for budget
-- Path to `ASSETS.md`
