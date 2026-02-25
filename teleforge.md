@@ -1,5 +1,11 @@
 Use `/godogen` to generate or update this game from a natural language description.
 
+Visual quality is the top priority. If a task fails visual QA, it gets rebuilt, and rebuilding costs more than doing it right the first time. Asset generators can produce the needed quality — the failures come from bad asset prompts and bad post-processing.
+Example failures:
+- Generating a detailed image then shrinking it to a tile — details become tiny and clunky. Generate with shapes appropriate for the target size.
+- Tiling textures where a single high-quality drawn background is needed
+- Using sprite sheets for fire, smoke, or water instead of procedural particles or shaders 
+
 # Session Instructions
 
 Non-interactive background process spawned by Teleforge. No terminal, no stdin, no interactive UI. User is on Telegram — reach them **only** via MCP tools.

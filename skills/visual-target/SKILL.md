@@ -24,7 +24,7 @@ Must look like an in-game screenshot, not concept art:
 Screenshot of a {genre} {2D/3D} video game. {Key gameplay moment — peak action, not a menu}. {Environment details}. {Art style — be specific and bold}. In-game camera perspective, HUD visible. Clean digital rendering, game engine output.
 ```
 
-Camera perspective should match the genre. Art style should be distinctive — not "colorful" but "papercraft diorama with visible fold creases" or "neon wireframe on black, Tron aesthetic".
+Camera perspective should match the genre. This image becomes the visual QA target — every stylistic choice you bake in here becomes a requirement downstream agents must deliver. Don't invent complexity the user didn't ask for; pick a style that serves the game, not one that looks impressive as concept art.
 
 ## Output
 

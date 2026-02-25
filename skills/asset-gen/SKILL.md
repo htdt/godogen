@@ -234,6 +234,15 @@ Examples: forest game → `#4A6741`; sky/water → `#4A6B8A`; dungeon → `#2A2A
 
 Avoid pure chromakey colors like `#00FF00` — they create unnatural green fringing.
 
+## Common Mistakes
+
+- **Detailed image shrunk to a tile** — generating a richly detailed image then scaling it down to a small tile makes details tiny and clunky. Generate with shapes and level of detail appropriate for the target display size.
+- **Tiling texture for a unique background** — don't tile a small repeating texture where the game needs a single scenic background. Use a Pro image instead.
+- **Sprite sheets for particle effects** — fire, smoke, water, and similar effects look better as procedural particles or shaders. Don't waste a sprite sheet on them unless the game style calls for it.
+- **Image where procedural drawing works** — simple shapes (lines, circles, rectangles, gradients) should be drawn in code, not generated as images.
+- **Stretching one texture over a large area** — a small texture stretched across a big surface looks blurry. Use a tileable texture or generate at higher resolution.
+- **Multiple sprite sheets for one character** — the generator cannot reproduce the same character across separate generations. It will look like two different characters. Put all animations for one character into a single sprite sheet (multiple actions across rows).
+
 ## Tips
 
 - Generate multiple images in parallel via multiple Bash calls in one message.
