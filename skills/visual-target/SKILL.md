@@ -13,7 +13,7 @@ Generate a reference image of what the finished game looks like. Anchors art dir
 ```bash
 python3 .claude/skills/asset-gen/tools/asset_gen.py image \
   --prompt "{prompt}" \
-  --size 2K --aspect-ratio 16:9 -o reference.png
+  --size 1K --aspect-ratio 16:9 -o reference.png
 ```
 
 ## Prompt
@@ -28,7 +28,7 @@ Camera perspective should match the genre. This image becomes the visual QA targ
 
 ## Output
 
-`reference.png` — 2K 16:9 image.
+`reference.png` — 1K 16:9 image.
 
 Write the style string (art style portion of the prompt) into `ASSETS.md` — the asset planner will prepend it to every asset prompt, so this single string defines the visual identity of the entire game:
 

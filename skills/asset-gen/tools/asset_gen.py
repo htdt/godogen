@@ -2,8 +2,8 @@
 """Asset Generator CLI - creates images (Gemini) and GLBs (Tripo3D).
 
 Subcommands:
-  image        Generate a PNG from a prompt (4 cents flash / 14 cents pro with --size)
-  spritesheet  Generate a 4x4 sprite sheet via Gemini 3 Pro with template (14 cents)
+  image        Generate a PNG from a prompt (5-10 cents depending on size)
+  spritesheet  Generate a 4x4 sprite sheet with template (7 cents)
   glb          Convert a PNG to a GLB 3D model via Tripo3D (30-40 cents)
 
 Output: JSON to stdout. Progress to stderr.
@@ -107,39 +107,33 @@ def result_json(ok: bool, path: str | None = None, cost_cents: int = 0, error: s
     print(json.dumps(d))
 
 
-IMAGE_SIZES = ["1K", "2K"]
-IMAGE_ASPECT_RATIOS = ["1:1", "2:3", "3:2", "3:4", "4:3", "4:5", "5:4", "9:16", "16:9"]
+IMAGE_MODEL = "gemini-3.1-flash-image-preview"
+IMAGE_SIZES = ["512", "1K", "2K"]
+IMAGE_COSTS = {"512": 5, "1K": 7, "2K": 10}
+IMAGE_ASPECT_RATIOS = ["1:1", "1:4", "1:8", "2:3", "3:2", "3:4", "4:1", "4:3", "4:5", "5:4", "8:1", "9:16", "16:9", "21:9"]
 
 
 def cmd_image(args):
-    use_pro = args.size is not None
-    cost = 14 if use_pro else 4
+    size = args.size
+    cost = IMAGE_COSTS[size]
     check_budget(cost)
     output = Path(args.output)
     output.parent.mkdir(parents=True, exist_ok=True)
 
-    if use_pro:
-        model = "gemini-3-pro-image-preview"
-        config = types.GenerateContentConfig(
-            response_modalities=["image"],
-            image_config=types.ImageConfig(
-                image_size=args.size,
-                aspect_ratio=args.aspect_ratio,
-            ),
-        )
-        label = f"pro {args.size} {args.aspect_ratio}"
-        service = "gemini-pro"
-    else:
-        model = "gemini-2.5-flash-image"
-        config = types.GenerateContentConfig(response_modalities=["image"])
-        label = "flash 1024x1024"
-        service = "gemini-flash"
+    config = types.GenerateContentConfig(
+        response_modalities=["IMAGE"],
+        image_config=types.ImageConfig(
+            image_size=size,
+            aspect_ratio=args.aspect_ratio,
+        ),
+    )
+    label = f"{size} {args.aspect_ratio}"
 
     print(f"Generating image ({label})...", file=sys.stderr)
 
     client = genai.Client()
     response = client.models.generate_content(
-        model=model,
+        model=IMAGE_MODEL,
         contents=[args.prompt],
         config=config,
     )
@@ -155,7 +149,7 @@ def cmd_image(args):
         if part.inline_data is not None:
             output.write_bytes(part.inline_data.data)
             print(f"Saved: {output}", file=sys.stderr)
-            record_spend(cost, service)
+            record_spend(cost, "gemini")
             result_json(True, path=str(output), cost_cents=cost)
             return
 
@@ -179,7 +173,8 @@ def generate_template(bg_color: str) -> bytes:
 
 
 def cmd_spritesheet(args):
-    check_budget(14)
+    cost = IMAGE_COSTS["1K"]  # 7 cents
+    check_budget(cost)
     output = Path(args.output)
     output.parent.mkdir(parents=True, exist_ok=True)
 
@@ -190,16 +185,16 @@ def cmd_spritesheet(args):
 
     client = genai.Client()
     response = client.models.generate_content(
-        model="gemini-3-pro-image-preview",
+        model=IMAGE_MODEL,
         contents=[
             types.Part.from_bytes(data=template_bytes, mime_type="image/png"),
             args.prompt,
         ],
         config=types.GenerateContentConfig(
-            response_modalities=["image"],
+            response_modalities=["IMAGE"],
             system_instruction=system,
             image_config=types.ImageConfig(
-                image_size="2K",
+                image_size="1K",
                 aspect_ratio="1:1",
             ),
         ),
@@ -216,8 +211,8 @@ def cmd_spritesheet(args):
         if part.inline_data is not None:
             output.write_bytes(part.inline_data.data)
             print(f"Saved: {output}", file=sys.stderr)
-            record_spend(14, "gemini-pro")
-            result_json(True, path=str(output), cost_cents=14)
+            record_spend(cost, "gemini")
+            result_json(True, path=str(output), cost_cents=cost)
             return
 
     result_json(False, error="No image returned")
@@ -272,16 +267,16 @@ def main():
     parser = argparse.ArgumentParser(description="Asset Generator — images (Gemini) and GLBs (Tripo3D)")
     sub = parser.add_subparsers(dest="command", required=True)
 
-    p_img = sub.add_parser("image", help="Generate a PNG image (4¢ flash, 14¢ pro with --size)")
+    p_img = sub.add_parser("image", help="Generate a PNG image (5-10¢ depending on size)")
     p_img.add_argument("--prompt", required=True, help="Full image generation prompt")
-    p_img.add_argument("--size", choices=IMAGE_SIZES, default=None,
-                       help="Use Gemini 3 Pro at this resolution (14¢). Omit for Flash (4¢).")
+    p_img.add_argument("--size", choices=IMAGE_SIZES, default="1K",
+                       help="Resolution: 512 (5¢), 1K (7¢), 2K (10¢). Default: 1K.")
     p_img.add_argument("--aspect-ratio", choices=IMAGE_ASPECT_RATIOS, default="1:1",
-                       help="Aspect ratio (only with --size). Default: 1:1")
+                       help="Aspect ratio. Default: 1:1")
     p_img.add_argument("-o", "--output", required=True, help="Output PNG path")
     p_img.set_defaults(func=cmd_image)
 
-    p_ss = sub.add_parser("spritesheet", help="Generate 4x4 sprite sheet via Gemini 3 Pro (14 cents)")
+    p_ss = sub.add_parser("spritesheet", help="Generate 4x4 sprite sheet (7 cents)")
     p_ss.add_argument("--prompt", required=True, help="What to generate (animation description or item list)")
     p_ss.add_argument("--bg", default="#00FF00", help="Background color hex (default: #00FF00 green). Choose a color absent from the subject.")
     p_ss.add_argument("-o", "--output", required=True, help="Output PNG path")

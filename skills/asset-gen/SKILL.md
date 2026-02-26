@@ -12,29 +12,17 @@ Generate PNG images (Gemini) and GLB 3D models (Tripo3D) from text prompts.
 
 Tools live at `.claude/skills/asset-gen/tools/`. Run from the project root.
 
-### Generate image — Flash (4 cents)
-
-Quick image, 1024x1024, good for textures, 3D references, small sprites:
+### Generate image (5-10 cents)
 
 ```bash
 python3 .claude/skills/asset-gen/tools/asset_gen.py image \
   --prompt "the full prompt" -o assets/img/car.png
 ```
 
-### Generate image — Pro (14 cents)
+`--size` (default `1K`): `512` (5¢), `1K` (7¢), `2K` (10¢)
+`--aspect-ratio` (default `1:1`): `1:1`, `1:4`, `1:8`, `2:3`, `3:2`, `3:4`, `4:1`, `4:3`, `4:5`, `5:4`, `8:1`, `9:16`, `16:9`, `21:9`
 
-High-quality image with size and aspect ratio control. Use for backgrounds, title screens, UI art, or any image where resolution and composition matter. Size does not affect price — always 14 cents.
-
-```bash
-python3 .claude/skills/asset-gen/tools/asset_gen.py image \
-  --prompt "the full prompt" \
-  --size 2K --aspect-ratio 16:9 -o assets/img/bg_forest.png
-```
-
-`--size` (required for pro): `1K`, `2K`
-`--aspect-ratio` (default `1:1`): `1:1`, `2:3`, `3:2`, `3:4`, `4:3`, `4:5`, `5:4`, `9:16`, `16:9`
-
-Typical combos for game backgrounds: `--size 2K --aspect-ratio 16:9` (landscape), `--size 2K --aspect-ratio 9:16` (portrait/mobile), `--size 2K --aspect-ratio 1:1` (square).
+Typical combos: `--size 2K --aspect-ratio 16:9` (landscape bg), `--size 2K --aspect-ratio 9:16` (portrait), `--size 1K` (textures, sprites, 3D refs).
 
 ### Remove background
 
@@ -51,7 +39,7 @@ python3 .claude/skills/asset-gen/tools/rembg_matting.py \
   assets/img/car.png -o assets/img/car_nobg.png
 ```
 
-### Generate sprite sheet (14 cents)
+### Generate sprite sheet (7 cents)
 
 Always 4x4 = exactly 16 cells. All 16 must be used — no more, no less. Template and grid instructions are injected automatically; you provide only the subject and BG color.
 
@@ -110,7 +98,7 @@ Sets the generation budget to 500 cents. All subsequent generations check remain
 
 ### Output format
 
-JSON to stdout: `{"ok": true, "path": "assets/img/car.png", "cost_cents": 4}`
+JSON to stdout: `{"ok": true, "path": "assets/img/car.png", "cost_cents": 7}`
 
 On failure: `{"ok": false, "error": "...", "cost_cents": 0}`
 
@@ -120,15 +108,16 @@ Progress goes to stderr.
 
 | Operation | Preset | Cost | Notes |
 |-----------|--------|------|-------|
-| Image (flash) | — | 4 cents | Gemini 2.5 Flash, 1024x1024 |
-| Image (pro) | --size 1K/2K | 14 cents | Gemini 3 Pro, configurable size+aspect ratio |
-| Sprite sheet | — | 14 cents | Gemini 3 Pro, 4x4 grid (16 cells) |
+| Image | --size 512 | 5 cents | 704x384 (aspect ratio ignored) |
+| Image | --size 1K | 7 cents | Default. Configurable aspect ratio |
+| Image | --size 2K | 10 cents | Configurable aspect ratio |
+| Sprite sheet | — | 7 cents | 1K, 4x4 grid (16 cells, 256x256 each) |
 | GLB | medium | 30 cents | 20k faces, good default |
 | GLB | lowpoly | 40 cents | 5k faces, smart topology |
 | GLB | high | 40 cents | Adaptive faces, detailed textures (+10¢) |
 | GLB | ultra | 60 cents | Detailed textures + geometry (+10¢ +20¢) |
 
-A full 3D asset (image + GLB) costs 34 cents at medium quality. A texture is 4 cents. A sprite sheet is 14 cents for 16 frames/items. A high-res background is 14 cents.
+A full 3D asset (image + GLB) costs 37 cents at medium quality. A texture is 7 cents. A sprite sheet is 7 cents for 16 frames/items. A high-res background is 10 cents.
 
 ## Style
 
@@ -137,11 +126,10 @@ Before generating any assets, choose an interesting visual style for the game. B
 ## Image Resolution
 
 Use the full generation resolution — don't downscale for aesthetic reasons.
-- Flash images / textures / 3D references: **1024x1024**
-- Pro images (backgrounds, title screens): **1K or 2K** at chosen aspect ratio
-- Sprite sheets: 2048x2048 total → **512x512 per cell** (after grid crop ~500x500)
-
-For backgrounds, prefer `--size 2K` — it's the same price as 1K.
+- Default (`1K`): textures, sprites, 3D references
+- `2K`: backgrounds, title screens, large scenic art
+- `512`: quick tests only (704x384, aspect ratio ignored)
+- Sprite sheets: 1024x1024 total → **256x256 per cell** (after grid crop ~248x248)
 
 ## What to Generate — Cheatsheet
 
@@ -149,7 +137,7 @@ For backgrounds, prefer `--size 2K` — it's the same price as 1K.
 
 Include `{style}` as the first element in all prompts. Adapt templates as needed.
 
-### Background / large scenic image → Pro (14¢)
+### Background / large scenic image (10¢)
 
 Title screens, sky panoramas, parallax layers, environmental art.
 
@@ -160,7 +148,7 @@ Title screens, sky panoramas, parallax layers, environmental art.
 
 No post-processing — use as-is.
 
-### Texture → Flash (4¢)
+### Texture (7¢)
 
 Tileable surfaces: ground, walls, floors, UI panels.
 
@@ -171,20 +159,20 @@ Tileable surfaces: ground, walls, floors, UI panels.
 
 No background removal — the entire image IS the texture.
 
-### Single object / sprite → Flash (4¢)
+### Single object / sprite (7¢)
 
 **With background** (object on a known scene background):
 ```
 {style}, {name}, {description}.
 ```
 
-**Transparent** (characters, props, icons, UI elements) — **CRITICAL: prompt must include a solid flat background color.** Without it, flash generates a detailed/noisy background that rembg cannot cleanly separate:
+**Transparent** (characters, props, icons, UI elements) — **CRITICAL: prompt must include a solid flat background color.** Without it, the generator draws a detailed/noisy background that rembg cannot cleanly separate:
 ```
 {style}, {name}, {description}. Centered on a solid {bg_color} background.
 ```
 Then: `rembg_matting.py input.png -o output.png`
 
-### 3D model reference → Flash (4¢) + GLB (30-60¢)
+### 3D model reference (7¢) + GLB (30-60¢)
 
 ```
 {style}, 3D model reference of {name}. {description}. 3/4 front elevated camera angle, solid white background, soft diffused studio lighting, matte material finish, single centered subject, no shadows on background. Any windows or glass should be solid tinted (opaque).
@@ -193,7 +181,7 @@ Then: `glb --image ... -o ...` — do NOT remove the background; Tripo3D needs t
 
 Key: 3/4 front elevated angle, solid white/gray bg, matte finish (no reflections), opaque glass, single centered subject.
 
-### Animation → Spritesheet (14¢)
+### Animation → Spritesheet (7¢)
 
 16 cells in a 4×4 grid. Flexible layouts:
 - 16 frames of one subject (walk cycle, attack, bounce)
@@ -210,9 +198,9 @@ Post-processing:
 - **Transparent sprites** (preferred): `clean-bg` → single sheet for `Sprite2D` (`hframes=4, vframes=4`)
 - **With background:** `keep-bg` → single sheet
 
-### Asset kit (16 objects, consistent style) → Spritesheet (14¢)
+### Asset kit (16 objects, consistent style) → Spritesheet (7¢)
 
-Generate 16 small objects that share the same visual style (items, icons, props, tiles). Cheaper and more consistent than 16 individual flash calls (14¢ vs 64¢).
+Generate 16 small objects that share the same visual style (items, icons, props, tiles). Cheaper and more consistent than 16 individual calls (7¢ vs 112¢).
 
 ```
 Items: 1: red apple 2: banana 3: orange 4: grape 5: cherry ...

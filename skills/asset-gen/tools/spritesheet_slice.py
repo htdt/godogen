@@ -17,7 +17,7 @@ from pathlib import Path
 from PIL import Image
 
 GRID = 4
-LINE_W = 8  # pixels to crop from each cell edge (line is ~4px, extra margin for artifacts)
+LINE_W = 4  # pixels to crop from each cell edge (line is ~2px, extra margin for artifacts)
 TOOLS_DIR = Path(__file__).parent
 REMBG_SCRIPT = TOOLS_DIR / "rembg_matting.py"
 

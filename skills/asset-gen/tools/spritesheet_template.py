@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
-"""Generate a 2048x2048 sprite sheet template with 4x4 grid, numbered circles."""
+"""Generate a 1024x1024 sprite sheet template with 4x4 grid, numbered circles."""
 
 import argparse
 from PIL import Image, ImageDraw, ImageFont
 
 GRID = 4
-CELL = 512  # 2048 / 4
-SIZE = GRID * CELL  # 2048
-LINE_W = 4
-CIRCLE_R = 80
-FONT_SIZE = 72
+CELL = 256  # 1024 / 4
+SIZE = GRID * CELL  # 1024
+LINE_W = 2
+CIRCLE_R = 40
+FONT_SIZE = 36
 
 
 def _colors_clash(a: str, b: str, threshold: int = 60) -> bool:
