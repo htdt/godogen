@@ -29,15 +29,15 @@ User request
     |   +- If yes: read PLAN.md, STRUCTURE.md, MEMORY.md -> skip to task execution
     |   +- If no: continue with fresh pipeline below
     |
-    +- Visual target (Skill "visual-target") -> reference.png + style string
+    +- Visual target (Skill "visual-target") -> reference.png + ASSETS.md (style only)
     |
     +- In parallel (two Task calls in one message):
     |   +- Task(subagent_type="godot-scaffold") -> STRUCTURE.md + project.godot + stubs
     |   +- Task(subagent_type="game-decomposer") -> PLAN.md
     |
-    +- If budget provided (and no ASSETS.md):
+    +- If budget provided (and no asset tables in ASSETS.md):
     |   +- Task(subagent_type="asset-planner")
-    |       prompt: budget_cents + style string from visual target
+    |       prompt: budget_cents
     |       -> ASSETS.md + updated PLAN.md with asset assignments
     |
     +- Plan normalization (required):
@@ -75,7 +75,7 @@ User request
 
 ## Generating Visual Target
 
-Before scaffold and decomposer. Load `Skill(skill="visual-target")` and follow its instructions. Save the style string for the asset planner.
+Before scaffold and decomposer. Load `Skill(skill="visual-target")` and follow its instructions.
 
 ## Launching Scaffold + Decomposer in Parallel
 
@@ -107,7 +107,6 @@ Task(
   description="assets: {game_name}",
   prompt="""
 Budget: {budget_cents} cents
-Art style: {style_string}
 """
 )
 ```

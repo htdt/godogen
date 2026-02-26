@@ -28,4 +28,12 @@ Camera perspective should match the genre. This image becomes the visual QA targ
 
 ## Output
 
-`reference.png` — 2K 16:9 image. Return the style string (art style portion of the prompt) to the caller for forwarding to the asset planner.
+`reference.png` — 2K 16:9 image.
+
+Write the style string (art style portion of the prompt) into `ASSETS.md` — the asset planner will prepend it to every asset prompt, so this single string defines the visual identity of the entire game:
+
+```markdown
+# Assets
+
+**Style:** <the style string>
+```

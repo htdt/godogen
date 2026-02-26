@@ -14,19 +14,20 @@ Works for both fresh projects and incremental changes (adding scenes/scripts, re
 
 ## Workflow
 
-1. **Read input** — game description (fresh) or change request (incremental). If `reference.png` exists, read it — use it to inform camera setup (angle, distance, FOV), lighting direction, and environment structure.
-2. **Assess project state:**
+1. **Read `reference.png`** — understand the visual target: camera angle, distance, FOV, lighting direction, environment structure, scene layout. Use this to inform architecture decisions (node hierarchy, camera setup, lighting rig).
+2. **Read input** — game description (fresh) or change request (incremental).
+3. **Assess project state:**
    - No project → create from scratch.
    - Existing project, fresh start requested → delete existing scenes/scripts.
    - Existing project, incremental change → read existing `STRUCTURE.md` and scripts. Identify what to add or replace. Preserve unchanged files.
-3. **Design / update architecture** — scenes, scripts, signals, input actions.
-4. **Write/update `project.godot`** — create or merge input mappings.
-5. **Write `STRUCTURE.md`** — always the complete architecture, not a diff.
-6. **Write script stubs** — for new scripts and any existing scripts the task explicitly asks to replace.
-7. **Import assets** — `timeout 60 godot --headless --import 2>&1`. Ensures all assets (`.glb`, `.png`, etc.) are imported before scene builders reference them.
-8. **Build scene stubs** — for each new/changed scene, write a scene builder script to `scenes/build_{name}.gd` using the template below, then run in dependency order (leaf scenes first): `godot --headless --script scenes/build_{name}.gd`
-9. **Verify** — `godot --headless --quit 2>&1`. No `ERROR` or `Parser Error` lines. RID warnings are benign.
-10. **Git commit** — repo is already initialized before Claude Code starts:
+4. **Design / update architecture** — scenes, scripts, signals, input actions.
+5. **Write/update `project.godot`** — create or merge input mappings.
+6. **Write `STRUCTURE.md`** — always the complete architecture, not a diff.
+7. **Write script stubs** — for new scripts and any existing scripts the task explicitly asks to replace.
+8. **Import assets** — `timeout 60 godot --headless --import 2>&1`. Ensures all assets (`.glb`, `.png`, etc.) are imported before scene builders reference them.
+9. **Build scene stubs** — for each new/changed scene, write a scene builder script to `scenes/build_{name}.gd` using the template below, then run in dependency order (leaf scenes first): `godot --headless --script scenes/build_{name}.gd`
+10. **Verify** — `godot --headless --quit 2>&1`. No `ERROR` or `Parser Error` lines. RID warnings are benign.
+11. **Git commit** — repo is already initialized before Claude Code starts:
     ```bash
     git add -A && git commit -m "scaffold: project skeleton"
     ```

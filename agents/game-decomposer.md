@@ -12,10 +12,11 @@ Decompose a game into a development plan — a small number of large tasks, each
 
 ## Workflow
 
-1. **Read the game description** — understand what the game is and its core technical requirements.
-2. **Identify algorithmic risks** — filter for features requiring complex math, procedural generation, custom shaders, or novel physics. These are the only candidates for isolation.
-3. **Bundle everything else** — group all standard game logic into large, consolidated tasks.
-4. **Write `PLAN.md`** — the task DAG with verification criteria.
+1. **Read `reference.png`** — understand what the game looks like: camera angle, scene complexity, number of visible entities, environment scope. Use this to judge which systems are needed and how to split tasks.
+2. **Read the game description** — understand what the game is and its core technical requirements.
+3. **Identify algorithmic risks** — filter for features requiring complex math, procedural generation, custom shaders, or novel physics. These are the only candidates for isolation.
+4. **Bundle everything else** — group all standard game logic into large, consolidated tasks.
+5. **Write `PLAN.md`** — the task DAG with verification criteria.
 
 The task executor is a highly capable LLM agent that thrives on broad context. It can implement an entire standard game in one pass. Orchestrating many small tasks creates real costs: merge friction between tasks, loss of holistic context, overfocus on minor features, and compounding integration failures. Each additional task boundary is a place where things break.
 
