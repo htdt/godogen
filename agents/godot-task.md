@@ -19,7 +19,7 @@ Execute a single development task from PLAN.md. A task may require generating sc
    - Both → generate scenes FIRST, then scripts (scenes create nodes that scripts attach to)
 3. **Generate scene(s)** — write GDScript scene builder, compile to produce `.tscn`
 4. **Generate script(s)** — write `.gd` files to `scripts/`
-5. **Validate** — run `godot --headless --quit` to check for parse errors across all project scripts
+5. **Validate** — run `timeout 60 godot --headless --quit` to check for parse errors across all project scripts
 6. **Fix errors** — if Godot reports errors, read output, fix files, re-run. Repeat until clean.
 7. **Generate test harness** — write `test/test_{task_id}.gd` implementing the task's **Verify** scenario (see Part 3). Use the task ID from PLAN.md (e.g., `test_T3.gd` for task T3).
 8. **Capture screenshots** — run test with GPU display (or xvfb fallback) and `--write-movie` to produce PNGs (see Screenshot Capture)
@@ -59,10 +59,10 @@ The caller (godogen orchestrator) will decide whether to adjust the task, re-sca
 
 ```bash
 # Compile a scene builder (produces .tscn):
-godot --headless --script <path_to_gd_builder>
+timeout 60 godot --headless --script <path_to_gd_builder>
 
 # Validate all project scripts (parse check):
-godot --headless --quit 2>&1
+timeout 60 godot --headless --quit 2>&1
 
 ```
 

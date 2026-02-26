@@ -33,12 +33,12 @@ MOVIE=screenshots/{task_folder}
 rm -rf $MOVIE && mkdir -p $MOVIE && mkdir -p _captures
 touch screenshots/.gdignore _captures/.gdignore
 if [ -n "$GPU_DISPLAY" ]; then
-  timeout 20 DISPLAY=$GPU_DISPLAY godot --rendering-method forward_plus \
+  timeout 30 DISPLAY=$GPU_DISPLAY godot --rendering-method forward_plus \
       --write-movie _captures/frame.png \
       --fixed-fps 10 --quit-after {N} \
       --script test/test_task.gd 2>&1
 else
-  timeout 20 xvfb-run -a -s '-screen 0 1280x720x24' godot --rendering-driver vulkan \
+  timeout 30 xvfb-run -a -s '-screen 0 1280x720x24' godot --rendering-driver vulkan \
       --write-movie _captures/frame.png \
       --fixed-fps 10 --quit-after {N} \
       --script test/test_task.gd 2>&1
@@ -50,7 +50,7 @@ Where `{task_folder}` is derived from the task name/number (e.g., `task_01_terra
 
 **`--write-movie` path:** MUST be relative and inside the Godot project directory. That's why we write to `_captures/` then move frames out.
 
-**Timeout:** `timeout 20` is a safety net — `--quit-after` handles exit normally. Exit code 124 means timeout fired.
+**Timeout:** `timeout 30` is a safety net — `--quit-after` handles exit normally. Exit code 124 means timeout fired.
 
 ### Frame Rate and Duration
 
