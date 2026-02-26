@@ -102,7 +102,7 @@ Minor/note replan issues demote to mitigate → triage result is **fix**.
 1. Delegate ALL issues to developer agent in a single pass with triage file path
 2. After fixes applied, run VQA again on new screenshots
 3. Repeat triage → fix → VQA until verdict is **pass**
-4. Maximum 3 fix cycles. If still failing after 3, escalate entire triage to replan.
+4. Maximum 3 fix cycles. If still failing after 3, escalate entire triage to replan. Persistent failures across 3 cycles indicate the root cause is upstream — wrong assets, wrong generation parameters, or a fundamentally mismatched approach. Replan should reexamine initial assumptions rather than continue iterating on symptoms.
 
 ### Gate
 
