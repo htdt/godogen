@@ -110,14 +110,15 @@ Progress goes to stderr.
 |-----------|--------|------|-------|
 | Image | --size 512 | 5 cents | 704x384 (aspect ratio ignored) |
 | Image | --size 1K | 7 cents | Default. Configurable aspect ratio |
-| Image | --size 2K | 10 cents | Configurable aspect ratio |
+| Image | --size 2K | 10 cents | HQ objects, textures, backgrounds |
+| Image | --size 4K | 15 cents | Large game maps, panoramic backgrounds |
 | Sprite sheet | — | 7 cents | 1K, 4x4 grid (16 cells, 256x256 each) |
 | GLB | medium | 30 cents | 20k faces, good default |
 | GLB | lowpoly | 40 cents | 5k faces, smart topology |
 | GLB | high | 40 cents | Adaptive faces, detailed textures (+10¢) |
 | GLB | ultra | 60 cents | Detailed textures + geometry (+10¢ +20¢) |
 
-A full 3D asset (image + GLB) costs 37 cents at medium quality. A texture is 7 cents. A sprite sheet is 7 cents for 16 frames/items. A high-res background is 10 cents.
+A full 3D asset (image + GLB) costs 37 cents at medium quality. A texture is 7 cents. A sprite sheet is 7 cents for 16 frames/items. A 2K image is 10 cents. A 4K image is 15 cents.
 
 ## Style
 
@@ -127,7 +128,8 @@ Before generating any assets, choose an interesting visual style for the game. B
 
 Use the full generation resolution — don't downscale for aesthetic reasons.
 - Default (`1K`): textures, sprites, 3D references
-- `2K`: backgrounds, title screens, large scenic art
+- `2K`: HQ objects/textures, backgrounds, title screens
+- `4K`: large game maps (zoom into regions instead of multiple smaller images), panoramic backgrounds
 - `512`: quick tests only (704x384, aspect ratio ignored)
 - Sprite sheets: 1024x1024 total → **256x256 per cell** (after grid crop ~248x248)
 

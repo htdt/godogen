@@ -44,7 +44,8 @@ The scaffold's Asset Hints describe what the architecture needs. The decomposer'
 
 Each asset costs:
 - Texture: 7 cents (1K image)
-- Background: 10 cents (2K image with `--size 2K`)
+- HQ texture / background: 10 cents (2K image with `--size 2K`)
+- Large map / panorama: 15 cents (4K image with `--size 4K` — one large image can replace several smaller ones)
 - 3D model: 37 cents (7 cent image + 30 cent GLB at medium quality)
 
 Prioritize by visual impact — what makes the game recognizable. Cut low-impact assets first if budget is tight. Reserve ~10% of budget for retries.

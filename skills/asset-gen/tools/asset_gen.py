@@ -2,7 +2,7 @@
 """Asset Generator CLI - creates images (Gemini) and GLBs (Tripo3D).
 
 Subcommands:
-  image        Generate a PNG from a prompt (5-10 cents depending on size)
+  image        Generate a PNG from a prompt (5-15 cents depending on size)
   spritesheet  Generate a 4x4 sprite sheet with template (7 cents)
   glb          Convert a PNG to a GLB 3D model via Tripo3D (30-40 cents)
 
@@ -108,8 +108,8 @@ def result_json(ok: bool, path: str | None = None, cost_cents: int = 0, error: s
 
 
 IMAGE_MODEL = "gemini-3.1-flash-image-preview"
-IMAGE_SIZES = ["512", "1K", "2K"]
-IMAGE_COSTS = {"512": 5, "1K": 7, "2K": 10}
+IMAGE_SIZES = ["512", "1K", "2K", "4K"]
+IMAGE_COSTS = {"512": 5, "1K": 7, "2K": 10, "4K": 15}
 IMAGE_ASPECT_RATIOS = ["1:1", "1:4", "1:8", "2:3", "3:2", "3:4", "4:1", "4:3", "4:5", "5:4", "8:1", "9:16", "16:9", "21:9"]
 
 
@@ -267,10 +267,10 @@ def main():
     parser = argparse.ArgumentParser(description="Asset Generator — images (Gemini) and GLBs (Tripo3D)")
     sub = parser.add_subparsers(dest="command", required=True)
 
-    p_img = sub.add_parser("image", help="Generate a PNG image (5-10¢ depending on size)")
+    p_img = sub.add_parser("image", help="Generate a PNG image (5-15¢ depending on size)")
     p_img.add_argument("--prompt", required=True, help="Full image generation prompt")
     p_img.add_argument("--size", choices=IMAGE_SIZES, default="1K",
-                       help="Resolution: 512 (5¢), 1K (7¢), 2K (10¢). Default: 1K.")
+                       help="Resolution: 512 (5¢), 1K (7¢), 2K (10¢), 4K (15¢). Default: 1K.")
     p_img.add_argument("--aspect-ratio", choices=IMAGE_ASPECT_RATIOS, default="1:1",
                        help="Aspect ratio. Default: 1:1")
     p_img.add_argument("-o", "--output", required=True, help="Output PNG path")
