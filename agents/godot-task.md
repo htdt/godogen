@@ -29,11 +29,12 @@ Execute a single development task from PLAN.md. A task may require generating sc
    - **Visual quality & logic:** look for obvious bugs — geometry clipping through other geometry, objects floating in mid-air when they shouldn't be, wrong assets used, unnatural asset pose or size, text overflow, UI elements overlapping or cut off at screen edges. Don't add decorations or polish beyond the task scope, but do fix clear correctness issues.
    Also check harness stdout for `ASSERT FAIL`.
    If any check fails, identify the issue, fix scene/script/test, and repeat from step 3.
-10. **Store final evidence** — save screenshots and `verification.md` in `screenshots/{task_folder}/` before reporting completion.
+10. **Visual QA** — if the task produces visible output and `reference.png` exists, run automated visual QA (see Visual QA section below). Skip for non-visual tasks (script-only, audio, project config) and grey-box tasks (placeholder geometry, no real art yet).
+11. **Store final evidence** — save screenshots and `verification.md` in `screenshots/{task_folder}/` before reporting completion.
 
 ## Iteration Tracking
 
-Steps 3-9 form an **implement → screenshot → verify** loop.
+Steps 3-10 form an **implement → screenshot → verify → VQA** loop.
 
 There is no fixed iteration limit — use judgment:
 - If there is progress — even in small, iterative steps — keep going. Screenshots and file updates are cheap.
@@ -45,13 +46,12 @@ There is no fixed iteration limit — use judgment:
 Always end your response with:
 - **Screenshot path:** `screenshots/{task_folder}/` and which frames best represent the result (e.g., `frame0003.png`, `frame0006.png`)
 - **What each screenshot shows** — one line per frame (e.g., "frame0003: player car on track, third-person camera", "frame0006: car mid-turn, skid marks visible")
-
-The orchestrator uses this to run visual QA — it can't see your screenshots unless you report the paths.
+- **VQA report:** path to `visual-qa/{N}.md` (or "skipped" if non-visual)
 
 On failure, also include:
 - What's still wrong
 - What you tried and why it didn't fix it
-- Your best guess at the root cause
+- Your best guess at the root cause (include VQA report content if relevant — the orchestrator needs it to decide whether to replan or change assets)
 
 The caller (godogen orchestrator) will decide whether to adjust the task, re-scaffold, or accept the current state.
 
@@ -75,6 +75,22 @@ timeout 60 godot --headless --quit 2>&1
 ## Project Memory
 
 Read `MEMORY.md` before starting work — it contains discoveries from previous tasks (workarounds, Godot quirks, asset details, architectural decisions). After completing your task, write back anything useful you learned: what worked, what failed, technical specifics others will need.
+
+## Visual QA
+
+Automated visual quality check using Gemini vision. Load `Skill(skill="visual-qa")` for CLI usage and frame selection.
+
+```bash
+mkdir -p visual-qa
+N=$(ls visual-qa/*.md 2>/dev/null | wc -l); N=$((N + 1))
+python3 .claude/skills/visual-qa/scripts/visual_qa.py reference.png <4 consecutive> <2 diverse> > visual-qa/${N}.md
+```
+
+Read the output report. Treat VQA feedback the same way you'd treat user feedback — it's usually accurate.
+
+- **pass/warning** — done, proceed to store evidence.
+- **fail** — read the issues, fix what you can (scene placement, scale, materials, spatial bugs), re-capture, re-run VQA. Max 3 cycles.
+  - After 3 failed cycles, stop. Report failure to the orchestrator with the VQA issues — the root cause is likely upstream (wrong assets, wrong approach) and needs replanning or asset changes you can't do yourself.
 
 ## Known Quirks
 

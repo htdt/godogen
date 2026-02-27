@@ -57,12 +57,6 @@ User request
     +- While a ready task exists:
     |   +- Update PLAN.md: mark task status -> in_progress
     |   +- Launch godot-task sub-agent (see Running Tasks), then read the outcome
-    |   +- Visual QA (see Visual QA section):
-    |   |   +- Skip for non-visual tasks (script-only, audio, project config)
-    |   |   +- Skip for grey-box tasks (placeholder geometry, no real art yet)
-    |   |   +- Mandatory for final task
-    |   |   +- Find screenshots, run visual_qa.py, save report
-    |   |   +- Fix major/minor issues (spawn godot-task), re-run QA until clean
     |   +- Mark task completed in PLAN.md OR replan based on the outcome
     |   +- git add PLAN.md && git commit -m "plan: task N done"
     |   +- Summarize results to user
@@ -139,12 +133,12 @@ Task(
 
 ## Visual QA
 
-Run after every task that produces visible output. Skip for non-visual tasks (script-only, audio, project config) and grey-box tasks (placeholder geometry, no real art yet). Load `Skill(skill="visual-qa")` for capture instructions, CLI usage, and triage process.
+Visual QA runs inside godot-task — each task handles its own VQA cycle. The task agent reports a VQA report path alongside screenshots. **Never ignore a fail verdict** — always act on it before marking a task done.
 
-- **pass/warning** — move on to next task.
-- **fail** — triage the report per visual-qa skill before delegating any fixes. Write the triage file, then act on the triage result:
-  - **fix/mitigate** — spawn a godot-task sub-agent with the triage file path. Re-run QA after fixes. Max 3 cycles before escalating to replan.
-  - **replan** — re-invoke scaffold, decomposer, and/or asset-planner as needed. Fresh VQA cycle after rebuild.
+- **pass/warning** — move on.
+- **fail** — godot-task already attempted up to 3 fix cycles. Read its failure report (includes VQA issues and root cause hypothesis) and decide:
+  - **Replan** — re-invoke scaffold, decomposer, and/or asset-planner if the root cause is upstream (wrong assets, wrong architecture, fundamentally mismatched approach).
+  - **Escalate** — surface the issue to the user if you can't determine the right fix.
 
 ## Presentation Video
 
