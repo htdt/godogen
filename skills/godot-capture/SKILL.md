@@ -72,10 +72,12 @@ timeout 60 DISPLAY=$GPU_DISPLAY godot --rendering-method forward_plus \
     --script test/presentation.gd 2>&1
 # Convert AVI (MJPEG) to MP4 (H.264)
 ffmpeg -i _captures/output.avi \
-    -c:v libx264 -pix_fmt yuv420p -crf 20 \
+    -c:v libx264 -pix_fmt yuv420p -crf 28 -preset slow \
+    -vf "scale='min(1280,iw)':-2" \
+    -movflags +faststart \
     $VIDEO/gameplay.mp4 2>&1
 mv _captures/output.avi $VIDEO/
 rm -rf _captures
 ```
 
-**AVI to MP4:** Godot outputs MJPEG AVI. ffmpeg converts to H.264 MP4 (~5-10x smaller). Requires `ffmpeg`.
+**AVI to MP4:** Godot outputs MJPEG AVI. ffmpeg converts to H.264 MP4. CRF 28 + `-preset slow` targets ~2-5MB for a 30s clip at 720p. `-movflags +faststart` enables Telegram preview streaming. Scale filter caps width at 1280px (no-op if already smaller).
