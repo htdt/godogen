@@ -30,7 +30,7 @@ Execute a single development task from PLAN.md. A task may require generating sc
    Also check harness stdout for `ASSERT FAIL`.
    If any check fails, identify the issue, fix scene/script/test, and repeat from step 3.
 10. **Visual QA** — if the task produces visible output and `reference.png` exists, run automated visual QA (see Visual QA section below). Skip for non-visual tasks (script-only, audio, project config) and grey-box tasks (placeholder geometry, no real art yet).
-11. **Video QA** — if the task involves motion/animation and GPU is available, capture video and run video QA as final verification (see Video QA section below). Skip for static-only tasks.
+11. **Video QA** — capture video and run video QA (see Video QA section below). **Mandatory** for any task with motion, animation, or physics. Always mandatory for the final presentation — a task is not complete without a passing video QA. Only skip for purely static tasks (no movement at all).
 12. **Store final evidence** — save screenshots in `screenshots/{task_folder}/` before reporting completion.
 
 ## Iteration Tracking
@@ -48,7 +48,7 @@ Always end your response with:
 - **Screenshot path:** `screenshots/{task_folder}/` and which frames best represent the result (e.g., `frame0003.png`, `frame0006.png`)
 - **What each screenshot shows** — one line per frame (e.g., "frame0003: player car on track, third-person camera", "frame0006: car mid-turn, skid marks visible")
 - **VQA report:** path to `visual-qa/{N}.md` (or "skipped" if non-visual)
-- **Video QA report:** path to `visual-qa/{N}.md` (or "skipped" if static/no GPU)
+- **Video QA report:** path to `visual-qa/{N}.md` (or "skipped — purely static" with justification)
 
 On failure, also include:
 - What's still wrong
@@ -84,7 +84,9 @@ Automated visual quality check using Gemini vision. Load `Skill(skill="visual-qa
 
 ## Video QA
 
-**Mandatory for the final presentation video.** Also run after screenshot VQA passes for tasks with movement/animation (when GPU is available).
+**Video QA is the definitive quality gate for anything that moves.** Screenshot QA catches static issues; video QA catches motion bugs — jitter, clipping during movement, physics glitches, animation pops, objects teleporting between frames.
+
+Run video QA after screenshot VQA passes for any task with motion, animation, or physics. For the **final presentation video, video QA is non-negotiable** — do not report the task as complete without a passing video QA verdict.
 
 Capture video using `godot-capture` skill (Video Capture section), then run video QA. Load `Skill(skill="visual-qa")` for CLI usage. Pass `--verify` with the task's Verify criteria from PLAN.md.
 

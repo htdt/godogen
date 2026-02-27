@@ -16,7 +16,11 @@ Call `check_messages` before starting each new task and before ending the sessio
 
 After scaffold + decomposer, `send_image` `reference.png` with a summary of the PLAN.md. User corrections arrive via `check_messages`.
 
-godot-task reports results (screenshots, status) back to godogen. godogen sends the user a summary + best screenshots via `send_image`. After visual-qa and triage, `send_message` a brief summary of the QA verdict and any rebuilds triggered. After all tasks, godogen sends a final video via `send_video`. Video must be compressed to <50MB (Telegram upload limit).
+godot-task reports results (screenshots, status) back to godogen. godogen sends the user best screenshots via `send_image` as progress updates.
+
+**Visual QA verdicts are the primary verification — always send them.** After each task's visual-qa pass, `send_message` a compact summary: pass/fail, key issues found, and any rebuilds triggered. Never skip this even if the task passed. If a rebuild happens, report its outcome too.
+
+After all tasks, godogen sends a final video via `send_video`. Video must be compressed to <50MB (Telegram upload limit).
 
 # Project Structure
 
