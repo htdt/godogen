@@ -30,11 +30,12 @@ Execute a single development task from PLAN.md. A task may require generating sc
    Also check harness stdout for `ASSERT FAIL`.
    If any check fails, identify the issue, fix scene/script/test, and repeat from step 3.
 10. **Visual QA** — if the task produces visible output and `reference.png` exists, run automated visual QA (see Visual QA section below). Skip for non-visual tasks (script-only, audio, project config) and grey-box tasks (placeholder geometry, no real art yet).
-11. **Store final evidence** — save screenshots and `verification.md` in `screenshots/{task_folder}/` before reporting completion.
+11. **Video QA** — if the task involves motion/animation and GPU is available, capture video and run video QA as final verification (see Video QA section below). Skip for static-only tasks.
+12. **Store final evidence** — save screenshots in `screenshots/{task_folder}/` before reporting completion.
 
 ## Iteration Tracking
 
-Steps 3-10 form an **implement → screenshot → verify → VQA** loop.
+Steps 3-11 form an **implement → screenshot → verify → VQA → video QA** loop.
 
 There is no fixed iteration limit — use judgment:
 - If there is progress — even in small, iterative steps — keep going. Screenshots and file updates are cheap.
@@ -47,6 +48,7 @@ Always end your response with:
 - **Screenshot path:** `screenshots/{task_folder}/` and which frames best represent the result (e.g., `frame0003.png`, `frame0006.png`)
 - **What each screenshot shows** — one line per frame (e.g., "frame0003: player car on track, third-person camera", "frame0006: car mid-turn, skid marks visible")
 - **VQA report:** path to `visual-qa/{N}.md` (or "skipped" if non-visual)
+- **Video QA report:** path to `visual-qa/{N}.md` (or "skipped" if static/no GPU)
 
 On failure, also include:
 - What's still wrong
@@ -78,19 +80,13 @@ Read `MEMORY.md` before starting work — it contains discoveries from previous 
 
 ## Visual QA
 
-Automated visual quality check using Gemini vision. Load `Skill(skill="visual-qa")` for CLI usage and frame selection.
+Automated visual quality check using Gemini vision. Load `Skill(skill="visual-qa")` for CLI usage, frame selection, and failure handling. Pass `--verify` with the task's Verify criteria from PLAN.md.
 
-```bash
-mkdir -p visual-qa
-N=$(ls visual-qa/*.md 2>/dev/null | wc -l); N=$((N + 1))
-python3 .claude/skills/visual-qa/scripts/visual_qa.py reference.png <4 consecutive> <2 diverse> > visual-qa/${N}.md
-```
+## Video QA
 
-Read the output report. Treat VQA feedback the same way you'd treat user feedback — it's usually accurate.
+**Mandatory for the final presentation video.** Also run after screenshot VQA passes for tasks with movement/animation (when GPU is available).
 
-- **pass/warning** — done, proceed to store evidence.
-- **fail** — read the issues, fix what you can (scene placement, scale, materials, spatial bugs), re-capture, re-run VQA. Max 3 cycles.
-  - After 3 failed cycles, stop. Report failure to the orchestrator with the VQA issues — the root cause is likely upstream (wrong assets, wrong approach) and needs replanning or asset changes you can't do yourself.
+Capture video using `godot-capture` skill (Video Capture section), then run video QA. Load `Skill(skill="visual-qa")` for CLI usage. Pass `--verify` with the task's Verify criteria from PLAN.md.
 
 ## Known Quirks
 
@@ -538,6 +534,8 @@ Write `test/test_{task_id}.gd` (e.g., `test/test_T3.gd`) — a SceneTree script 
 
 **Verify what the task actually asks for.** Read the Verify description and think about what would convince you — a skeptic, not the author — that the task is done. A decoration task needs multiple camera angles to check placement and scale. A movement task needs the camera to follow the action over time. A UI task needs the full interface visible. Match the test to the goal.
 
+Load `Skill(skill="godot-capture")` for capture commands (screenshots and video).
+
 ### Test Harness Patterns
 
 **Static scene (decoration, terrain, environment) — use multiple angles:**
@@ -597,20 +595,6 @@ func _process(delta: float) -> bool:
 ### Console Assertions
 
 The test harness stdout is captured alongside screenshots. Use `print("ASSERT PASS/FAIL: ...")` to verify behavioral properties that are hard to judge visually (exact positions, velocities, state changes). After capture, check stdout for any `ASSERT FAIL` lines — these must be fixed before the task is complete.
-
-### Screenshot Capture
-
-Load `Skill(skill="godot-capture")` — it has GPU detection, capture commands (screenshots and video), and frame rate guidance.
-
-After reviewing captured frames (pick 3-5 that cover the verification), save `screenshots/{task_folder}/verification.md`:
-```md
-# Verification
-- Task: {task_id_or_name}
-- Reviewed frames: frame0001.png, frame0004.png, frame0008.png
-- Verify criteria: {from PLAN.md}
-- Decision: PASS | FAIL
-- Notes: {visual findings, ASSERT results, caveats}
-```
 
 ### Simulated Input
 

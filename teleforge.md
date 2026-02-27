@@ -37,7 +37,7 @@ test/
   test_task.gd         # Per-task visual test harness (overwritten each task)
   presentation.gd      # Final cinematic video script
 assets/                # gitignored — img/*.png, glb/*.glb
-screenshots/           # gitignored — per-task frames + verification.md
+screenshots/           # gitignored — per-task frames
 visual-qa/*.md         # Gemini vision QA reports
 ```
 
