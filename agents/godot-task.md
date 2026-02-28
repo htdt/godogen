@@ -29,13 +29,12 @@ Execute a single development task from PLAN.md. A task may require generating sc
    - **Visual quality & logic:** look for obvious bugs — geometry clipping through other geometry, objects floating in mid-air when they shouldn't be, wrong assets used, unnatural asset pose or size, text overflow, UI elements overlapping or cut off at screen edges. Don't add decorations or polish beyond the task scope, but do fix clear correctness issues.
    Also check harness stdout for `ASSERT FAIL`.
    If any check fails, identify the issue, fix scene/script/test, and repeat from step 3.
-10. **Visual QA** — if the task produces visible output and `reference.png` exists, run automated visual QA (see Visual QA section below). Skip for non-visual tasks (script-only, audio, project config) and grey-box tasks (placeholder geometry, no real art yet).
-11. **Video QA** — capture video and run video QA (see Video QA section below). **Mandatory** for any task with motion, animation, or physics. Always mandatory for the final presentation — a task is not complete without a passing video QA. Only skip for purely static tasks (no movement at all).
-12. **Store final evidence** — save screenshots in `screenshots/{task_folder}/` before reporting completion.
+10. **Visual QA** — run automated visual QA (see Visual QA section below) when `reference.png` exists and the task produces visible output. Skip only for non-visual tasks (script-only, audio, project config).
+11. **Store final evidence** — save screenshots in `screenshots/{task_folder}/` before reporting completion.
 
 ## Iteration Tracking
 
-Steps 3-11 form an **implement → screenshot → verify → VQA → video QA** loop.
+Steps 3-10 form an **implement → screenshot → verify → VQA** loop.
 
 There is no fixed iteration limit — use judgment:
 - If there is progress — even in small, iterative steps — keep going. Screenshots and file updates are cheap.
@@ -47,8 +46,7 @@ There is no fixed iteration limit — use judgment:
 Always end your response with:
 - **Screenshot path:** `screenshots/{task_folder}/` and which frames best represent the result (e.g., `frame0003.png`, `frame0006.png`)
 - **What each screenshot shows** — one line per frame (e.g., "frame0003: player car on track, third-person camera", "frame0006: car mid-turn, skid marks visible")
-- **VQA report:** path to `visual-qa/{N}.md` (or "skipped" if non-visual)
-- **Video QA report:** path to `visual-qa/{N}.md` (or "skipped — purely static" with justification)
+- **VQA report:** path to `visual-qa/{N}.md` (or "skipped" if non-visual), note which mode (static/dynamic)
 
 On failure, also include:
 - What's still wrong
@@ -80,15 +78,7 @@ Read `MEMORY.md` before starting work — it contains discoveries from previous 
 
 ## Visual QA
 
-Automated visual quality check using Gemini vision. Load `Skill(skill="visual-qa")` for CLI usage, frame selection, and failure handling. Pass `--verify` with the task's Verify criteria from PLAN.md.
-
-## Video QA
-
-**Video QA is the definitive quality gate for anything that moves.** Screenshot QA catches static issues; video QA catches motion bugs — jitter, clipping during movement, physics glitches, animation pops, objects teleporting between frames.
-
-Run video QA after screenshot VQA passes for any task with motion, animation, or physics. For the **final presentation video, video QA is non-negotiable** — do not report the task as complete without a passing video QA verdict.
-
-Capture video using `godot-capture` skill (Video Capture section), then run video QA. Load `Skill(skill="visual-qa")` for CLI usage. Pass `--verify` with the task's Verify criteria from PLAN.md.
+Load `Skill(skill="visual-qa")` for CLI usage, mode selection, frame cadence, and failure handling. Pass `--context` with the task's **Goal**, **Requirements**, and **Verify** from PLAN.md.
 
 ## Known Quirks
 

@@ -142,7 +142,7 @@ Visual QA runs inside godot-task — each task handles its own VQA cycle. The ta
 
 ## Presentation Video
 
-After all tasks are complete, create a ~30-second cinematic gameplay video as the final deliverable. Dispatch as a godot-task sub-agent — it's just another task, but outputs video instead of screenshots. Adapt the prompt to the game's dimension (3D or 2D):
+After all tasks are complete, create a ~30-second cinematic gameplay video as the final deliverable. Dispatch as a godot-task sub-agent — it's just another task, but outputs video alongside screenshots. QA uses dynamic mode on screenshots first; only capture video after QA passes. Adapt the prompt to the game's dimension (3D or 2D):
 
 ```
 Task(

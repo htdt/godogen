@@ -1,50 +1,57 @@
 ---
 name: visual-qa
 description: >
-  Screenshot QA (reference + 6 frames) and video QA (gameplay MP4) via
-  Gemini 3 Flash vision. Returns pass/fail/warning verdicts.
+  Screenshot QA via Gemini 3 Flash vision — static mode (reference + screenshot)
+  or dynamic mode (reference + frame sequence at 2 FPS). Returns pass/fail/warning.
 ---
 
 # Visual Quality Assurance
 
-## Screenshot QA
+Analyze game screenshots against the visual reference. Two modes based on scene type.
 
-Analyze game screenshots against the visual reference for style fidelity,
-visual bugs, logical inconsistencies, placeholders, and motion anomalies.
+## Static Mode
 
-- **Image 1:** `reference.png` — the visual target (art style, palette, camera, quality bar)
-- **Frames 1-4:** consecutive from mid-capture — motion/animation analysis
-- **Frames 5-6:** different parts of the game — diverse coverage
+For scenes without meaningful motion (decoration, terrain, UI). Two images: reference + one game screenshot.
 
 ```bash
 mkdir -p visual-qa
 N=$(ls visual-qa/*.md 2>/dev/null | wc -l); N=$((N + 1))
-python3 .claude/skills/visual-qa/scripts/visual_qa.py [--verify "criteria"] reference.png <consec1..4.png> <diverse1.png> <diverse2.png> > visual-qa/${N}.md
+python3 .claude/skills/visual-qa/scripts/visual_qa.py \
+  --context "Goal: ...\nRequirements: ...\nVerify: ..." \
+  reference.png screenshots/{task}/frame0003.png > visual-qa/${N}.md
 ```
 
-- Exactly 7 PNG paths: 1 reference + 4 consecutive + 2 diverse
-- First argument must be `reference.png` (the visual target generated at pipeline start)
-- Pick the 4 consecutive frames from the **middle** of the capture (not the very first or last frames)
-- `--verify` — optional, pass the task's Verify criteria so Gemini checks task-specific goals too
-- Outputs markdown report to stdout with verdict (`pass`/`fail`/`warning`), reference match assessment, and per-issue details (severity: major/minor = must fix, note = can skip)
+Pick a representative frame (not the first — often has init artifacts).
 
-## Video QA
+## Dynamic Mode
 
-Analyze a gameplay video for motion/animation correctness and basic aesthetics — stuck entities, sliding, teleportation, physics breaks, camera issues, scene composition.
+For scenes with motion, animation, or physics. Reference + all frames at **2 FPS cadence** — every Nth frame where N = capture_fps / 2.
 
 ```bash
+# Example: captured at --fixed-fps 10 → step=5, select every 5th frame
+# 30s at 10fps = 300 frames → 60 selected frames + 1 reference = 61 images
 mkdir -p visual-qa
 N=$(ls visual-qa/*.md 2>/dev/null | wc -l); N=$((N + 1))
-python3 .claude/skills/visual-qa/scripts/video_qa.py [--verify "criteria"] screenshots/presentation/gameplay.mp4 > visual-qa/${N}.md
+STEP=5  # capture_fps / 2
+FRAMES=$(ls screenshots/{task}/frame*.png | awk "NR % $STEP == 0")
+python3 .claude/skills/visual-qa/scripts/visual_qa.py \
+  --context "Goal: ...\nRequirements: ...\nVerify: ..." \
+  reference.png $FRAMES > visual-qa/${N}.md
 ```
 
-- Single MP4 path. Errors if >100MB (expected <10MB for 30s CRF 28 720p).
-- `--verify` — optional, pass the task's Verify criteria
-- Uses `MEDIA_RESOLUTION_LOW` — cheap: ~1k tokens for a 10s clip.
+Gemini handles 60+ images well in a single request.
+
+## --context
+
+Pass the task's **Goal**, **Requirements**, and **Verify** from PLAN.md. The QA has two objectives:
+1. **Quality verification (primary):** visual defects, bugs, implementation shortcuts — problems regardless of what the task asked for.
+2. **Goal verification (secondary):** does the output match what was requested?
 
 ## Common
 
-- Caller saves stdout to `visual-qa/{N}.md` (N = next sequential number) — committed as test evidence
+- Output: markdown report with verdict (`pass`/`fail`/`warning`), reference match, goal assessment, per-issue details
+- Severity: `major`/`minor` = must fix; `note` = cosmetic, can ship
+- Caller saves stdout to `visual-qa/{N}.md` (sequential) — committed as test evidence
 - Requires `GEMINI_API_KEY` or `GOOGLE_API_KEY` in environment
 - Depends on `google-genai` Python package (same as asset-gen)
 
@@ -55,4 +62,4 @@ When verdict is **fail**, treat the issues as user feedback — VQA is usually a
 - **Fixable** (placement, scale, materials, spatial bugs, clipping, z-fighting, animation logic) — fix it, re-capture, re-run VQA.
 - **Unfixable from here** (wrong assets, wrong approach, architectural mismatch) — stop. Report failure to the orchestrator with the VQA issues so it can replan or change assets.
 
-Max 3 fix-and-rerun cycles. If still failing after 3, the root cause is upstream — report all remaining issues to the orchestrator rather than continuing to iterate on symptoms.
+Max 3 fix-and-rerun cycles. If still failing after 3, the root cause is upstream — report all remaining issues to the orchestrator.
