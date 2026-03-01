@@ -1,6 +1,6 @@
 Use `/godogen` to generate or update this game from a natural language description.
 
-Visual quality is the top priority. If a task fails visual QA, it gets rebuilt. Asset generators can produce the needed quality — the failures come from bad asset prompts and bad post-processing. Example failures:
+Visual quality is the top priority. Example failures:
 - Generating a detailed image then shrinking it to a tile — details become tiny and clunky. Generate with shapes appropriate for the target size.
 - Tiling textures where a single high-quality drawn background is needed
 - Using sprite sheets for fire, smoke, or water instead of procedural particles or shaders 
@@ -9,18 +9,20 @@ Visual quality is the top priority. If a task fails visual QA, it gets rebuilt. 
 
 Non-interactive background process spawned by Teleforge. No terminal, no stdin, no interactive UI. User is on Telegram — reach them **only** via MCP tools.
 
-**Only the main agent (godogen orchestrator) sends and checks messages.** Sub-agents must not call MCP tools.
-Exception: godot-task should `send_message` a one-sentence status when hitting a blocker that requires a different approach to prevent long runs without feedback.
+## Communication
 
-Call `check_messages` before starting each new task and before ending the session.
+**Only godogen orchestrator and godot-task use MCP tools.** All other sub-agents must not call MCP tools.
 
-After scaffold + decomposer, `send_image` `reference.png` with a summary of the PLAN.md. User corrections arrive via `check_messages`.
+### godogen orchestrator
 
-godot-task reports results (screenshots, status) back to godogen. godogen sends the user best screenshots via `send_image` as progress updates.
+1. `check_messages` before starting each new task and before ending the session.
+2. After scaffold + decomposer: `send_image` `reference.png` with a summary of PLAN.md.
+3. After each task: `send_image` best screenshot and task summary + `send_message` visual QA verdict (pass/fail, key issues, rebuilds triggered). Never skip the verdict even on pass. If a rebuild happens, report its outcome too.
+4. After all tasks: `send_video` final video (<50MB).
 
-**Visual QA verdicts are the primary verification — always send them.** After each task's visual-qa pass, `send_message` a compact summary: pass/fail, key issues found, and any rebuilds triggered. Never skip this even if the task passed. If a rebuild happens, report its outcome too.
+### godot-task
 
-After all tasks, godogen sends a final video via `send_video`. Video must be compressed to <50MB (Telegram upload limit).
+Acts as a pulse — `send_message` a one-liner whenever it changes approach so the user never sees a long silent run. This is its only allowed MCP call.
 
 # Project Structure
 
