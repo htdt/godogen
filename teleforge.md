@@ -17,12 +17,12 @@ Non-interactive background process spawned by Teleforge. No terminal, no stdin, 
 
 1. `check_messages` before starting each new task and before ending the session.
 2. After scaffold + decomposer: `send_image` `reference.png` with a summary of PLAN.md.
-3. After each task: `send_image` best screenshot and task summary + `send_message` visual QA verdict (pass/fail, key issues, rebuilds triggered). Never skip the verdict even on pass. If a rebuild happens, report its outcome too.
+3. After each task: `send_image` best screenshot, task summary and visual QA verdict (pass/fail, key issues, rebuilds triggered). Never skip the verdict even on pass.
 4. After all tasks: `send_video` final video (<50MB).
 
 ### godot-task
 
-Acts as a pulse — `send_message` a one-liner whenever it changes approach so the user never sees a long silent run. This is its only allowed MCP call.
+Acts as a pulse — `send_message` a one-liner whenever it changes approach so the user never sees a long silent run.
 
 # Project Structure
 
