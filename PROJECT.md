@@ -46,6 +46,51 @@ Behind the scenes, the **asset-gen** skill provides sophisticated tooling: sprit
 
 The agent carries deep knowledge of Godot's quirks: ownership chains that determine what gets serialized, RID leaks in physics queries, `_ready()` not firing during `_initialize()`, MultiMesh serialization bugs, and dozens of others. This institutional knowledge prevents the class of bugs that waste hours of human debugging time.
 
+The task executor is where the hardest unsolved problem in AI code generation shows up: writing correct code in a language the model barely knows. This is covered in depth below.
+
+### The GDScript Problem
+
+GDScript is not Python, not JavaScript, not any language that LLMs have seen millions of examples of. It's a domain-specific language used by one game engine, with a relatively small corpus of open-source code on the internet. When an LLM writes GDScript, it's working from thin training data — and GDScript has enough surface similarity to Python to make hallucination dangerous. The model confidently writes code that *looks* right but uses APIs that don't exist, patterns that don't work, or type constructs that GDScript's parser rejects.
+
+This is the core technical challenge of Godogen: making an LLM reliably produce correct GDScript for a 850+ class engine API, without the luxury of abundant training examples.
+
+#### Teaching the Language
+
+The solution is a custom-built reference system — the **gdscript-doc** skill — that gives the agent a complete, token-efficient language specification and API reference at runtime.
+
+The first layer is a hand-written GDScript language reference: 830 lines covering everything from type inference rules to signal connection patterns to physics gotchas. This isn't a tutorial — it's written for an expert who needs precise answers fast. It covers the traps that trip up code generators specifically: that `:=` type inference fails on `instantiate()` because it returns Variant, that `abs()` and `clamp()` are polymorphic and need explicit typing, that lambda captures work by reference for collections but by value for primitives. It also encodes game development patterns in GDScript idiom: state machines, spawning, camera rigs, tween chains, navigation — the patterns that an LLM would otherwise approximate from Python or C# examples and get subtly wrong.
+
+The second layer is a complete Godot API reference — all 850+ engine classes — converted from Godot's XML documentation into compact Markdown. A bootstrap script does a sparse git clone of the Godot repository (pulling only the `doc/classes/` directory, not the entire engine source), then a converter transforms each XML class definition into a token-efficient Markdown file: properties, methods, signals, constants, enums, with descriptions trimmed to first sentences.
+
+#### Lazy Two-Tier Lookup
+
+Loading documentation for 850 classes at once would consume the entire context window and leave no room for actual work. So the system uses two-tier lazy loading. A small index file lists the ~128 most commonly used classes (nodes, physics bodies, sprites, cameras, UI elements) with one-line descriptions. A second index covers the remaining ~730 classes. The agent checks the index first, then loads the full documentation for only the specific class it needs at that moment. This means the agent can look up any Godot API on demand while keeping its context window almost entirely free for reasoning and code generation.
+
+The class lists themselves are curated — not alphabetical dumps, but organized by usage context: one list optimized for scene construction (nodes you'd place in a scene tree), another for script writing (runtime APIs, input events, resources), and a balanced unified list for general use. This curation means the agent sees the right classes for the task at hand.
+
+#### Two Kinds of Code
+
+The task executor generates two fundamentally different types of GDScript, and confusing them is a source of bugs that took real iteration to solve.
+
+**Scene builders** are headless programs that construct Godot scenes programmatically. They extend `SceneTree`, run once in Godot's headless mode, build a node hierarchy in memory, serialize it to a `.tscn` file, and exit. They cannot use any runtime features — no `@onready`, no `preload()`, no signal connections, no spatial methods like `look_at()` (the nodes aren't in a live scene tree yet). Their critical job is getting the **ownership chain** right: every node must have its `owner` set to the scene root, or it silently vanishes from the saved file. But ownership must *stop* at instantiated sub-scenes (like imported 3D models), or the serializer inlines their entire internal structure, bloating a scene file from kilobytes to hundreds of megabytes.
+
+**Runtime scripts** are the actual game logic — they extend node types, use the full Godot lifecycle (`_ready()`, `_process()`, `_physics_process()`), connect signals, and respond to input. They're attached to nodes by the scene builders via `set_script()`, but they don't actually execute until the game runs. This timing gap matters: signals must be connected in the runtime script's `_ready()`, not in the scene builder, because the script doesn't exist as a live object during build time.
+
+Getting this build-time/runtime separation clean — what code goes where, what APIs are available when, what state exists at which phase — was one of the harder design problems. An LLM's instinct is to write one script that does everything. The system had to encode strict patterns for which operations belong to which phase.
+
+#### Godot's Quirks as Institutional Knowledge
+
+Beyond the language itself, Godot has engine-level behaviors that are difficult to discover from documentation alone. The task executor encodes dozens of these as explicit rules:
+
+- `_ready()` doesn't fire on nodes during a scene builder's `_initialize()` — so initialization that runtime scripts expect from `_ready()` must be triggered manually
+- `MultiMeshInstance3D` loses its mesh reference after pack-and-save — a serialization bug that silently produces invisible objects
+- Collision state can't be changed inside collision callbacks — requires deferred operations
+- Items spawned inside an active `Area2D` trigger `area_entered` on the same frame — requiring spawn immunity timers
+- Camera2D has no `current` property despite what intuition (and some documentation) suggests — you must call `make_current()` after the node enters the tree
+- High-polygon collision meshes cause single-digit framerates — convex decomposition must be used selectively
+
+Each of these represents a debugging session that a human developer would spend hours on. Encoded in the agent's prompt, they're avoided entirely. This is the unglamorous but essential work: converting hard-won Godot expertise into patterns that prevent the agent from falling into the same traps.
+
 **5. Visual Quality Assurance** — After each task captures screenshots, they go through automated visual QA. A vision model (Gemini Flash) analyzes the screenshots against the reference image and the task's verification criteria, looking for:
 
 - Visual defects: z-fighting, texture stretching, clipping, floating objects
@@ -86,6 +131,8 @@ For remote operation, `teleforge.md` configures the system as a non-interactive 
 **Budget-aware asset generation.** The system treats visual assets as an economic optimization problem: maximize visual impact per cent spent. It knows that a 3D model costs 37 cents, a texture costs 7 cents, and that procedural particles are free — and plans accordingly.
 
 **Minimal task decomposition.** Counter to the instinct to break everything into tiny pieces, the decomposer aggressively bundles routine features and only isolates genuine technical risks. This is informed by hard-won experience: every task boundary is an integration risk, and fewer boundaries means fewer bugs.
+
+**Deep domain expertise for a niche language.** LLMs write confident but wrong GDScript because it looks like Python but isn't. Godogen solves this with a custom-built reference system — a hand-written language spec, 850+ class API docs converted from Godot's source, and lazy two-tier loading that keeps the context window clean. Combined with dozens of encoded engine quirks, the system writes GDScript that actually compiles and runs, not GDScript that merely looks plausible.
 
 ## What It Produces
 
