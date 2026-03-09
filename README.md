@@ -4,7 +4,7 @@ Powered by Godot Engine and Claude Code.
 
 [![Watch the video](https://img.youtube.com/vi/4_2Pl07Z7Ac/maxresdefault.jpg)](https://youtu.be/4_2Pl07Z7Ac)
 
-[Demo prompts](demo_prompts.md)
+[Watch the demos](https://youtu.be/4_2Pl07Z7Ac) [Prompts](demo_prompts.md)
 
 You describe what you want. An AI pipeline designs the architecture, generates the art, writes every line of code, captures screenshots from the running engine, and fixes what doesn't look right — all by itself. The output isn't a visual demo or a throwaway prototype. It's a real Godot 4 project with organized scenes, readable scripts, and proper game architecture.
 
