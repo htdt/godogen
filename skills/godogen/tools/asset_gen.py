@@ -21,7 +21,8 @@ from tripo3d import MODEL_V3, image_to_glb
 
 TOOLS_DIR = Path(__file__).parent
 TEMPLATE_SCRIPT = TOOLS_DIR / "spritesheet_template.py"
-BUDGET_FILE = Path("assets/budget.json")
+# Use absolute path from current working directory to avoid path issues
+BUDGET_FILE = Path.cwd() / "assets" / "budget.json"
 
 
 def _load_budget():

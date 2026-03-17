@@ -13,10 +13,27 @@ if [ $# -lt 1 ]; then
     exit 1
 fi
 
+# Resolve target path
 TARGET="$(cd "$1" 2>/dev/null && pwd || (mkdir -p "$1" && cd "$1" && pwd))"
 CLAUDE_MD="${2:-$REPO_ROOT/teleforge.md}"
 
 echo "Publishing to: $TARGET"
+
+# Safety check: prevent accidental deletion of dangerous paths
+case "$TARGET" in
+    /|/home|/Users|/root|"$HOME"|"$REPO_ROOT")
+        echo "Error: Refusing to delete potentially dangerous directory: $TARGET" >&2
+        echo "Please specify a different target directory." >&2
+        exit 1
+        ;;
+esac
+
+# Also refuse if TARGET contains the repo root (prevent self-deletion)
+if [[ "$TARGET" == "$REPO_ROOT"* ]]; then
+    echo "Error: Target directory is inside the source repository: $TARGET" >&2
+    echo "Please specify a directory outside the repo." >&2
+    exit 1
+fi
 
 rm -rf "$TARGET"
 

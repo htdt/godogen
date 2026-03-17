@@ -63,7 +63,7 @@ def main():
     print(f"Analyzing {desc} with Gemini 3 Flash...", file=sys.stderr)
     try:
         response = client.models.generate_content(
-            model="gemini-3-flash-preview",
+            model="gemini-2.5-flash-preview",  # Updated to latest stable Gemini Flash model
             contents=contents,  # type: ignore[arg-type]
             config=types.GenerateContentConfig(
                 media_resolution=types.MediaResolution.MEDIA_RESOLUTION_HIGH,
