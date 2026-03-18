@@ -2,6 +2,7 @@
 name: godogen
 description: |
   This skill should be used when the user asks to "make a game", "build a game", "generate a game", or wants to generate or update a complete Godot game from a natural language description.
+  中文触发词：做游戏、开发游戏、生成游戏、创建游戏、Godot游戏、游戏开发、帮我做个游戏、游戏生成器
 ---
 
 # Game Generator — Orchestrator
