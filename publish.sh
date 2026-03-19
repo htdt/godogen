@@ -21,8 +21,9 @@ echo "Publishing to: $TARGET"
 rm -rf "$TARGET"
 
 mkdir -p "$TARGET/.claude/skills"
-rsync -a --exclude='doc_source/' --exclude='__pycache__/' \
-    "$REPO_ROOT/skills/" "$TARGET/.claude/skills/"
+cp -r "$REPO_ROOT/skills/." "$TARGET/.claude/skills/"
+rm -rf "$TARGET/.claude/skills/doc_source"
+find "$TARGET/.claude/skills/" -type d -name '__pycache__' -exec rm -rf {} + 2>/dev/null || true
 
 cp "$CLAUDE_MD" "$TARGET/CLAUDE.md"
 echo "Created CLAUDE.md (from $CLAUDE_MD)"

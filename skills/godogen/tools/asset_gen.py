@@ -10,12 +10,15 @@ Output: JSON to stdout. Progress to stderr.
 """
 
 import argparse
+import base64
 import json
+import os
 import sys
 from pathlib import Path
 
 from google import genai
 from google.genai import types
+from openai import OpenAI
 
 from tripo3d import MODEL_V3, image_to_glb
 
@@ -66,6 +69,18 @@ Rules:
 - Maintain consistent style, lighting direction, and proportions across all 16 cells
 - CRITICAL: do NOT draw the numbered circles from the template onto the output — replace them entirely with the actual drawing content"""
 
+# Spritesheet prompt for OpenAI (since it doesn't support image input as layout)
+SPRITESHEET_OPENAI_PROMPT_TPL = """\
+Generate a sprite sheet as a 4x4 grid of 16 equal cells.
+CRITICAL: Draw distinct red lines separating the 4x4 grid cells.
+The image must have a flat solid {bg_color} background — no gradients, no scenery.
+Content: {prompt}
+Rules:
+- Each cell's content must be centered and stay within its cell boundaries.
+- Keep consistent style, lighting, and proportions across all 16 cells.
+- Do not add any text, numbers, or UI elements.
+- Ensure the red grid lines are perfectly straight and clearly visible."""
+
 QUALITY_PRESETS = {
     "lowpoly": {
         "face_limit": 5000,
@@ -112,8 +127,19 @@ IMAGE_SIZES = ["512", "1K", "2K", "4K"]
 IMAGE_COSTS = {"512": 5, "1K": 7, "2K": 10, "4K": 15}
 IMAGE_ASPECT_RATIOS = ["1:1", "1:4", "1:8", "2:3", "3:2", "3:4", "4:1", "4:3", "4:5", "5:4", "8:1", "9:16", "16:9", "21:9"]
 
+OPENAI_MODEL = "dall-e-3"
+OPENAI_COSTS = {"1024x1024": 4, "1024x1792": 8, "1792x1024": 8} # Estimates in cents
+
 
 def cmd_image(args):
+    provider = args.provider
+    if provider == "openai":
+        cmd_image_openai(args)
+    else:
+        cmd_image_gemini(args)
+
+
+def cmd_image_gemini(args):
     size = args.size
     cost = IMAGE_COSTS[size]
     check_budget(cost)
@@ -129,7 +155,7 @@ def cmd_image(args):
     )
     label = f"{size} {args.aspect_ratio}"
 
-    print(f"Generating image ({label})...", file=sys.stderr)
+    print(f"Generating image ({label}) via Gemini...", file=sys.stderr)
 
     client = genai.Client()
     response = client.models.generate_content(
@@ -157,6 +183,43 @@ def cmd_image(args):
     sys.exit(1)
 
 
+def cmd_image_openai(args):
+    # Map sizes/aspect ratios to OpenAI supported ones
+    # DALL-E 3 only supports 1024x1024, 1024x1792, 1792x1024
+    size_str = "1024x1024"
+    if args.aspect_ratio in ["9:16", "3:4", "4:5", "1:4", "1:8"]:
+        size_str = "1024x1792"
+    elif args.aspect_ratio in ["16:9", "4:3", "3:2", "4:1", "8:1", "21:9"]:
+        size_str = "1792x1024"
+    
+    cost = OPENAI_COSTS.get(size_str, 4)
+    check_budget(cost)
+    output = Path(args.output)
+    output.parent.mkdir(parents=True, exist_ok=True)
+
+    print(f"Generating image ({size_str}) via OpenAI...", file=sys.stderr)
+
+    client = OpenAI()
+    try:
+        response = client.images.generate(
+            model=OPENAI_MODEL,
+            prompt=args.prompt,
+            size=size_str,
+            quality="standard",
+            n=1,
+            response_format="b64_json",
+        )
+        import base64
+        img_data = base64.b64decode(response.data[0].b64_json)
+        output.write_bytes(img_data)
+        print(f"Saved: {output}", file=sys.stderr)
+        record_spend(cost, "openai")
+        result_json(True, path=str(output), cost_cents=cost)
+    except Exception as e:
+        result_json(False, error=str(e))
+        sys.exit(1)
+
+
 def generate_template(bg_color: str) -> bytes:
     """Generate a template PNG on the fly with the given BG color. Returns PNG bytes."""
     import subprocess
@@ -173,6 +236,14 @@ def generate_template(bg_color: str) -> bytes:
 
 
 def cmd_spritesheet(args):
+    provider = args.provider
+    if provider == "openai":
+        cmd_spritesheet_openai(args)
+    else:
+        cmd_spritesheet_gemini(args)
+
+
+def cmd_spritesheet_gemini(args):
     cost = IMAGE_COSTS["1K"]  # 7 cents
     check_budget(cost)
     output = Path(args.output)
@@ -181,7 +252,7 @@ def cmd_spritesheet(args):
     bg = args.bg
     template_bytes = generate_template(bg)
     system = SPRITESHEET_SYSTEM_TPL.format(bg_color=bg)
-    print(f"Generating sprite sheet (bg={bg})...", file=sys.stderr)
+    print(f"Generating sprite sheet (bg={bg}) via Gemini...", file=sys.stderr)
 
     client = genai.Client()
     response = client.models.generate_content(
@@ -217,6 +288,37 @@ def cmd_spritesheet(args):
 
     result_json(False, error="No image returned")
     sys.exit(1)
+
+
+def cmd_spritesheet_openai(args):
+    cost = 4 # DALL-E 3 standard 1024x1024 is 4 cents
+    check_budget(cost)
+    output = Path(args.output)
+    output.parent.mkdir(parents=True, exist_ok=True)
+
+    bg = args.bg
+    prompt = SPRITESHEET_OPENAI_PROMPT_TPL.format(bg_color=bg, prompt=args.prompt)
+    print(f"Generating sprite sheet (bg={bg}) via OpenAI...", file=sys.stderr)
+
+    client = OpenAI()
+    try:
+        response = client.images.generate(
+            model=OPENAI_MODEL,
+            prompt=prompt,
+            size="1024x1024",
+            quality="standard",
+            n=1,
+            response_format="b64_json",
+        )
+        import base64
+        img_data = base64.b64decode(response.data[0].b64_json)
+        output.write_bytes(img_data)
+        print(f"Saved: {output}", file=sys.stderr)
+        record_spend(cost, "openai")
+        result_json(True, path=str(output), cost_cents=cost)
+    except Exception as e:
+        result_json(False, error=str(e))
+        sys.exit(1)
 
 
 def cmd_glb(args):
@@ -264,7 +366,7 @@ def cmd_set_budget(args):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Asset Generator — images (Gemini) and GLBs (Tripo3D)")
+    parser = argparse.ArgumentParser(description="Asset Generator — images (Gemini/OpenAI) and GLBs (Tripo3D)")
     sub = parser.add_subparsers(dest="command", required=True)
 
     p_img = sub.add_parser("image", help="Generate a PNG image (5-15¢ depending on size)")
@@ -273,12 +375,14 @@ def main():
                        help="Resolution: 512 (5¢), 1K (7¢), 2K (10¢), 4K (15¢). Default: 1K.")
     p_img.add_argument("--aspect-ratio", choices=IMAGE_ASPECT_RATIOS, default="1:1",
                        help="Aspect ratio. Default: 1:1")
+    p_img.add_argument("--provider", choices=["gemini", "openai"], default="gemini", help="Provider to use. Default: gemini")
     p_img.add_argument("-o", "--output", required=True, help="Output PNG path")
     p_img.set_defaults(func=cmd_image)
 
-    p_ss = sub.add_parser("spritesheet", help="Generate 4x4 sprite sheet (7 cents)")
+    p_ss = sub.add_parser("spritesheet", help="Generate 4x4 sprite sheet (4-7 cents)")
     p_ss.add_argument("--prompt", required=True, help="What to generate (animation description or item list)")
     p_ss.add_argument("--bg", default="#00FF00", help="Background color hex (default: #00FF00 green). Choose a color absent from the subject.")
+    p_ss.add_argument("--provider", choices=["gemini", "openai"], default="gemini", help="Provider to use. Default: gemini")
     p_ss.add_argument("-o", "--output", required=True, help="Output PNG path")
     p_ss.set_defaults(func=cmd_spritesheet)
 

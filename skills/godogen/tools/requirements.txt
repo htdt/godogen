@@ -1,4 +1,5 @@
 google-genai
+openai
 requests
 numpy
 pillow

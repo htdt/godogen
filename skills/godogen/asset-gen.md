@@ -1,22 +1,28 @@
 # Asset Generator
 
-Generate PNG images (Gemini) and GLB 3D models (Tripo3D) from text prompts.
+Generate PNG images (Gemini or OpenAI) and GLB 3D models (Tripo3D) from text prompts.
 
 ## CLI Reference
 
 Tools live at `${CLAUDE_SKILL_DIR}/tools/`. Run from the project root.
 
-### Generate image (5-10 cents)
+### Generate image (4-15 cents)
 
 ```bash
+# Gemini (default)
 python3 ${CLAUDE_SKILL_DIR}/tools/asset_gen.py image \
   --prompt "the full prompt" -o assets/img/car.png
+
+# OpenAI
+python3 ${CLAUDE_SKILL_DIR}/tools/asset_gen.py image \
+  --provider openai --prompt "the full prompt" -o assets/img/car.png
 ```
 
-`--size` (default `1K`): `512` (5c), `1K` (7c), `2K` (10c)
+`--provider` (default `gemini`): `gemini`, `openai`
+`--size` (Gemini only, default `1K`): `512` (5c), `1K` (7c), `2K` (10c), `4K` (15c)
 `--aspect-ratio` (default `1:1`): `1:1`, `1:4`, `1:8`, `2:3`, `3:2`, `3:4`, `4:1`, `4:3`, `4:5`, `5:4`, `8:1`, `9:16`, `16:9`, `21:9`
 
-Typical combos: `--size 2K --aspect-ratio 16:9` (landscape bg), `--size 2K --aspect-ratio 9:16` (portrait), `--size 1K` (textures, sprites, 3D refs).
+OpenAI (DALL-E 3) automatically maps aspect ratios to supported sizes: `1024x1024` (4c), `1024x1792` (8c), or `1792x1024` (8c).
 
 ### Remove background
 
@@ -33,18 +39,25 @@ python3 ${CLAUDE_SKILL_DIR}/tools/rembg_matting.py \
   assets/img/car.png -o assets/img/car_nobg.png
 ```
 
-### Generate sprite sheet (7 cents)
+### Generate sprite sheet (4-7 cents)
 
 Always 4x4 = exactly 16 cells. All 16 must be used — no more, no less. Template and grid instructions are injected automatically; you provide only the subject and BG color.
 
 ```bash
+# Gemini (uses template image for layout)
 python3 ${CLAUDE_SKILL_DIR}/tools/asset_gen.py spritesheet \
   --prompt "Animation: a knight swinging a sword" \
+  --bg "#4A6741" -o assets/img/knight_swing_raw.png
+
+# OpenAI (uses descriptive prompt for layout)
+python3 ${CLAUDE_SKILL_DIR}/tools/asset_gen.py spritesheet \
+  --provider openai --prompt "Animation: a knight swinging a sword" \
   --bg "#4A6741" -o assets/img/knight_swing_raw.png
 ```
 
 - `--prompt` — subject only. Don't specify frame count (system prompt handles it). For animations describe the action; for collections number each item 1-16.
 - `--bg` — background color hex (default: `#00FF00`). See BG color strategy below.
+- `--provider` — `gemini` (default) or `openai`.
 
 ### Process sprite sheet
 
@@ -100,34 +113,37 @@ Progress goes to stderr.
 
 ## Cost Table
 
-| Operation | Preset | Cost | Notes |
-|-----------|--------|------|-------|
-| Image | --size 512 | 5 cents | Configurable aspect ratio |
-| Image | --size 1K | 7 cents | Default. Configurable aspect ratio |
-| Image | --size 2K | 10 cents | HQ objects, textures, backgrounds |
-| Image | --size 4K | 15 cents | Large game maps, panoramic backgrounds |
-| Sprite sheet | — | 7 cents | 1K, 4x4 grid (16 cells, 256x256 each) |
-| GLB | medium | 30 cents | 20k faces, good default |
-| GLB | lowpoly | 40 cents | 5k faces, smart topology |
-| GLB | high | 40 cents | Adaptive faces, detailed textures (+10c) |
-| GLB | ultra | 60 cents | Detailed textures + geometry (+10c +20c) |
+| Operation | Provider | Size/Preset | Cost | Notes |
+|-----------|----------|-------------|------|-------|
+| Image | Gemini | --size 512 | 5 cents | |
+| Image | Gemini | --size 1K | 7 cents | Default |
+| Image | Gemini | --size 2K | 10 cents | HQ objects, textures, backgrounds |
+| Image | Gemini | --size 4K | 15 cents | Large maps, panoramas |
+| Image | OpenAI | 1024x1024 | 4 cents | DALL-E 3 Standard |
+| Image | OpenAI | Vertical/Horiz | 8 cents | 1024x1792 or 1792x1024 |
+| Sprite sheet | Gemini | 1K | 7 cents | 4x4 grid (template-based) |
+| Sprite sheet | OpenAI | 1K | 4 cents | 4x4 grid (prompt-based) |
+| GLB | — | medium | 30 cents | 20k faces, good default |
+| GLB | — | lowpoly | 40 cents | 5k faces, smart topology |
+| GLB | — | high | 40 cents | Adaptive faces, detailed textures |
+| GLB | — | ultra | 60 cents | Detailed textures + geometry |
 
-A full 3D asset (image + GLB) costs 37 cents at medium quality. A texture is 7 cents. A sprite sheet is 7 cents for 16 frames/items. A 2K image is 10 cents. A 4K image is 15 cents.
+A full 3D asset (image + GLB) costs 34-37 cents. A sprite sheet is 4-7 cents for 16 frames.
 
 ## Image Resolution
 
 Use the full generation resolution — don't downscale for aesthetic reasons.
 - Default (`1K`): textures, sprites, 3D references
-- `2K`: HQ objects/textures, backgrounds, title screens
-- `4K`: large game maps (zoom into regions instead of multiple smaller images), panoramic backgrounds
-- `512`: quick tests, low-cost assets
+- `2K` (Gemini): HQ objects/textures, backgrounds, title screens
+- `4K` (Gemini): large game maps, panoramic backgrounds
+- `512` (Gemini): quick tests, low-cost assets
 - Sprite sheets: 1024x1024 total → **256x256 per cell** (after grid crop ~248x248)
 
 ## What to Generate — Cheatsheet
 
 **CRITICAL: Never prompt for "transparent background" — the generator draws a checkerboard. Always use a solid color background, then remove with `rembg_matting.py`.**
 
-### Background / large scenic image (10c)
+### Background / large scenic image (8-15c)
 
 Title screens, sky panoramas, parallax layers, environmental art. Best place for art direction language.
 
@@ -138,7 +154,7 @@ Title screens, sky panoramas, parallax layers, environmental art. Best place for
 
 No post-processing — use as-is.
 
-### Texture (7c)
+### Texture (4-7c)
 
 Tileable surfaces: ground, walls, floors, UI panels.
 
@@ -149,7 +165,7 @@ Tileable surfaces: ground, walls, floors, UI panels.
 
 No background removal — the entire image IS the texture.
 
-### Single object / sprite (7c)
+### Single object / sprite (4-7c)
 
 **With background** (object on a known scene background):
 ```
@@ -162,7 +178,7 @@ No background removal — the entire image IS the texture.
 ```
 Then: `rembg_matting.py input.png -o output.png`
 
-### 3D model reference (7c) + GLB (30-60c)
+### 3D model reference (4-7c) + GLB (30-60c)
 
 ```
 3D model reference of {name}. {description}. 3/4 front elevated camera angle, solid white background, soft diffused studio lighting, matte material finish, single centered subject, no shadows on background. Any windows or glass should be solid tinted (opaque).
@@ -171,7 +187,7 @@ Then: `glb --image ... -o ...` — do NOT remove the background; Tripo3D needs t
 
 Key: 3/4 front elevated angle, solid white/gray bg, matte finish (no reflections), opaque glass, single centered subject.
 
-### Animation → Spritesheet (7c)
+### Animation → Spritesheet (4-7c)
 
 16 cells in a 4x4 grid. Flexible layouts:
 - 16 frames of one subject (walk cycle, attack, bounce)
@@ -188,9 +204,9 @@ Post-processing:
 - **Transparent sprites** (preferred): `clean-bg` → single sheet for `Sprite2D` (`hframes=4, vframes=4`)
 - **With background:** `keep-bg` → single sheet
 
-### Asset kit (16 objects, consistent style) → Spritesheet (7c)
+### Asset kit (16 objects, consistent style) → Spritesheet (4-7c)
 
-Generate 16 small objects that share the same visual style (items, icons, props, tiles). Cheaper and more consistent than 16 individual calls (7c vs 112c).
+Generate 16 small objects that share the same visual style (items, icons, props, tiles). Cheaper and more consistent than 16 individual calls (4c vs 64c or 7c vs 112c).
 
 ```
 Items: 1: red apple 2: banana 3: orange 4: grape 5: cherry ...
