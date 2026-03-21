@@ -108,6 +108,7 @@ def result_json(ok: bool, path: str | None = None, cost_cents: int = 0, error: s
 
 
 IMAGE_MODEL = "gemini-3.1-flash-image-preview"
+AUDIO_MODEL = "gemini-2.0-flash-exp"  # Experimental — audio generation support
 IMAGE_SIZES = ["512", "1K", "2K", "4K"]
 IMAGE_COSTS = {"512": 5, "1K": 7, "2K": 10, "4K": 15}
 IMAGE_ASPECT_RATIOS = ["1:1", "1:4", "1:8", "2:3", "3:2", "3:4", "4:1", "4:3", "4:5", "5:4", "8:1", "9:16", "16:9", "21:9"]
@@ -270,7 +271,7 @@ def cmd_audio(args):
     client = genai.Client()
 
     response = client.models.generate_content(
-        model="gemini-2.0-flash-exp",
+        model=AUDIO_MODEL,
         contents=prompt,
         config=types.GenerateContentConfig(
             response_modalities=["AUDIO"],
@@ -278,7 +279,7 @@ def cmd_audio(args):
     )
 
     # Null-check response (mirrors cmd_image pattern)
-    if not response.candidates or not response.candidates[0].content.parts:
+    if not response.candidates or not response.candidates[0].content or not response.candidates[0].content.parts:
         reason = getattr(response.candidates[0], "finish_reason", "unknown") if response.candidates else "no candidates"
         result_json(False, error=f"Audio generation failed: {reason}")
         sys.exit(1)

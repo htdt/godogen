@@ -228,7 +228,7 @@ func _initialize() -> void:
 	root.name = "ROOT_NAME"         # REPLACE ROOT_NAME — e.g. "Player"
 
 	# SCRIPT — delete block if no script on root
-	root.set_script(load("SCRIPT_PATH"))  # REPLACE SCRIPT_PATH — e.g. "res://scripts/player.gd"
+	root.set_script(load("SCRIPT_PATH"))  # REPLACE SCRIPT_PATH — e.g. "res://scripts/player.gd" (GDScript) or "res://scripts/Player.cs" (C#)
 
 	# CHILDREN — delete block if none, duplicate per child
 	var CHILD_VAR = load("CHILD_PATH").instantiate()  # REPLACE CHILD_VAR, CHILD_PATH

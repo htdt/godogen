@@ -47,5 +47,4 @@ The working directory is the project root. NEVER `cd` — use relative paths for
 
 ## Limitations
 
-- No audio support
 - No animated GLBs — static models only

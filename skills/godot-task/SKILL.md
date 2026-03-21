@@ -43,7 +43,9 @@ $ARGUMENTS
 2. **Import assets** — run `timeout 60 godot --headless --import` to generate `.import` files for any new textures, GLBs, or resources. Without this, `load()` fails with "No loader found" errors. Re-run after modifying existing assets.
 3. **Generate scene(s)** — write GDScript scene builder, compile to produce `.tscn`
 4. **Generate script(s)** — write `.gd` files to `scripts/`
-5. **Pre-validate scripts** — for each newly written or modified `.gd` file, run `timeout 30 godot --headless --quit 2>&1` and filter the output for errors mentioning that file's path. This catches compilation errors in isolation before scene building or full project validation muddies the signal.
+5. **Pre-validate scripts** — catch compilation errors early before full project validation:
+   - **GDScript:** for each newly written or modified `.gd` file, run `timeout 30 godot --headless --quit 2>&1` and filter the output for errors mentioning that file's path.
+   - **C#:** run `dotnet build 2>&1` and check for `error CS` lines. This validates all `.cs` files at once.
 6. **Validate** — run the appropriate build/parse check:
    - **GDScript:** `timeout 60 godot --headless --quit 2>&1`
    - **C#:** `dotnet build 2>&1` — MSBuild errors are more structured. Parse for `error CS` lines.

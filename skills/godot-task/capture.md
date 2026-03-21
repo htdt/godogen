@@ -17,7 +17,7 @@ elif command -v gtimeout &>/dev/null; then
     TIMEOUT_CMD="gtimeout"
 else
     # POSIX fallback for macOS without coreutils
-    timeout_fallback() { perl -e "alarm $1; exec @ARGV[1..$#ARGV]" -- "$@"; }
+    timeout_fallback() { perl -e 'alarm shift; exec @ARGV' "$@"; }
     TIMEOUT_CMD="timeout_fallback"
 fi
 ```

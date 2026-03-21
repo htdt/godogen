@@ -95,9 +95,16 @@ pivot.add_child(camera)
 
 ```gdscript
 # Attach scripts listed in STRUCTURE.md "Attaches to" fields
+# GDScript projects:
 var script := load("res://scripts/player_controller.gd")
 player_node.set_script(script)
+
+# C# projects — use .cs path (requires dotnet build first):
+# var script := load("res://scripts/PlayerController.cs")
+# player_node.set_script(script)
 ```
+
+**C# note:** Check the `## Language:` field in `STRUCTURE.md`. If C#, use `.cs` paths with PascalCase filenames. The Godot .NET build must have been run (`dotnet build`) before scene builders can load C# scripts.
 
 ## Asset Loading
 
@@ -263,7 +270,7 @@ func _initialize() -> void:
     instance.free()
 
     # Check file size for GLB inlining
-    var file := FileAccess.open(scene_path.replace("res://", ""), FileAccess.READ)
+    var file := FileAccess.open(ProjectSettings.globalize_path(scene_path), FileAccess.READ)
     var file_size_mb := 0.0
     if file:
         file_size_mb = file.get_length() / 1048576.0
