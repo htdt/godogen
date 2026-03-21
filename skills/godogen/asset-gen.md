@@ -82,6 +82,21 @@ python3 ${CLAUDE_SKILL_DIR}/tools/asset_gen.py glb \
   --image assets/img/car.png --quality medium -o assets/glb/car.glb
 ```
 
+### Generate audio (3-10 cents)
+
+```bash
+python3 ${CLAUDE_SKILL_DIR}/tools/asset_gen.py audio \
+  --prompt "metallic sword clash, short impact" \
+  --backend gemini -o assets/audio/sfx/sword_hit.ogg
+```
+
+`--backend` (default `gemini`): `gemini` (3c), `local` (0c, basic synthesis), `elevenlabs` (5c), `suno` (10c, music)
+`--duration` (default `2.0`): target duration in seconds
+
+Output is always `.ogg` (OGG Vorbis) — the standard format for Godot audio. If the backend produces a different format, ffmpeg converts automatically.
+
+**Backend selection:** Start with `gemini` (cheapest API integration, already connected). Use `local` for zero-cost basic effects (tones, noise). Use `elevenlabs` or `suno` for premium quality when budget allows.
+
 ### Set budget
 
 ```bash
@@ -111,6 +126,11 @@ Progress goes to stderr.
 | GLB | lowpoly | 40 cents | 5k faces, smart topology |
 | GLB | high | 40 cents | Adaptive faces, detailed textures (+10c) |
 | GLB | ultra | 60 cents | Detailed textures + geometry (+10c +20c) |
+| Audio SFX | gemini | 3 cents | OGG output, good quality |
+| Audio SFX | elevenlabs | 5 cents | High quality |
+| Audio SFX | local | 0 cents | Procedural synthesis, basic |
+| Audio music | suno | 10 cents | 30s loop, high quality |
+| Audio music | local (MusicGen) | 0 cents | Requires GPU |
 
 A full 3D asset (image + GLB) costs 37 cents at medium quality. A texture is 7 cents. A sprite sheet is 7 cents for 16 frames/items. A 2K image is 10 cents. A 4K image is 15 cents.
 
