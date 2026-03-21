@@ -181,22 +181,27 @@ func _initialize() -> void:
     # Set ownership chain (skips instantiated scene internals)
     set_owner_on_new_nodes(root, root)
 
-    # Save
+    # Count nodes before packing for verification
+    var count := _count_nodes(root)
+
+    # Pack and validate
     var packed := PackedScene.new()
     var err := packed.pack(root)
     if err != OK:
         push_error("Pack failed: " + str(err))
         quit(1)
         return
+    if not validate_packed_scene(packed, count, "res://{output_path}.tscn"):
+        quit(1)
+        return
 
+    # Save (only if validation passed)
     err = ResourceSaver.save(packed, "res://{output_path}.tscn")
     if err != OK:
         push_error("Save failed: " + str(err))
         quit(1)
         return
 
-    # Count nodes for verification
-    var count := _count_nodes(root)
     print("BUILT: %d nodes" % count)
     print("Saved: res://{output_path}.tscn")
     quit(0)
@@ -212,6 +217,15 @@ func _count_nodes(node: Node) -> int:
     for child in node.get_children():
         total += _count_nodes(child)
     return total
+
+func validate_packed_scene(packed: PackedScene, expected_count: int, scene_path: String) -> bool:
+    var test_instance = packed.instantiate()
+    var actual := _count_nodes(test_instance)
+    test_instance.free()
+    if actual < expected_count:
+        push_error("Pack validation failed for %s: expected %d nodes, got %d" % [scene_path, expected_count, actual])
+        return false
+    return true
 ```
 
 ## Post-Save Verification

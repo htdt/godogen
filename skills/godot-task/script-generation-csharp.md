@@ -96,4 +96,3 @@ public partial class PlayerController : CharacterBody3D
 - `delta` is `double`, not `float` — cast when needed: `(float)delta`
 - Validate via `dotnet build` — MSBuild errors are more structured than Godot GDScript errors
 - ONLY use input actions from plan's inputs, never invent action names
-- Connect signals in `_Ready()`, NOT in scene builders
