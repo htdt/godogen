@@ -74,3 +74,7 @@ var val = my_dict["key"]         # OK (untyped)
 - `StandardMaterial3D` with `no_depth_test = true` + `TRANSPARENCY_ALPHA` → invisible. Use opaque + unshaded for overlays.
 - Z-fighting between layered surfaces (road on terrain): offset 0.15-0.30m vertically + `render_priority = 1`.
 - `cull_mode = CULL_DISABLED` as safety net on all procedural meshes until winding is confirmed correct.
+
+## Feedback Loop
+
+Quirks are curated manually in this file (skill source repo). When the task executor discovers a workaround during a game build, it writes to `MEMORY.md` (project-level). The skill maintainer periodically reviews `MEMORY.md` entries across projects and promotes recurring patterns here. This is a manual curation step — do not modify this file from within a game project.
