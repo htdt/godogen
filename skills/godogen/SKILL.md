@@ -29,6 +29,10 @@ User request
     |   +- If yes: read PLAN.md, STRUCTURE.md, MEMORY.md -> skip to task execution
     |   +- If no: continue with fresh pipeline below
     |
+    +- Detect language preference (from user prompt or CLAUDE.md)
+    |   +- Default: GDScript
+    |   +- If user specifies C#: propagate to all downstream stages
+    |
     +- Generate visual target -> reference.png + ASSETS.md (art direction only)
     +- Decompose into tasks -> PLAN.md
     +- Design architecture -> STRUCTURE.md + project.godot + stubs

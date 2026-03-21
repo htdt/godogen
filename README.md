@@ -29,6 +29,9 @@ You describe what you want. An AI pipeline designs the architecture, generates t
   - `brew install coreutils` (provides `gtimeout`) — or the capture script uses a perl-based fallback
   - `brew install ffmpeg` — needed for AVI-to-MP4 video conversion
   - Godot 4 must be on `PATH` (symlink from `Godot.app/Contents/MacOS/Godot` or install via Homebrew)
+- **C# projects additional:**
+  - [Godot .NET variant](https://godotengine.org/download/) — the .NET build, not the standard build
+  - [.NET SDK 8.0+](https://dotnet.microsoft.com/download) — required for compilation and validation
 - Tested on Ubuntu, Debian, and macOS. Linux uses X11/xvfb/Vulkan; macOS uses Metal natively.
 
 ### Create a game project

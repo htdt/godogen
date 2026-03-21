@@ -46,6 +46,8 @@ Patterns that Godot handles well out of the box and that a strong LLM implements
 
 Produce `PLAN.md`:
 
+**Language:** Tasks inherit the project language from `STRUCTURE.md`. Do not specify language per-task.
+
 ````markdown
 # Game Plan: {Game Name}
 
