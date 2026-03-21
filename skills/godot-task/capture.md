@@ -46,24 +46,24 @@ Screenshots go in `screenshots/` (gitignored). Each task gets a subfolder.
 
 ```bash
 MOVIE=screenshots/{task_folder}
-rm -rf $MOVIE && mkdir -p $MOVIE
+rm -rf "$MOVIE" && mkdir -p "$MOVIE"
 touch screenshots/.gdignore
 if [[ "$PLATFORM" == "Darwin" ]]; then
     # macOS — Metal rendering, no display server needed
     $TIMEOUT_CMD 30 godot --rendering-method forward_plus \
-        --write-movie $MOVIE/frame.png \
+        --write-movie "$MOVIE"/frame.png \
         --fixed-fps 10 --quit-after {N} \
         --script test/test_task.gd 2>&1
 elif [[ -n "$GPU_DISPLAY" ]]; then
     # Linux with GPU
     $TIMEOUT_CMD 30 DISPLAY=$GPU_DISPLAY godot --rendering-method forward_plus \
-        --write-movie $MOVIE/frame.png \
+        --write-movie "$MOVIE"/frame.png \
         --fixed-fps 10 --quit-after {N} \
         --script test/test_task.gd 2>&1
 else
     # Linux software rendering (lavapipe)
     $TIMEOUT_CMD 30 xvfb-run -a -s '-screen 0 1280x720x24' godot --rendering-driver vulkan \
-        --write-movie $MOVIE/frame.png \
+        --write-movie "$MOVIE"/frame.png \
         --fixed-fps 10 --quit-after {N} \
         --script test/test_task.gd 2>&1
 fi
@@ -86,25 +86,25 @@ Video capture requires hardware rendering — macOS (Metal) or Linux with GPU. S
 ```bash
 if [[ "$PLATFORM" == "Darwin" ]] || [[ -n "$GPU_DISPLAY" ]]; then
     VIDEO=screenshots/presentation
-    rm -rf $VIDEO && mkdir -p $VIDEO
+    rm -rf "$VIDEO" && mkdir -p "$VIDEO"
     touch screenshots/.gdignore
     if [[ "$PLATFORM" == "Darwin" ]]; then
         $TIMEOUT_CMD 60 godot --rendering-method forward_plus \
-            --write-movie $VIDEO/output.avi \
+            --write-movie "$VIDEO"/output.avi \
             --fixed-fps 30 --quit-after 900 \
             --script test/presentation.gd 2>&1
     else
         $TIMEOUT_CMD 60 DISPLAY=$GPU_DISPLAY godot --rendering-method forward_plus \
-            --write-movie $VIDEO/output.avi \
+            --write-movie "$VIDEO"/output.avi \
             --fixed-fps 30 --quit-after 900 \
             --script test/presentation.gd 2>&1
     fi
     # Convert AVI (MJPEG) to MP4 (H.264)
-    ffmpeg -i $VIDEO/output.avi \
+    ffmpeg -i "$VIDEO"/output.avi \
         -c:v libx264 -pix_fmt yuv420p -crf 28 -preset slow \
         -vf "scale='min(1280,iw)':-2" \
         -movflags +faststart \
-        $VIDEO/gameplay.mp4 2>&1
+        "$VIDEO"/gameplay.mp4 2>&1
 else
     echo "No GPU available — skipping video capture"
 fi
