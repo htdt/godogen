@@ -53,6 +53,8 @@ The skills were tested across different setups. Claude Code with Opus 4.6 delive
 - Migrate image generation to `grok-imagine-image` (cheaper per image)
 - Migrate spritesheets to `grok-imagine-video` (animated sprites from video)
 - Add recipes for game builds (Android export)
+- Explore C# as GDScript alternative
 - Publish a full game end-to-end as a public demo
+- Explore Bevy Engine as Godot alternative
 
 Follow progress: [@alex_erm](https://x.com/alex_erm)
