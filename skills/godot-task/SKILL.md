@@ -38,22 +38,23 @@ $ARGUMENTS
 2. **Import assets** — run `timeout 60 godot --headless --import` to generate `.import` files for any new textures, GLBs, or resources. Without this, `load()` fails with "No loader found" errors. Re-run after modifying existing assets.
 3. **Generate scene(s)** — write GDScript scene builder, compile to produce `.tscn`
 4. **Generate script(s)** — write `.gd` files to `scripts/`
-5. **Validate** — run `timeout 60 godot --headless --quit` to check for parse errors across all project scripts
-6. **Fix errors** — if Godot reports errors, read output, fix files, re-run. Repeat until clean.
-7. **Generate test harness** — write `test/test_{task_id}.gd` implementing the task's **Verify** scenario.
-8. **Capture screenshots** — run test with GPU display (or xvfb fallback) and `--write-movie` to produce PNGs
-9. **Verify visually** — read captured PNGs and check three things:
+5. **Pre-validate scripts** — for each newly written or modified `.gd` file, run `timeout 30 godot --headless --quit 2>&1` and filter the output for errors mentioning that file's path. This catches compilation errors in isolation before scene building or full project validation muddies the signal.
+6. **Validate** — run `timeout 60 godot --headless --quit` to check for parse errors across all project scripts
+7. **Fix errors** — if Godot reports errors, read output, fix files, re-run. Repeat until clean.
+8. **Generate test harness** — write `test/test_{task_id}.gd` implementing the task's **Verify** scenario.
+9. **Capture screenshots** — run test with GPU display (or xvfb fallback) and `--write-movie` to produce PNGs
+10. **Verify visually** — read captured PNGs and check three things:
    - **Task goal:** does the screenshot match the **Verify** description?
    - **Visual consistency:** if `reference.png` exists, compare against it — color palette, scale proportions, camera angle, and visual density should be consistent.
    - **Visual quality & logic:** look for obvious bugs — geometry clipping, objects floating, wrong assets, text overflow, UI elements overlapping or cut off.
    Also check harness stdout for `ASSERT FAIL`.
    If any check fails, identify the issue, fix scene/script/test, and repeat from step 3.
-10. **Visual QA** — run automated visual QA when applicable.
-11. **Store final evidence** — save screenshots in `screenshots/{task_folder}/` before reporting completion.
+11. **Visual QA** — run automated visual QA when applicable.
+12. **Store final evidence** — save screenshots in `screenshots/{task_folder}/` before reporting completion.
 
 ## Iteration Tracking
 
-Steps 3-10 form an **implement → screenshot → verify → VQA** loop.
+Steps 3-11 form an **implement → screenshot → verify → VQA** loop.
 
 There is no fixed iteration limit — use judgment:
 - If there is progress — even in small, iterative steps — keep going. Screenshots and file updates are cheap.
@@ -86,6 +87,12 @@ timeout 60 godot --headless --script <path_to_gd_builder>
 # Validate all project scripts (parse check):
 timeout 60 godot --headless --quit 2>&1
 ```
+
+**Structured error recovery:** When a compilation error is caught:
+1. Parse the error — extract the file path, line number, and error type from Godot's output
+2. Look up the class — if the error mentions an unknown method or property, read `doc_api/{ClassName}.md` for the class involved
+3. Check quirks — cross-reference against `quirks.md` for known patterns (`:=` with `instantiate()`, polymorphic math functions, Camera2D `current`, etc.)
+4. Fix and re-validate — edit the specific file, then re-run the pre-validation step on that file only before proceeding
 
 **Error handling:** Parse Godot's stderr/stdout for error lines. Common issues:
 - `Parser Error` — syntax error in GDScript, fix the line indicated
