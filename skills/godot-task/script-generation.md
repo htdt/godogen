@@ -53,6 +53,47 @@ func _physics_process(delta: float) -> void:
     engine_force = fwd * max_engine_force * clampf(5.0 / maxf(spd, 0.1), 0.5, 5.0)
 ```
 
+## Audio Playback
+
+**SFX (one-shot):**
+```gdscript
+# AudioStreamPlayer as child of the emitting node
+@onready var sfx_jump: AudioStreamPlayer = $SfxJump
+
+func _on_jumped() -> void:
+    sfx_jump.play()
+```
+
+**Music (looping):**
+```gdscript
+# AudioStreamPlayer for background music — typically on main scene or autoload
+@onready var music: AudioStreamPlayer = $Music
+
+func _ready() -> void:
+    music.play()
+
+# Crossfade between tracks:
+func crossfade_to(stream: AudioStream, duration: float = 1.0) -> void:
+    var tween := create_tween()
+    tween.tween_property(music, ^"volume_db", -40.0, duration * 0.5)
+    tween.tween_callback(func():
+        music.stream = stream
+        music.play()
+    )
+    tween.tween_property(music, ^"volume_db", 0.0, duration * 0.5)
+```
+
+**Spatial audio (3D):**
+```gdscript
+# AudioStreamPlayer3D positioned on the sound source
+@onready var engine_sound: AudioStreamPlayer3D = $EngineSound
+
+func _physics_process(delta: float) -> void:
+    # Pitch based on speed
+    var pitch: float = clampf(speed / max_speed * 1.5 + 0.5, 0.5, 2.0)
+    engine_sound.pitch_scale = pitch
+```
+
 ## Script Constraints
 
 - `extends` MUST match the node type this script attaches to

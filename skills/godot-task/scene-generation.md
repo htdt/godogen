@@ -343,6 +343,40 @@ hole.height = 1.0
 floor.add_child(hole)
 ```
 
+## Audio Nodes
+
+**SFX player (attach to emitting node):**
+```gdscript
+var sfx := AudioStreamPlayer.new()
+sfx.name = "SfxJump"
+sfx.stream = load("res://assets/audio/sfx/jump.ogg")
+sfx.bus = &"SFX"  # Optional: route to SFX bus
+player.add_child(sfx)
+```
+
+**Music player (on main scene):**
+```gdscript
+var music := AudioStreamPlayer.new()
+music.name = "Music"
+music.stream = load("res://assets/audio/music/gameplay.ogg")
+music.autoplay = true
+# Set looping via the stream resource (safe cast):
+var stream := music.stream as AudioStreamOGGVorbis
+if stream:
+    stream.loop = true
+root.add_child(music)
+```
+
+**3D spatial audio:**
+```gdscript
+var engine := AudioStreamPlayer3D.new()
+engine.name = "EngineSound"
+engine.stream = load("res://assets/audio/sfx/engine.ogg")
+engine.max_distance = 50.0
+engine.autoplay = true
+vehicle.add_child(engine)
+```
+
 ## Noise/Procedural Textures
 
 ```gdscript
