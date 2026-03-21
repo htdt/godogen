@@ -25,7 +25,11 @@ You describe what you want. An AI pipeline designs the architecture, generates t
   - `GOOGLE_API_KEY` — Gemini, used for image generation and visual QA
   - `TRIPO3D_API_KEY` — [Tripo3D](https://platform.tripo3d.ai/), used for image-to-3D model conversion (only needed for 3D games)
 - Python 3 with pip (asset tools install their own deps)
-- Tested on Ubuntu and Debian. macOS is untested — screenshot capture depends on X11/xvfb/Vulkan and will need a native capture path to work.
+- **macOS additional:**
+  - `brew install coreutils` (provides `gtimeout`) — or the capture script uses a perl-based fallback
+  - `brew install ffmpeg` — needed for AVI-to-MP4 video conversion
+  - Godot 4 must be on `PATH` (symlink from `Godot.app/Contents/MacOS/Godot` or install via Homebrew)
+- Tested on Ubuntu, Debian, and macOS. Linux uses X11/xvfb/Vulkan; macOS uses Metal natively.
 
 ### Create a game project
 
