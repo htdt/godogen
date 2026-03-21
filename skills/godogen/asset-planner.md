@@ -24,6 +24,7 @@ Read `STRUCTURE.md` (especially **Asset Hints**) and `PLAN.md` (especially **Ass
 - **3D models**: characters, vehicles, key props, buildings — anything that needs geometry
 - **Textures**: ground surfaces, walls, UI backgrounds — flat materials that tile
 - **Backgrounds**: sky panoramas, parallax layers, title screens, large scenic images — use pro image with `--size 2K` and an appropriate `--aspect-ratio`
+- **Audio**: sound effects for gameplay events, background music loops, ambient sounds — determine what sounds are needed for game feel
 
 The scaffold's Asset Hints describe what the architecture needs. The decomposer's Assets needed fields describe what each task needs. Reconcile both — they may overlap or one may mention assets the other missed.
 
@@ -34,6 +35,8 @@ Each asset costs:
 - HQ texture / background: 10 cents (2K image with `--size 2K`)
 - Large map / panorama: 15 cents (4K image with `--size 4K` — one large image can replace several smaller ones)
 - 3D model: 37 cents (7 cent image + 30 cent GLB at medium quality)
+- Audio SFX: 3 cents (Gemini) or 0 cents (local synthesis)
+- Audio music loop: 10 cents (Suno) or 0 cents (local MusicGen, requires GPU)
 
 Prioritize by visual impact — what makes the game recognizable. Cut low-impact assets first if budget is tight. Reserve ~10% of budget for retries.
 
@@ -99,6 +102,19 @@ Every asset row **must** include a **Size** column — the intended in-game dime
 | Name | Description | Size | Image |
 |------|-------------|------|-------|
 | knight | armored knight walk cycle | 128x128 px per frame | assets/img/knight.png |
+
+## Sound Effects
+
+| Name | Description | Duration | File |
+|------|-------------|----------|------|
+| jump | springy jump launch | 0.3s | assets/audio/sfx/jump.ogg |
+| hit | blunt impact | 0.2s | assets/audio/sfx/hit.ogg |
+
+## Music
+
+| Name | Description | Duration | Loop | File |
+|------|-------------|----------|------|------|
+| gameplay_loop | upbeat chiptune loop | 30s | yes | assets/audio/music/gameplay.ogg |
 ```
 
 ### 6. Update PLAN.md with asset assignments

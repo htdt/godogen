@@ -60,6 +60,7 @@ Produce `PLAN.md`:
   - {High-level, testable behavior}
   - {High-level, testable behavior}
 - **Assets needed:** {What visual assets this task needs — type, approximate size, visual role. Omit if task needs no assets.}
+- **Audio needed:** {What sounds this task needs — SFX triggers, music, ambient. Omit if task needs no audio.}
 - **Verify:** {What screenshots should show to prove the task works. Specific and unambiguous.}
 
 ## 2. {Task Name}
@@ -74,6 +75,7 @@ Produce `PLAN.md`:
 - **Goal** — what this task achieves and why it matters for the game.
 - **Requirements** — high-level behaviors the task must achieve. Focus on *what* the player experiences, not *how* to implement it. The task executor is a highly capable LLM — it doesn't need implementation recipes. Specify concrete values only when they matter for game feel (e.g., "car should feel heavy, not twitchy") or correctness (e.g., "arena is 50m wide to fit 4 players").
 - **Assets needed** — visual assets this task requires, described by type, approximate size, and visual role. Omit for tasks that don't need assets. The asset planner reads these and generates the actual files, then replaces this field with concrete **Assets:** assignments.
+- **Audio needed** — sound effects and music this task requires, described by trigger event and character. Omit for tasks that don't involve audio. The asset planner reads these and generates the actual files.
 - **Verify** — what the task's goal looks like when achieved. Describe the expected visual outcome: what objects are visible, what state they're in, what behavior is demonstrated. Must be concrete enough that a verifier seeing only screenshots can judge pass/fail. The task executor will choose camera angles, test actions, and frame timing.
 
 ## Decomposition Strategy
