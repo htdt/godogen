@@ -22,7 +22,7 @@ python3 ${CLAUDE_SKILL_DIR}/tools/asset_gen.py image \
 `--size` (Gemini only, default `1K`): `512` (5c), `1K` (7c), `2K` (10c), `4K` (15c)
 `--aspect-ratio` (default `1:1`): `1:1`, `1:4`, `1:8`, `2:3`, `3:2`, `3:4`, `4:1`, `4:3`, `4:5`, `5:4`, `8:1`, `9:16`, `16:9`, `21:9`
 
-OpenAI (DALL-E 3) automatically maps aspect ratios to supported sizes: `1024x1024` (4c), `1024x1792` (8c), or `1792x1024` (8c).
+OpenAI (gpt-image-1) automatically maps aspect ratios to supported sizes: `1024x1024` (5c), `1024x1536` (7c), or `1536x1024` (7c). Quality: medium.
 
 ### Remove background
 
@@ -119,10 +119,10 @@ Progress goes to stderr.
 | Image | Gemini | --size 1K | 7 cents | Default |
 | Image | Gemini | --size 2K | 10 cents | HQ objects, textures, backgrounds |
 | Image | Gemini | --size 4K | 15 cents | Large maps, panoramas |
-| Image | OpenAI | 1024x1024 | 4 cents | DALL-E 3 Standard |
-| Image | OpenAI | Vertical/Horiz | 8 cents | 1024x1792 or 1792x1024 |
+| Image | OpenAI | 1024x1024 | 5 cents | gpt-image-1 medium |
+| Image | OpenAI | Vertical/Horiz | 7 cents | 1024x1536 or 1536x1024 |
 | Sprite sheet | Gemini | 1K | 7 cents | 4x4 grid (template-based) |
-| Sprite sheet | OpenAI | 1K | 4 cents | 4x4 grid (prompt-based) |
+| Sprite sheet | OpenAI | 1K | 5 cents | 4x4 grid (prompt-based) |
 | GLB | — | medium | 30 cents | 20k faces, good default |
 | GLB | — | lowpoly | 40 cents | 5k faces, smart topology |
 | GLB | — | high | 40 cents | Adaptive faces, detailed textures |

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Asset Generator CLI - creates images (Gemini) and GLBs (Tripo3D).
+"""Asset Generator CLI - creates images (Gemini/OpenAI gpt-image-1) and GLBs (Tripo3D).
 
 Subcommands:
   image        Generate a PNG from a prompt (5-15 cents depending on size)
@@ -69,7 +69,7 @@ Rules:
 - Maintain consistent style, lighting direction, and proportions across all 16 cells
 - CRITICAL: do NOT draw the numbered circles from the template onto the output — replace them entirely with the actual drawing content"""
 
-# Spritesheet prompt for OpenAI (since it doesn't support image input as layout)
+# Spritesheet prompt for OpenAI gpt-image-1 (no image input as layout)
 SPRITESHEET_OPENAI_PROMPT_TPL = """\
 Generate a sprite sheet as a 4x4 grid of 16 equal cells.
 CRITICAL: Draw distinct red lines separating the 4x4 grid cells.
@@ -127,8 +127,9 @@ IMAGE_SIZES = ["512", "1K", "2K", "4K"]
 IMAGE_COSTS = {"512": 5, "1K": 7, "2K": 10, "4K": 15}
 IMAGE_ASPECT_RATIOS = ["1:1", "1:4", "1:8", "2:3", "3:2", "3:4", "4:1", "4:3", "4:5", "5:4", "8:1", "9:16", "16:9", "21:9"]
 
-OPENAI_MODEL = "dall-e-3"
-OPENAI_COSTS = {"1024x1024": 4, "1024x1792": 8, "1792x1024": 8} # Estimates in cents
+OPENAI_MODEL = "gpt-image-1"
+OPENAI_SIZES = ["1024x1024", "1024x1536", "1536x1024"]
+OPENAI_COSTS = {"1024x1024": 5, "1024x1536": 7, "1536x1024": 7}  # medium quality
 
 
 def cmd_image(args):
@@ -184,15 +185,14 @@ def cmd_image_gemini(args):
 
 
 def cmd_image_openai(args):
-    # Map sizes/aspect ratios to OpenAI supported ones
-    # DALL-E 3 only supports 1024x1024, 1024x1792, 1792x1024
+    # gpt-image-1 supports 1024x1024, 1024x1536, 1536x1024
     size_str = "1024x1024"
     if args.aspect_ratio in ["9:16", "3:4", "4:5", "1:4", "1:8"]:
-        size_str = "1024x1792"
+        size_str = "1024x1536"
     elif args.aspect_ratio in ["16:9", "4:3", "3:2", "4:1", "8:1", "21:9"]:
-        size_str = "1792x1024"
-    
-    cost = OPENAI_COSTS.get(size_str, 4)
+        size_str = "1536x1024"
+
+    cost = OPENAI_COSTS.get(size_str, 5)
     check_budget(cost)
     output = Path(args.output)
     output.parent.mkdir(parents=True, exist_ok=True)
@@ -205,11 +205,9 @@ def cmd_image_openai(args):
             model=OPENAI_MODEL,
             prompt=args.prompt,
             size=size_str,
-            quality="standard",
+            quality="medium",
             n=1,
-            response_format="b64_json",
         )
-        import base64
         img_data = base64.b64decode(response.data[0].b64_json)
         output.write_bytes(img_data)
         print(f"Saved: {output}", file=sys.stderr)
@@ -291,7 +289,7 @@ def cmd_spritesheet_gemini(args):
 
 
 def cmd_spritesheet_openai(args):
-    cost = 4 # DALL-E 3 standard 1024x1024 is 4 cents
+    cost = 5  # gpt-image-1 medium 1024x1024
     check_budget(cost)
     output = Path(args.output)
     output.parent.mkdir(parents=True, exist_ok=True)
@@ -306,11 +304,9 @@ def cmd_spritesheet_openai(args):
             model=OPENAI_MODEL,
             prompt=prompt,
             size="1024x1024",
-            quality="standard",
+            quality="medium",
             n=1,
-            response_format="b64_json",
         )
-        import base64
         img_data = base64.b64decode(response.data[0].b64_json)
         output.write_bytes(img_data)
         print(f"Saved: {output}", file=sys.stderr)
