@@ -6,3 +6,4 @@ scipy
 rembg
 pymatting
 onnxruntime
+pydub

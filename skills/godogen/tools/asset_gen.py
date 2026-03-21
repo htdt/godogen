@@ -252,6 +252,67 @@ def cmd_glb(args):
     result_json(True, path=str(output), cost_cents=preset["cost_cents"])
 
 
+def cmd_audio(args):
+    """Generate audio from a text prompt via configured backend."""
+    if args.backend != "gemini":
+        result_json(False, error=f"Backend '{args.backend}' not yet implemented. Only 'gemini' is currently supported.")
+        sys.exit(1)
+
+    cost = 3  # cents for Gemini audio
+    check_budget(cost)
+
+    output = Path(args.output)
+    output.parent.mkdir(parents=True, exist_ok=True)
+
+    # Include duration hint in the prompt
+    prompt = f"{args.prompt}. Duration: approximately {args.duration} seconds."
+
+    client = genai.Client()
+
+    response = client.models.generate_content(
+        model="gemini-2.0-flash-exp",
+        contents=prompt,
+        config=types.GenerateContentConfig(
+            response_modalities=["AUDIO"],
+        ),
+    )
+
+    # Null-check response (mirrors cmd_image pattern)
+    if not response.candidates or not response.candidates[0].content.parts:
+        reason = getattr(response.candidates[0], "finish_reason", "unknown") if response.candidates else "no candidates"
+        result_json(False, error=f"Audio generation failed: {reason}")
+        sys.exit(1)
+
+    # Extract audio data from response
+    audio_data = None
+    for part in response.candidates[0].content.parts:
+        if part.inline_data and part.inline_data.mime_type.startswith("audio/"):
+            audio_data = part.inline_data.data
+            break
+
+    if audio_data is None:
+        result_json(False, error="No audio data in response")
+        sys.exit(1)
+
+    # Write raw audio, then convert to OGG via ffmpeg
+    tmp_path = output.with_suffix(".tmp.wav")
+    tmp_path.write_bytes(audio_data)
+
+    import subprocess
+    ret = subprocess.run(
+        ["ffmpeg", "-y", "-i", str(tmp_path), "-c:a", "libvorbis", "-q:a", "4", str(output)],
+        capture_output=True, text=True,
+    )
+    tmp_path.unlink(missing_ok=True)
+
+    if ret.returncode != 0:
+        result_json(False, error=f"ffmpeg conversion failed: {ret.stderr[:200]}")
+        sys.exit(1)
+
+    record_spend(cost, "gemini_audio")
+    result_json(True, path=str(output), cost_cents=cost)
+
+
 def cmd_set_budget(args):
     BUDGET_FILE.parent.mkdir(parents=True, exist_ok=True)
     budget = {"budget_cents": args.cents, "log": []}
@@ -291,6 +352,13 @@ def main():
     p_budget = sub.add_parser("set_budget", help="Set the asset generation budget in cents")
     p_budget.add_argument("cents", type=int, help="Budget in cents")
     p_budget.set_defaults(func=cmd_set_budget)
+
+    p_audio = sub.add_parser("audio", help="Generate audio from prompt")
+    p_audio.add_argument("--prompt", required=True)
+    p_audio.add_argument("--backend", default="gemini", choices=["gemini", "local", "elevenlabs", "suno"])
+    p_audio.add_argument("--duration", type=float, default=2.0, help="Target duration in seconds")
+    p_audio.add_argument("-o", "--output", required=True)
+    p_audio.set_defaults(func=cmd_audio)
 
     args = parser.parse_args()
     args.func(args)
