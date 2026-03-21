@@ -219,11 +219,7 @@ func _set_owners(node: Node, owner: Node) -> void:
 			_set_owners(c, owner)
 ```
 
-**CRITICAL: Build order matters.** Scenes that instantiate other scenes must be built AFTER their dependencies. A scene that loads `player.tscn` will fail if `player.tscn` doesn't exist yet. Always build leaf scenes (no child scenes) first, then parents:
-```bash
-timeout 60 godot --headless --script scenes/build_player.gd   # leaf — no children
-timeout 60 godot --headless --script scenes/build_main.gd     # parent — loads player.tscn
-```
+**CRITICAL: Build order is specified in STRUCTURE.md.** The `## Build Order` section lists the exact sequence. Follow it mechanically — do not infer or reorder.
 
 ## UI Overlay Architecture
 
@@ -284,6 +280,19 @@ Assets are generated AFTER scaffold. Include an `## Asset Hints` section at the 
 ```
 
 Be specific about type (model, texture, background, sprite), approximate size, and visual role. Don't describe style — the asset planner chooses that.
+
+### Build Order
+
+The scaffold emits an explicit build order in STRUCTURE.md based on scene dependency analysis. Leaf scenes (no child scene references) first, parents after:
+
+```markdown
+## Build Order
+1. scenes/build_player.gd → scenes/player.tscn
+2. scenes/build_enemy.gd → scenes/enemy.tscn
+3. scenes/build_main.gd → scenes/main.tscn (depends: player.tscn, enemy.tscn)
+```
+
+The task executor follows this order mechanically. Do not rely on the executor to infer dependencies.
 
 ## What NOT to Include
 
