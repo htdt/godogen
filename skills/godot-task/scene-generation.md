@@ -30,6 +30,34 @@ func set_owner_on_new_nodes(node: Node, scene_owner: Node) -> void:
         # else: instantiated scene (GLB/TSCN) — don't recurse, keeps as reference
 ```
 
+### Post-Pack Validation
+
+Call after `packed.pack(root)` to verify no nodes were silently dropped:
+
+```gdscript
+func validate_packed_scene(packed: PackedScene, expected_count: int, scene_path: String) -> bool:
+    var test_instance = packed.instantiate()
+    var actual := _count_nodes(test_instance)
+    test_instance.free()
+    if actual < expected_count:
+        push_error("Pack validation failed for %s: expected %d nodes, got %d — nodes were dropped during serialization" % [scene_path, expected_count, actual])
+        return false
+    return true
+```
+
+Use in the scene template between `packed.pack(root)` and `ResourceSaver.save()`. **Gate the save on the validation result:**
+```gdscript
+    var count := _count_nodes(root)
+    var err := packed.pack(root)
+    if err != OK:
+        push_error("Pack failed: " + str(err))
+        quit(1)
+        return
+    if not validate_packed_scene(packed, count, "res://{output_path}.tscn"):
+        quit(1)
+        return
+```
+
 **WRONG patterns** (cause missing nodes in saved .tscn):
 ```gdscript
 # WRONG: Setting owner only on direct children, forgetting grandchildren
@@ -167,6 +195,9 @@ func _initialize() -> void:
         quit(1)
         return
 
+    # Count nodes for verification
+    var count := _count_nodes(root)
+    print("BUILT: %d nodes" % count)
     print("Saved: res://{output_path}.tscn")
     quit(0)
 
@@ -175,7 +206,80 @@ func set_owner_on_new_nodes(node: Node, scene_owner: Node) -> void:
         child.owner = scene_owner
         if child.scene_file_path.is_empty():
             set_owner_on_new_nodes(child, scene_owner)
+
+func _count_nodes(node: Node) -> int:
+    var total := 1
+    for child in node.get_children():
+        total += _count_nodes(child)
+    return total
 ```
+
+## Post-Save Verification
+
+After running a scene builder, verify the saved `.tscn` by writing and running a verification script. The builder's stdout includes `BUILT: N nodes` — use this expected count.
+
+Write `scenes/verify_scene.gd` into the project:
+
+```gdscript
+extends SceneTree
+
+func _initialize() -> void:
+    var args := OS.get_cmdline_user_args()
+    if args.size() < 2:
+        push_error("Usage: verify_scene.gd -- <scene_path> <expected_nodes>")
+        quit(1)
+        return
+
+    var scene_path: String = args[0]
+    var expected_nodes: int = int(args[1])
+
+    var packed = load(scene_path)
+    if packed == null:
+        print("VERIFY FAIL: could not load %s" % scene_path)
+        quit(1)
+        return
+
+    var instance = packed.instantiate()
+    if instance == null:
+        print("VERIFY FAIL: could not instantiate %s" % scene_path)
+        quit(1)
+        return
+
+    var actual_nodes := _count_nodes(instance)
+    instance.free()
+
+    # Check file size for GLB inlining
+    var file := FileAccess.open(scene_path.replace("res://", ""), FileAccess.READ)
+    var file_size_mb := 0.0
+    if file:
+        file_size_mb = file.get_length() / 1048576.0
+        file.close()
+
+    var size_threshold := 5.0  # MB — adjust to 1.0 for 2D scenes
+    if file_size_mb > size_threshold:
+        print("VERIFY WARN: %s is %.1f MB — possible GLB inlining" % [scene_path, file_size_mb])
+
+    if actual_nodes < expected_nodes:
+        print("VERIFY FAIL: expected %d nodes, got %d in %s" % [expected_nodes, actual_nodes, scene_path])
+        quit(1)
+        return
+
+    print("VERIFY PASS: %d nodes in %s (%.1f MB)" % [actual_nodes, scene_path, file_size_mb])
+    quit(0)
+
+func _count_nodes(node: Node) -> int:
+    var total := 1
+    for child in node.get_children():
+        total += _count_nodes(child)
+    return total
+```
+
+Run after each scene builder:
+```bash
+timeout 30 godot --headless --script scenes/verify_scene.gd -- res://scenes/{name}.tscn {expected_count}
+```
+
+Parse `BUILT: N nodes` from the scene builder's stdout to get `{expected_count}`.
 
 ## Scene Constraints
 
