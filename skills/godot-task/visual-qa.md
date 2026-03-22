@@ -46,7 +46,7 @@ Pass the task's **Goal**, **Requirements**, and **Verify** from PLAN.md. The QA 
 - Severity: `major`/`minor` = must fix; `note` = cosmetic, can ship
 - Caller saves stdout to `visual-qa/{N}.md` (sequential) — committed as test evidence
 - Requires `GEMINI_API_KEY` or `GOOGLE_API_KEY` in environment
-- Depends on `google-genai` Python package (same as asset-gen)
+- Depends on `google-genai` Python package
 
 ## Handling Failures
 

@@ -1,27 +1,35 @@
 #!/usr/bin/env python3
-"""Asset Generator CLI - creates images (Gemini) and GLBs (Tripo3D).
+"""Asset Generator CLI - creates images (xAI Grok) and GLBs (Tripo3D).
 
 Subcommands:
-  image        Generate a PNG from a prompt (5-15 cents depending on size)
-  spritesheet  Generate a 4x4 sprite sheet with template (7 cents)
-  glb          Convert a PNG to a GLB 3D model via Tripo3D (30-40 cents)
+  image   Generate a PNG from a prompt (2¢ standard, 7¢ pro)
+  glb     Convert a PNG to a GLB 3D model via Tripo3D (30-60¢)
 
 Output: JSON to stdout. Progress to stderr.
 """
 
 import argparse
+import base64
 import json
+import os
 import sys
 from pathlib import Path
 
-from google import genai
-from google.genai import types
+import requests
 
 from tripo3d import MODEL_V3, image_to_glb
 
 TOOLS_DIR = Path(__file__).parent
-TEMPLATE_SCRIPT = TOOLS_DIR / "spritesheet_template.py"
 BUDGET_FILE = Path("assets/budget.json")
+
+XAI_API_URL = "https://api.x.ai/v1/images/generations"
+
+
+def get_xai_api_key() -> str:
+    key = os.environ.get("XAI_API_KEY")
+    if not key:
+        raise ValueError("XAI_API_KEY environment variable not set")
+    return key
 
 
 def _load_budget():
@@ -53,18 +61,6 @@ def record_spend(cost_cents: int, service: str):
         return
     budget.setdefault("log", []).append({service: cost_cents})
     BUDGET_FILE.write_text(json.dumps(budget, indent=2) + "\n")
-
-SPRITESHEET_SYSTEM_TPL = """\
-Using the attached template image as an exact layout guide: generate a sprite sheet.
-The image is a 4x4 grid of 16 equal cells separated by red lines.
-Replace each numbered cell with the corresponding content, reading left-to-right, top-to-bottom (cell 1 = first, cell 16 = last).
-
-Rules:
-- KEEP the red grid lines exactly where they are in the template — do not remove, shift, or paint over them
-- Each cell's content must be CENTERED in its cell and must NOT cross into adjacent cells
-- CRITICAL: fill ALL empty space in every cell with flat solid {bg_color} — no gradients, no scenery, no patterns, just the plain color
-- Maintain consistent style, lighting direction, and proportions across all 16 cells
-- CRITICAL: do NOT draw the numbered circles from the template onto the output — replace them entirely with the actual drawing content"""
 
 QUALITY_PRESETS = {
     "lowpoly": {
@@ -107,116 +103,60 @@ def result_json(ok: bool, path: str | None = None, cost_cents: int = 0, error: s
     print(json.dumps(d))
 
 
-IMAGE_MODEL = "gemini-3.1-flash-image-preview"
-IMAGE_SIZES = ["512", "1K", "2K", "4K"]
-IMAGE_COSTS = {"512": 5, "1K": 7, "2K": 10, "4K": 15}
-IMAGE_ASPECT_RATIOS = ["1:1", "1:4", "1:8", "2:3", "3:2", "3:4", "4:1", "4:3", "4:5", "5:4", "8:1", "9:16", "16:9", "21:9"]
+IMAGE_MODEL = "grok-imagine-image"          # 2¢
+IMAGE_MODEL_PRO = "grok-imagine-image-pro"  # 7¢
+IMAGE_MODELS = {"standard": IMAGE_MODEL, "pro": IMAGE_MODEL_PRO}
+IMAGE_COSTS = {"standard": 2, "pro": 7}
+IMAGE_SIZES = ["1K", "2K"]
+IMAGE_ASPECT_RATIOS = [
+    "1:1", "16:9", "9:16", "4:3", "3:4", "3:2", "2:3",
+    "2:1", "1:2", "19.5:9", "9:19.5", "20:9", "9:20", "auto",
+]
 
 
 def cmd_image(args):
-    size = args.size
-    cost = IMAGE_COSTS[size]
+    tier = args.model
+    cost = IMAGE_COSTS[tier]
     check_budget(cost)
     output = Path(args.output)
     output.parent.mkdir(parents=True, exist_ok=True)
 
-    config = types.GenerateContentConfig(
-        response_modalities=["IMAGE"],
-        image_config=types.ImageConfig(
-            image_size=size,
-            aspect_ratio=args.aspect_ratio,
-        ),
-    )
-    label = f"{size} {args.aspect_ratio}"
-
+    model = IMAGE_MODELS[tier]
+    label = f"{tier} {args.size} {args.aspect_ratio}"
     print(f"Generating image ({label})...", file=sys.stderr)
 
-    client = genai.Client()
-    response = client.models.generate_content(
-        model=IMAGE_MODEL,
-        contents=[args.prompt],
-        config=config,
+    key = get_xai_api_key()
+    resp = requests.post(
+        XAI_API_URL,
+        headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"},
+        json={
+            "model": model,
+            "prompt": args.prompt,
+            "n": 1,
+            "response_format": "b64_json",
+            "resolution": args.size.lower(),
+            "aspect_ratio": args.aspect_ratio,
+        },
+        timeout=120,
     )
 
-    if response.parts is None:
-        reason = "unknown"
-        if response.candidates and response.candidates[0].finish_reason:
-            reason = response.candidates[0].finish_reason
-        result_json(False, error=f"Generation blocked (reason: {reason})")
+    if resp.status_code != 200:
+        try:
+            err = resp.json().get("error", {}).get("message", resp.text)
+        except Exception:
+            err = resp.text
+        result_json(False, error=f"xAI API error {resp.status_code}: {err}")
         sys.exit(1)
 
-    for part in response.parts:
-        if part.inline_data is not None:
-            output.write_bytes(part.inline_data.data)
-            print(f"Saved: {output}", file=sys.stderr)
-            record_spend(cost, "gemini")
-            result_json(True, path=str(output), cost_cents=cost)
-            return
-
-    result_json(False, error="No image returned")
-    sys.exit(1)
-
-
-def generate_template(bg_color: str) -> bytes:
-    """Generate a template PNG on the fly with the given BG color. Returns PNG bytes."""
-    import subprocess
-    import tempfile
-    with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as f:
-        tmp = f.name
-    subprocess.run(
-        [sys.executable, str(TEMPLATE_SCRIPT), "-o", tmp, "--bg", bg_color],
-        check=True, capture_output=True,
-    )
-    data = Path(tmp).read_bytes()
-    Path(tmp).unlink()
-    return data
-
-
-def cmd_spritesheet(args):
-    cost = IMAGE_COSTS["1K"]  # 7 cents
-    check_budget(cost)
-    output = Path(args.output)
-    output.parent.mkdir(parents=True, exist_ok=True)
-
-    bg = args.bg
-    template_bytes = generate_template(bg)
-    system = SPRITESHEET_SYSTEM_TPL.format(bg_color=bg)
-    print(f"Generating sprite sheet (bg={bg})...", file=sys.stderr)
-
-    client = genai.Client()
-    response = client.models.generate_content(
-        model=IMAGE_MODEL,
-        contents=[
-            types.Part.from_bytes(data=template_bytes, mime_type="image/png"),
-            args.prompt,
-        ],
-        config=types.GenerateContentConfig(
-            response_modalities=["IMAGE"],
-            system_instruction=system,
-            image_config=types.ImageConfig(
-                image_size="1K",
-                aspect_ratio="1:1",
-            ),
-        ),
-    )
-
-    if response.parts is None:
-        reason = "unknown"
-        if response.candidates and response.candidates[0].finish_reason:
-            reason = response.candidates[0].finish_reason
-        result_json(False, error=f"Generation blocked (reason: {reason})")
+    data = resp.json().get("data", [])
+    if not data or "b64_json" not in data[0]:
+        result_json(False, error="No image returned")
         sys.exit(1)
 
-    for part in response.parts:
-        if part.inline_data is not None:
-            output.write_bytes(part.inline_data.data)
-            print(f"Saved: {output}", file=sys.stderr)
-            record_spend(cost, "gemini")
-            result_json(True, path=str(output), cost_cents=cost)
-            return
-
-    result_json(False, error="No image returned")
-    sys.exit(1)
+    output.write_bytes(base64.b64decode(data[0]["b64_json"]))
+    print(f"Saved: {output}", file=sys.stderr)
+    record_spend(cost, "xai")
+    result_json(True, path=str(output), cost_cents=cost)
 
 
 def cmd_glb(args):
@@ -264,25 +204,21 @@ def cmd_set_budget(args):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Asset Generator — images (Gemini) and GLBs (Tripo3D)")
+    parser = argparse.ArgumentParser(description="Asset Generator — images (xAI Grok) and GLBs (Tripo3D)")
     sub = parser.add_subparsers(dest="command", required=True)
 
-    p_img = sub.add_parser("image", help="Generate a PNG image (5-15¢ depending on size)")
+    p_img = sub.add_parser("image", help="Generate a PNG image (2¢ standard, 7¢ pro)")
     p_img.add_argument("--prompt", required=True, help="Full image generation prompt")
+    p_img.add_argument("--model", choices=list(IMAGE_MODELS.keys()), default="standard",
+                       help="Model tier: standard (2¢, fast) or pro (7¢, higher quality). Default: standard.")
     p_img.add_argument("--size", choices=IMAGE_SIZES, default="1K",
-                       help="Resolution: 512 (5¢), 1K (7¢), 2K (10¢), 4K (15¢). Default: 1K.")
+                       help="Resolution: 1K or 2K. Default: 1K.")
     p_img.add_argument("--aspect-ratio", choices=IMAGE_ASPECT_RATIOS, default="1:1",
                        help="Aspect ratio. Default: 1:1")
     p_img.add_argument("-o", "--output", required=True, help="Output PNG path")
     p_img.set_defaults(func=cmd_image)
 
-    p_ss = sub.add_parser("spritesheet", help="Generate 4x4 sprite sheet (7 cents)")
-    p_ss.add_argument("--prompt", required=True, help="What to generate (animation description or item list)")
-    p_ss.add_argument("--bg", default="#00FF00", help="Background color hex (default: #00FF00 green). Choose a color absent from the subject.")
-    p_ss.add_argument("-o", "--output", required=True, help="Output PNG path")
-    p_ss.set_defaults(func=cmd_spritesheet)
-
-    p_glb = sub.add_parser("glb", help="Convert PNG to GLB 3D model (30-40 cents)")
+    p_glb = sub.add_parser("glb", help="Convert PNG to GLB 3D model (30-60 cents)")
     p_glb.add_argument("--image", required=True, help="Input PNG path")
     p_glb.add_argument("--quality", default="medium", choices=list(QUALITY_PRESETS.keys()), help="Quality preset")
     p_glb.add_argument("-o", "--output", required=True, help="Output GLB path")

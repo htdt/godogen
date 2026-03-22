@@ -6,7 +6,7 @@ Generate a reference image of what the finished game looks like. Anchors art dir
 
 ```bash
 python3 ${CLAUDE_SKILL_DIR}/tools/asset_gen.py image \
-  --prompt "{prompt}" \
+  --model pro --prompt "{prompt}" \
   --size 1K --aspect-ratio 16:9 -o reference.png
 ```
 

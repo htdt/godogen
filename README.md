@@ -10,7 +10,7 @@ You describe what you want. An AI pipeline designs the architecture, generates t
 
 - **Two Claude Code skills** orchestrate the entire pipeline — one plans, one executes. Each task runs in a fresh context to stay focused.
 - **Godot 4 output** — real projects with proper scene trees, scripts, and asset organization.
-- **Asset generation** — Gemini creates 2D art and textures; Tripo3D converts selected images to 3D models. Budget-aware: maximizes visual impact per cent spent.
+- **Asset generation** — xAI Grok creates 2D art and textures; Tripo3D converts selected images to 3D models. Budget-aware: maximizes visual impact per cent spent.
 - **GDScript expertise** — custom-built language reference and lazy-loaded API docs for all 850+ Godot classes compensate for LLMs' thin training data on GDScript.
 - **Visual QA closes the loop** — captures actual screenshots from the running game and analyzes them with Gemini Flash vision. Catches z-fighting, missing textures, broken physics.
 - **Runs on commodity hardware** — any PC with Godot and Claude Code works.
@@ -22,7 +22,8 @@ You describe what you want. An AI pipeline designs the architecture, generates t
 - [Godot 4](https://godotengine.org/download/) (headless or editor) on `PATH`
 - [Claude Code](https://docs.anthropic.com/en/docs/claude-code) installed
 - API keys as environment variables:
-  - `GOOGLE_API_KEY` — Gemini, used for image generation and visual QA
+  - `XAI_API_KEY` — xAI Grok, used for image generation
+  - `GOOGLE_API_KEY` — Gemini, used for visual QA
   - `TRIPO3D_API_KEY` — [Tripo3D](https://platform.tripo3d.ai/), used for image-to-3D model conversion (only needed for 3D games)
 - Python 3 with pip (asset tools install their own deps)
 - Tested on Ubuntu and Debian. macOS is untested — screenshot capture depends on X11/xvfb/Vulkan and will need a native capture path to work.
@@ -32,17 +33,35 @@ You describe what you want. An AI pipeline designs the architecture, generates t
 This repo is the skill development source. To start making a game, run `publish.sh` to set up a new project folder with all skills installed:
 
 ```bash
-./publish.sh ~/my-game          # uses teleforge.md as CLAUDE.md
+./publish.sh ~/my-game          # uses game.md as CLAUDE.md
 ./publish.sh ~/my-game local.md # uses a custom CLAUDE.md instead
 ```
 
 This creates the target directory with `.claude/skills/` and a `CLAUDE.md`, then initializes a git repo. Open Claude Code in that folder and tell it what game to make — the `/godogen` skill handles everything from there.
 
+### Telegram status updates
+
+Claude Code natively supports Telegram as a one-way status channel — screenshots, QA verdicts, and progress updates are pushed to your phone while you work in the CLI.
+
+Setup:
+
+1. Create a bot via [BotFather](https://t.me/BotFather) and copy the token
+2. Install the plugin and configure:
+   ```bash
+   /plugin install telegram@claude-plugins-official
+   /telegram:configure <token>
+   ```
+3. Launch Claude Code with the channel enabled:
+   ```bash
+   claude --channels plugin:telegram@claude-plugins-official
+   ```
+4. Send any message to your bot in Telegram to pair it
+
+The default `CLAUDE.md` (`game.md`) instructs the skills to broadcast task progress, screenshots, and the final video to Telegram automatically.
+
 ### Running on a VM
 
 A single generation run can take several hours. Running on a cloud VM keeps your local machine free and gives the pipeline a GPU for Godot's screenshot capture. A basic GCE instance with a T4 or L4 GPU works well.
-
-The default `CLAUDE.md` (`teleforge.md`) is set up for [Teleforge](https://github.com/htdt/teleforge) — a lightweight Telegram bridge that lets you monitor progress and send messages to the running session from your phone. If you don't use Teleforge, pass your own `CLAUDE.md` to `publish.sh` or edit the generated one after publishing.
 
 ## Is Claude Code the only option?
 
@@ -50,7 +69,7 @@ The skills were tested across different setups. Claude Code with Opus 4.6 delive
 
 ## Roadmap
 
-- Migrate image generation to `grok-imagine-image` (cheaper per image)
+- ~~Migrate image generation to `grok-imagine-image`~~ ✓
 - Migrate spritesheets to `grok-imagine-video` (animated sprites from video)
 - Add recipes for game builds (Android export)
 - Explore C# as GDScript alternative

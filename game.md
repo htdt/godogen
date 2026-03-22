@@ -3,22 +3,19 @@ Use `/godogen` to generate or update this game from a natural language descripti
 Visual quality is the top priority. Example failures:
 - Generating a detailed image then shrinking it to a tile — details become tiny and clunky. Generate with shapes appropriate for the target size.
 - Tiling textures where a single high-quality drawn background is needed
-- Using sprite sheets for fire, smoke, or water instead of procedural particles or shaders 
+- Using sprite sheets for fire, smoke, or water instead of procedural particles or shaders
 
-# Session Instructions
+# Telegram Status
 
-Non-interactive background process spawned by Teleforge. No terminal, no stdin, no interactive UI. User is on Telegram — reach them **only** via MCP tools.
+When a Telegram channel is connected, broadcast progress via `reply`. This is a one-way status feed.
+
+Use `files` parameter with absolute paths to attach screenshots and videos.
 
 ## godogen orchestrator
 
-1. `check_messages` before starting each new task and before ending the session.
-2. After creating PLAN.md: `send_image` `reference.png` with the plan summary.
-3. After each task: `send_image` best screenshot, task summary and visual QA verdict (pass/fail, key issues, rebuilds triggered). Never skip the verdict even on pass.
-4. After all tasks: `send_video` final video (<50MB).
-
-## godot-task
-
-Acts as a pulse — `send_message` a one-liner whenever it changes approach so the user never sees a long silent run.
+1. After creating PLAN.md: `reply` with the plan summary, attach `reference.png`.
+2. After each task: `reply` with task summary and visual QA verdict (pass/fail, key issues, rebuilds triggered), attach best screenshot. Never skip the verdict even on pass.
+3. After all tasks: `reply` with final summary, attach final video (<50MB).
 
 # Project Structure
 
