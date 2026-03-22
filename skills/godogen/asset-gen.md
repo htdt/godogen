@@ -30,19 +30,51 @@ Typical combos: `--model pro --size 2K --aspect-ratio 16:9` (landscape bg), `--m
 
 ### Remove background
 
-Auto-detects bg color from corners, auto-selects regime based on mask quality. Dependencies in `${CLAUDE_SKILL_DIR}/tools/requirements.txt`.
+Read `${CLAUDE_SKILL_DIR}/rembg.md` for full guide: CLI, prompting strategy, troubleshooting, batch mode.
 
-If rembg is not installed:
+### Generate animated sprite video (5¢/sec)
+
+Full workflow: reference image → video → extract frames → batch rembg → sprite frames.
+
+**Step 1: Reference image (7¢)**
+
+Pro model, 1:1, neutral pose, solid BG — same color strategy as static sprites. This image becomes the video's starting frame. Review it carefully: a bad reference wastes 5¢/sec on every video generated from it.
+
 ```bash
-pip install rembg[gpu,cli]   # use rembg[cpu,cli] if no GPU
+python3 ${CLAUDE_SKILL_DIR}/tools/asset_gen.py image \
+  --model pro --prompt "knight in armor, neutral standing pose, facing right, solid #4A6741 background" \
+  --aspect-ratio 1:1 -o assets/img/knight_ref.png
 ```
+
+**Step 2: Generate video**
+
+The reference image is auto-resized to match video resolution (480p = 480×480 for 1:1).
+
+```bash
+python3 ${CLAUDE_SKILL_DIR}/tools/asset_gen.py video \
+  --prompt "knight walking forward, side view, smooth walk cycle" \
+  --image assets/img/knight_ref.png \
+  --duration 3 -o assets/video/knight_walk.mp4
+```
+
+`--duration` (1-15 seconds), `--resolution` (default `480p`): `480p`, `720p`
+
+**Step 3: Extract frames**
+
+```bash
+mkdir -p assets/video/knight_walk_frames
+ffmpeg -i assets/video/knight_walk.mp4 -vsync 0 assets/video/knight_walk_frames/%04d.png
+```
+
+**Step 4: Batch background removal** (see `rembg.md` for full guide)
 
 ```bash
 python3 ${CLAUDE_SKILL_DIR}/tools/rembg_matting.py \
-  assets/img/car.png -o assets/img/car_nobg.png
+  --batch assets/video/knight_walk_frames/ \
+  -o assets/img/knight_walk/
 ```
 
-Always read `${CLAUDE_SKILL_DIR}/rembg.md` after running — it explains how to read the output and fix issues.
+Multiple animations for one character share the same reference image (paid once). Generate videos in parallel.
 
 ### Convert image to GLB (30-60 cents)
 
@@ -77,8 +109,9 @@ Progress goes to stderr.
 | GLB | lowpoly | 40 cents | 5k faces, smart topology |
 | GLB | high | 40 cents | Adaptive faces, detailed textures (+10c) |
 | GLB | ultra | 60 cents | Detailed textures + geometry (+10c +20c) |
+| Video | --duration N | 5¢ × N seconds | Reference image (pro, 7¢) paid once per character |
 
-A full 3D asset (image + GLB) costs 32 cents at medium quality. A texture is 2 cents. A pro background is 7 cents.
+A full 3D asset (image + GLB) costs 32 cents at medium quality. A texture is 2 cents. A pro background is 7 cents. A 3-second animation costs 22 cents (7¢ ref + 15¢ video); additional animations from the same ref cost only the video.
 
 ## Image Resolution
 
@@ -96,7 +129,7 @@ Minimum generation resolution is 1K. A 1024px image downscaled to 64px or even 1
 
 ## What to Generate — Cheatsheet
 
-**CRITICAL: Never prompt for "transparent background" — the generator draws a checkerboard. Always use a solid color background, then remove with `rembg_matting.py`.**
+For any asset needing transparency, read `${CLAUDE_SKILL_DIR}/rembg.md` first — covers BG color strategy, CLI, and troubleshooting.
 
 ### Background / large scenic image (7c pro)
 
@@ -127,11 +160,10 @@ No background removal — the entire image IS the texture.
 {name}, {description}.
 ```
 
-**Transparent** (characters, props, icons, UI elements) — **CRITICAL: prompt must include a solid flat background color.** Without it, the generator draws a detailed/noisy background that rembg cannot cleanly separate:
+**Transparent** (characters, props, icons, UI elements) — prompt with solid BG color, then rembg (see `rembg.md`):
 ```
 {name}, {description}. Centered on a solid {bg_color} background.
 ```
-Then: `rembg_matting.py input.png -o output.png`
 
 ### 3D model reference (2c) + GLB (30-60c)
 
@@ -142,15 +174,23 @@ Then: `glb --image ... -o ...` — do NOT remove the background; Tripo3D needs t
 
 Key: 3/4 front elevated angle, solid white/gray bg, matte finish (no reflections), opaque glass, single centered subject.
 
----
+### Animated sprite — reference image (7c pro) + videos (5c/sec each)
 
-### BG color strategy (applies to all transparent assets)
+**Reference image:**
+```
+{name}, {description}. Neutral standing pose, facing right, centered on a solid {bg_color} background. Clean silhouette.
+```
+`image --model pro --prompt "..." -o path_ref.png`
 
-Pick a prompt bg color that is (1) **distinct from the subject** so rembg separates cleanly, and (2) **close to the expected in-game environment** so residual fringe blends naturally.
+Then rembg the reference to check quality before committing to videos.
 
-Examples: forest game → `#4A6741`; sky/water → `#4A6B8A`; dungeon → `#2A2A2A`; generic → `#808080`.
+**Video prompt (per action):**
+```
+{name} performing {action}, side view, smooth {action} animation. Solid {bg_color} background maintained.
+```
+`video --prompt "..." --image path_ref.png --duration N -o path.mp4`
 
-Avoid pure chromakey colors like `#00FF00` — they create unnatural green fringing.
+Then: ffmpeg frame extraction → batch rembg → clean RGBA frames. See `rembg.md` for CLI and batch details.
 
 ## Tips
 

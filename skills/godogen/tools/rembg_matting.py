@@ -13,6 +13,7 @@ Usage:
 """
 
 import argparse
+import sys
 from pathlib import Path
 
 import numpy as np
@@ -60,9 +61,10 @@ def compute_alpha_color(img: np.ndarray, bg_color: np.ndarray) -> np.ndarray:
     return np.clip(alpha, 0.0, 1.0)
 
 
-def get_soft_mask(img_pil: Image.Image) -> np.ndarray:
+def get_soft_mask(img_pil: Image.Image, session=None) -> np.ndarray:
     """Get soft mask from BiRefNet (0-1 float, not binary)."""
-    session = new_session("birefnet-general")
+    if session is None:
+        session = new_session("birefnet-general")
     mask_pil = remove(img_pil, session=session, only_mask=True,
                       post_process_mask=False)
     return np.array(mask_pil, dtype=np.float64) / 255.0
@@ -95,7 +97,9 @@ def detect_regime(mask_soft: np.ndarray) -> str:
 def remove_background(img: np.ndarray, img_pil: Image.Image,
                       regime: str = "auto",
                       bg_thresh: float | None = None,
-                      fg_thresh: float | None = None) -> np.ndarray:
+                      fg_thresh: float | None = None,
+                      session=None,
+                      bg_color_override: np.ndarray | None = None) -> np.ndarray:
     """Remove solid background, returning RGBA uint8 array.
 
     Regimes:
@@ -107,15 +111,15 @@ def remove_background(img: np.ndarray, img_pil: Image.Image,
     """
     h, w = img.shape[:2]
 
-    # 1. Background color from corners
-    bg_color = sample_bg_color(img)
+    # 1. Background color from corners (or override for batch consistency)
+    bg_color = bg_color_override if bg_color_override is not None else sample_bg_color(img)
     print(f"BG color: RGB({bg_color[0]*255:.0f}, {bg_color[1]*255:.0f}, {bg_color[2]*255:.0f})")
 
     # 2. Color matting
     alpha_color = compute_alpha_color(img, bg_color)
 
     # 3. Soft mask from BiRefNet
-    mask_soft = get_soft_mask(img_pil)
+    mask_soft = get_soft_mask(img_pil, session=session)
     mask_fg = (mask_soft > 0.5).sum()
     mask_pct = mask_fg / mask_soft.size * 100
     print(f"Mask: fg={mask_fg} ({mask_pct:.1f}%)")
@@ -158,11 +162,38 @@ def remove_background(img: np.ndarray, img_pil: Image.Image,
     return out
 
 
+def process_batch(input_dir: Path, output_dir: Path, regime: str = "auto",
+                  bg_thresh: float | None = None, fg_thresh: float | None = None):
+    """Process all PNGs in input_dir with shared BiRefNet session and BG color."""
+    output_dir.mkdir(parents=True, exist_ok=True)
+    frames = sorted(input_dir.glob("*.png"))
+    if not frames:
+        print("No PNG files found", file=sys.stderr)
+        sys.exit(1)
+
+    session = new_session("birefnet-general")
+    print(f"Processing {len(frames)} frames...")
+
+    for i, frame_path in enumerate(frames):
+        img_pil = Image.open(frame_path).convert("RGBA")
+        img = np.array(img_pil.convert("RGB"), dtype=np.float64) / 255.0
+        out = remove_background(img, img_pil, regime=regime,
+                                bg_thresh=bg_thresh, fg_thresh=fg_thresh,
+                                session=session)
+        out_path = output_dir / frame_path.name
+        Image.fromarray(out).save(out_path)
+        print(f"  [{i+1}/{len(frames)}] {out_path.name}", file=sys.stderr)
+
+    print(f"\nBatch complete: {len(frames)} frames → {output_dir}")
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="Remove solid-color background using color matting + BiRefNet mask")
-    parser.add_argument("input", help="Input image path")
-    parser.add_argument("-o", "--output", help="Output PNG path (default: <input>_nobg.png)")
+    parser.add_argument("input", nargs="?", help="Input image path (single mode)")
+    parser.add_argument("-o", "--output", help="Output path (file for single, directory for batch)")
+    parser.add_argument("--batch", metavar="DIR",
+                        help="Batch mode: process all PNGs in DIR")
     parser.add_argument("-m", "--mode", choices=["auto", "trust", "adapt", "color"],
                         default="auto", help="Regime: auto, trust, adapt, color")
     parser.add_argument("--bg-thresh", type=float, default=None,
@@ -170,6 +201,17 @@ def main():
     parser.add_argument("--fg-thresh", type=float, default=None,
                         help="Foreground threshold override")
     args = parser.parse_args()
+
+    if args.batch:
+        if not args.output:
+            print("Error: --batch requires -o OUTPUT_DIR", file=sys.stderr)
+            sys.exit(1)
+        process_batch(Path(args.batch), Path(args.output), regime=args.mode,
+                      bg_thresh=args.bg_thresh, fg_thresh=args.fg_thresh)
+        return
+
+    if not args.input:
+        parser.error("input is required in single mode (or use --batch DIR)")
 
     input_path = Path(args.input)
     output_path = Path(args.output) if args.output else \

@@ -34,6 +34,11 @@ Each asset costs:
 - HQ background / title screen: 7 cents (pro model with `--size 2K`)
 - 3D model: 32 cents (2 cent image + 30 cent GLB at medium quality)
 
+Animated sprites cost more — budget carefully:
+- Animated sprite ref image: 7 cents (pro, once per character)
+- Animation video: 5 cents × duration in seconds
+- Example: 3 animations (walk 3s, attack 2s, idle 2s) for one character = 7 + 15 + 10 + 10 = 42 cents
+
 Prioritize by visual impact — what makes the game recognizable. Cut low-impact assets first if budget is tight. Reserve ~10% of budget for retries.
 
 ### 3. Understand art direction
@@ -95,8 +100,17 @@ Every asset row **must** include a **Size** column — the intended in-game dime
 
 | Name | Description | Size | Image |
 |------|-------------|------|-------|
-| knight | armored knight walk cycle | 128x128 px per frame | assets/img/knight.png |
+| knight | armored knight idle | 128x128 px per frame | assets/img/knight.png |
+
+## Animated Sprites
+
+| Name | Action | Duration | Ref Image | Frames Dir |
+|------|--------|----------|-----------|------------|
+| knight | walk | 3s | assets/img/knight_ref.png | assets/img/knight_walk/ |
+| knight | attack | 2s | assets/img/knight_ref.png | assets/img/knight_attack/ |
 ```
+
+All animations for one character share a single reference image (paid once). Generate the ref image first with pro model, review quality before generating videos. Generate videos in parallel. Then ffmpeg extract + batch rembg per animation.
 
 ### 6. Update PLAN.md with asset assignments
 

@@ -1,6 +1,50 @@
-# Background Removal Guide
+# Background Removal
 
-Always read after running `rembg_matting.py`. Auto mode works most of the time — use this to verify and fix.
+Read this before any background removal. Covers CLI, prompting strategy, troubleshooting, and batch mode.
+
+## When to remove background
+
+Any asset that needs transparency: characters, props, icons, UI elements, animated sprite frames. NOT textures, backgrounds, or 3D model references (Tripo3D needs the solid white bg).
+
+**CRITICAL: Never prompt for "transparent background" — the generator draws a checkerboard. Always use a solid color background, then remove it.**
+
+## BG color strategy
+
+Pick a prompt bg color that is (1) **distinct from the subject** so the mask separates cleanly, and (2) **close to the expected in-game environment** so residual fringe blends naturally.
+
+Examples: forest game → `#4A6741`; sky/water → `#4A6B8A`; dungeon → `#2A2A2A`; generic → `#808080`.
+
+Avoid pure chromakey colors like `#00FF00` — they create unnatural green fringing.
+
+The prompt must include a solid flat background color. Without it, the generator draws a detailed/noisy background that the mask cannot cleanly separate:
+```
+{name}, {description}. Centered on a solid {bg_color} background.
+```
+
+## CLI
+
+Dependencies in `${CLAUDE_SKILL_DIR}/tools/requirements.txt`. If rembg is not installed:
+```bash
+pip install rembg[gpu,cli]   # use rembg[cpu,cli] if no GPU
+```
+
+### Single image
+
+```bash
+python3 ${CLAUDE_SKILL_DIR}/tools/rembg_matting.py \
+  assets/img/car.png -o assets/img/car_nobg.png
+```
+
+### Batch (video frames)
+
+```bash
+python3 ${CLAUDE_SKILL_DIR}/tools/rembg_matting.py \
+  --batch frames_dir/ -o clean_dir/
+```
+
+- BiRefNet session loads once (not per-frame)
+- BG color sampled per-frame from corners — handles color drift across video
+- Same flags apply to all frames
 
 ## Modes
 
@@ -12,7 +56,7 @@ Always read after running `rembg_matting.py`. Auto mode works most of the time �
 | `adapt` | >70% mask fg | Adaptive threshold — fg pixels CAN be removed if bg-colored |
 | `color` | <5% mask fg | Color matting only, no mask — rough fallback |
 
-## Output
+## Reading output
 
 ```
 BG color: RGB(74, 106, 65)     ← sampled from corners
@@ -37,3 +81,5 @@ Read output PNG. Then:
 **Mask failed** (color mode) → result rough. Usually means source image needs regenerating.
 
 Tune `--bg-thresh` and `--fg-thresh` together to trade off bg removal vs fg preservation.
+
+For batch: tune on a single frame first, then apply flags to the full batch.
