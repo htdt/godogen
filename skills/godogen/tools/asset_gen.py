@@ -1,44 +1,27 @@
 #!/usr/bin/env python3
-"""Asset Generator CLI - creates images (xAI Grok) and GLBs (Tripo3D).
+"""Asset Generator CLI - creates images (Gemini) and GLBs (Tripo3D).
 
 Subcommands:
-  image   Generate a PNG from a prompt (2¢ standard, 7¢ pro)
-  glb     Convert a PNG to a GLB 3D model via Tripo3D (30-60¢)
+  image        Generate a PNG from a prompt (5-15 cents depending on size)
+  spritesheet  Generate a 4x4 sprite sheet with reference + template (7-10 cents)
+  glb          Convert a PNG to a GLB 3D model via Tripo3D (30-40 cents)
 
 Output: JSON to stdout. Progress to stderr.
 """
 
 import argparse
-import base64
-import io
 import json
-import os
 import sys
-import time
 from pathlib import Path
 
-import requests
-from PIL import Image
+from google import genai
+from google.genai import types
 
 from tripo3d import MODEL_V3, image_to_glb
 
 TOOLS_DIR = Path(__file__).parent
+TEMPLATE_SCRIPT = TOOLS_DIR / "spritesheet_template.py"
 BUDGET_FILE = Path("assets/budget.json")
-
-XAI_API_URL = "https://api.x.ai/v1/images/generations"
-XAI_VIDEO_URL = "https://api.x.ai/v1/videos/generations"
-XAI_VIDEO_POLL_URL = "https://api.x.ai/v1/videos"
-VIDEO_MODEL = "grok-imagine-video"
-VIDEO_COST_PER_SEC = 5  # cents
-VIDEO_POLL_INTERVAL = 5  # seconds
-VIDEO_POLL_TIMEOUT = 600  # seconds
-
-
-def get_xai_api_key() -> str:
-    key = os.environ.get("XAI_API_KEY")
-    if not key:
-        raise ValueError("XAI_API_KEY environment variable not set")
-    return key
 
 
 def _load_budget():
@@ -70,6 +53,34 @@ def record_spend(cost_cents: int, service: str):
         return
     budget.setdefault("log", []).append({service: cost_cents})
     BUDGET_FILE.write_text(json.dumps(budget, indent=2) + "\n")
+
+SPRITESHEET_SYSTEM_TPL = """\
+Using the attached template image as an exact layout guide: generate a sprite sheet.
+The image is a 4x4 grid of 16 equal cells separated by red lines.
+Replace each numbered cell with the corresponding content, reading left-to-right, top-to-bottom (cell 1 = first, cell 16 = last).
+
+Rules:
+- KEEP the red grid lines exactly where they are in the template — do not remove, shift, or paint over them
+- Each cell's content must be CENTERED in its cell and must NOT cross into adjacent cells
+- KEEP the existing flat solid background color in every cell — do not add gradients, scenery, or patterns
+- Maintain consistent style, lighting direction, and proportions across all 16 cells
+- CRITICAL: do NOT draw the numbered circles from the template onto the output — replace them entirely with the actual drawing content"""
+
+SPRITESHEET_REF_SYSTEM_TPL = """\
+Using the attached template image as an exact layout guide: generate a sprite sheet.
+The image is a 4x4 grid of 16 equal cells separated by red lines.
+Cell 1 (top-left) contains a REFERENCE IMAGE — this defines the character's appearance. Study it carefully. Cell 1 will be discarded after generation; the animation is cells 2-16 only.
+
+Replace the numbered cells (2-16) with animation frames as described in the prompt.
+
+Rules:
+- MATCH the character from the cell 1 reference exactly across ALL frames — same proportions, colors, details
+- Do NOT modify cell 1 — leave the reference image as-is
+- KEEP the red grid lines exactly where they are in the template — do not remove, shift, or paint over them
+- Each cell's content must be CENTERED in its cell and must NOT cross into adjacent cells
+- KEEP the existing flat solid background color in every cell — do not add gradients, scenery, or patterns
+- Maintain consistent style, lighting direction, and proportions across all 16 cells
+- CRITICAL: do NOT draw the numbered circles from the template onto the output — replace them entirely with the actual drawing content"""
 
 QUALITY_PRESETS = {
     "lowpoly": {
@@ -112,160 +123,129 @@ def result_json(ok: bool, path: str | None = None, cost_cents: int = 0, error: s
     print(json.dumps(d))
 
 
-IMAGE_MODEL = "grok-imagine-image"          # 2¢
-IMAGE_MODEL_PRO = "grok-imagine-image-pro"  # 7¢
-IMAGE_MODELS = {"standard": IMAGE_MODEL, "pro": IMAGE_MODEL_PRO}
-IMAGE_COSTS = {"standard": 2, "pro": 7}
-IMAGE_SIZES = ["1K", "2K"]
-IMAGE_ASPECT_RATIOS = [
-    "1:1", "16:9", "9:16", "4:3", "3:4", "3:2", "2:3",
-    "2:1", "1:2", "19.5:9", "9:19.5", "20:9", "9:20", "auto",
-]
+IMAGE_MODEL = "gemini-3.1-flash-image-preview"
+IMAGE_SIZES = ["512", "1K", "2K", "4K"]
+IMAGE_COSTS = {"512": 5, "1K": 7, "2K": 10, "4K": 15}
+IMAGE_ASPECT_RATIOS = ["1:1", "1:4", "1:8", "2:3", "3:2", "3:4", "4:1", "4:3", "4:5", "5:4", "8:1", "9:16", "16:9", "21:9"]
 
 
 def cmd_image(args):
-    tier = args.model
-    cost = IMAGE_COSTS[tier]
+    size = args.size
+    cost = IMAGE_COSTS[size]
     check_budget(cost)
     output = Path(args.output)
     output.parent.mkdir(parents=True, exist_ok=True)
 
-    model = IMAGE_MODELS[tier]
-    label = f"{tier} {args.size} {args.aspect_ratio}"
+    config = types.GenerateContentConfig(
+        response_modalities=["IMAGE"],
+        image_config=types.ImageConfig(
+            image_size=size,
+            aspect_ratio=args.aspect_ratio,
+        ),
+    )
+    label = f"{size} {args.aspect_ratio}"
+
     print(f"Generating image ({label})...", file=sys.stderr)
 
-    key = get_xai_api_key()
-    resp = requests.post(
-        XAI_API_URL,
-        headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"},
-        json={
-            "model": model,
-            "prompt": args.prompt,
-            "n": 1,
-            "response_format": "b64_json",
-            "resolution": args.size.lower(),
-            "aspect_ratio": args.aspect_ratio,
-        },
-        timeout=120,
+    client = genai.Client()
+    response = client.models.generate_content(
+        model=IMAGE_MODEL,
+        contents=[args.prompt],
+        config=config,
     )
 
-    if resp.status_code != 200:
-        try:
-            err = resp.json().get("error", {}).get("message", resp.text)
-        except Exception:
-            err = resp.text
-        result_json(False, error=f"xAI API error {resp.status_code}: {err}")
+    if response.parts is None:
+        reason = "unknown"
+        if response.candidates and response.candidates[0].finish_reason:
+            reason = response.candidates[0].finish_reason
+        result_json(False, error=f"Generation blocked (reason: {reason})")
         sys.exit(1)
 
-    data = resp.json().get("data", [])
-    if not data or "b64_json" not in data[0]:
-        result_json(False, error="No image returned")
-        sys.exit(1)
+    for part in response.parts:
+        if part.inline_data is not None:
+            output.write_bytes(part.inline_data.data)
+            print(f"Saved: {output}", file=sys.stderr)
+            record_spend(cost, "gemini")
+            result_json(True, path=str(output), cost_cents=cost)
+            return
 
-    output.write_bytes(base64.b64decode(data[0]["b64_json"]))
-    print(f"Saved: {output}", file=sys.stderr)
-    record_spend(cost, "xai")
-    result_json(True, path=str(output), cost_cents=cost)
-
-
-def _resize_to_data_uri(image_path: Path, size: int) -> str:
-    """Load image, resize to size×size, return as base64 data URI."""
-    img = Image.open(image_path).convert("RGB")
-    img = img.resize((size, size), Image.Resampling.LANCZOS)
-    buf = io.BytesIO()
-    img.save(buf, format="PNG")
-    b64 = base64.b64encode(buf.getvalue()).decode()
-    return f"data:image/png;base64,{b64}"
-
-
-def _poll_video(request_id: str, key: str) -> dict:
-    """Poll video generation until done. Returns response JSON."""
-    url = f"{XAI_VIDEO_POLL_URL}/{request_id}"
-    headers = {"Authorization": f"Bearer {key}"}
-    start = time.time()
-    while time.time() - start < VIDEO_POLL_TIMEOUT:
-        resp = requests.get(url, headers=headers, timeout=30)
-        if resp.status_code != 200:
-            result_json(False, error=f"Poll error {resp.status_code}: {resp.text}")
-            sys.exit(1)
-        data = resp.json()
-        status = data.get("status", "")
-        elapsed = int(time.time() - start)
-        print(f"  [{elapsed}s] status={status}", file=sys.stderr)
-        if status == "done":
-            return data
-        if status in ("failed", "expired"):
-            result_json(False, error=f"Video generation {status}: {data}")
-            sys.exit(1)
-        time.sleep(VIDEO_POLL_INTERVAL)
-    result_json(False, error=f"Video generation timed out after {VIDEO_POLL_TIMEOUT}s")
+    result_json(False, error="No image returned")
     sys.exit(1)
 
 
-def cmd_video(args):
-    cost = args.duration * VIDEO_COST_PER_SEC
+def generate_template(bg_color: str, size: int = 2048,
+                      reference: str | None = None) -> bytes:
+    """Generate a template PNG on the fly. Returns PNG bytes."""
+    import subprocess
+    import tempfile
+    with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as f:
+        tmp = f.name
+    cmd = [sys.executable, str(TEMPLATE_SCRIPT), "-o", tmp, "--bg", bg_color,
+           "--size", str(size)]
+    if reference:
+        cmd.extend(["--reference", reference])
+    subprocess.run(cmd, check=True, capture_output=True)
+    data = Path(tmp).read_bytes()
+    Path(tmp).unlink()
+    return data
+
+
+def cmd_spritesheet(args):
+    cost = IMAGE_COSTS["2K"]  # 10 cents
     check_budget(cost)
     output = Path(args.output)
     output.parent.mkdir(parents=True, exist_ok=True)
 
-    image_path = Path(args.image)
-    if not image_path.exists():
-        result_json(False, error=f"Reference image not found: {image_path}")
+    bg = args.bg
+    reference = args.reference
+    if reference and not Path(reference).exists():
+        result_json(False, error=f"Reference image not found: {reference}")
         sys.exit(1)
 
-    # 480p 1:1 = 480×480
-    res_px = {"480p": 480, "720p": 720}[args.resolution]
-    print(f"Generating {args.duration}s video ({args.resolution}, {res_px}×{res_px})...", file=sys.stderr)
-    print(f"  Resizing {image_path} to {res_px}×{res_px}...", file=sys.stderr)
-    image_uri = _resize_to_data_uri(image_path, res_px)
+    template_bytes = generate_template(bg, size=2048, reference=reference)
 
-    key = get_xai_api_key()
-    resp = requests.post(
-        XAI_VIDEO_URL,
-        headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"},
-        json={
-            "model": VIDEO_MODEL,
-            "prompt": args.prompt,
-            "duration": args.duration,
-            "aspect_ratio": "1:1",
-            "resolution": args.resolution,
-            "image_url": image_uri,
-        },
-        timeout=60,
+    if reference:
+        system = SPRITESHEET_REF_SYSTEM_TPL.format(bg_color=bg)
+    else:
+        system = SPRITESHEET_SYSTEM_TPL.format(bg_color=bg)
+
+    label = f"2K, bg={bg}" + (", ref" if reference else "")
+    print(f"Generating sprite sheet ({label})...", file=sys.stderr)
+
+    client = genai.Client()
+    response = client.models.generate_content(
+        model=IMAGE_MODEL,
+        contents=[
+            types.Part.from_bytes(data=template_bytes, mime_type="image/png"),
+            args.prompt,
+        ],
+        config=types.GenerateContentConfig(
+            response_modalities=["IMAGE"],
+            system_instruction=system,
+            image_config=types.ImageConfig(
+                image_size="2K",
+                aspect_ratio="1:1",
+            ),
+        ),
     )
 
-    if resp.status_code != 200:
-        try:
-            err = resp.json().get("error", {}).get("message", resp.text)
-        except Exception:
-            err = resp.text
-        result_json(False, error=f"xAI video API error {resp.status_code}: {err}")
+    if response.parts is None:
+        reason = "unknown"
+        if response.candidates and response.candidates[0].finish_reason:
+            reason = response.candidates[0].finish_reason
+        result_json(False, error=f"Generation blocked (reason: {reason})")
         sys.exit(1)
 
-    request_id = resp.json().get("request_id")
-    if not request_id:
-        result_json(False, error=f"No request_id in response: {resp.text}")
-        sys.exit(1)
-    print(f"  request_id={request_id}", file=sys.stderr)
+    for part in response.parts:
+        if part.inline_data is not None:
+            output.write_bytes(part.inline_data.data)
+            print(f"Saved: {output}", file=sys.stderr)
+            record_spend(cost, "gemini")
+            result_json(True, path=str(output), cost_cents=cost)
+            return
 
-    # Poll until done
-    data = _poll_video(request_id, key)
-    video_url = data.get("video", {}).get("url")
-    if not video_url:
-        result_json(False, error=f"No video URL in response: {data}")
-        sys.exit(1)
-
-    # Download MP4
-    print(f"  Downloading video...", file=sys.stderr)
-    dl = requests.get(video_url, timeout=120)
-    if dl.status_code != 200:
-        result_json(False, error=f"Video download failed: {dl.status_code}")
-        sys.exit(1)
-    output.write_bytes(dl.content)
-
-    print(f"Saved: {output}", file=sys.stderr)
-    record_spend(cost, "xai-video")
-    result_json(True, path=str(output), cost_cents=cost)
+    result_json(False, error="No image returned")
+    sys.exit(1)
 
 
 def cmd_glb(args):
@@ -313,30 +293,26 @@ def cmd_set_budget(args):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Asset Generator — images (xAI Grok) and GLBs (Tripo3D)")
+    parser = argparse.ArgumentParser(description="Asset Generator — images (Gemini) and GLBs (Tripo3D)")
     sub = parser.add_subparsers(dest="command", required=True)
 
-    p_img = sub.add_parser("image", help="Generate a PNG image (2¢ standard, 7¢ pro)")
+    p_img = sub.add_parser("image", help="Generate a PNG image (5-15¢ depending on size)")
     p_img.add_argument("--prompt", required=True, help="Full image generation prompt")
-    p_img.add_argument("--model", choices=list(IMAGE_MODELS.keys()), default="standard",
-                       help="Model tier: standard (2¢, fast) or pro (7¢, higher quality). Default: standard.")
     p_img.add_argument("--size", choices=IMAGE_SIZES, default="1K",
-                       help="Resolution: 1K or 2K. Default: 1K.")
+                       help="Resolution: 512 (5¢), 1K (7¢), 2K (10¢), 4K (15¢). Default: 1K.")
     p_img.add_argument("--aspect-ratio", choices=IMAGE_ASPECT_RATIOS, default="1:1",
                        help="Aspect ratio. Default: 1:1")
     p_img.add_argument("-o", "--output", required=True, help="Output PNG path")
     p_img.set_defaults(func=cmd_image)
 
-    p_vid = sub.add_parser("video", help="Generate MP4 video from prompt + reference image (5¢/sec)")
-    p_vid.add_argument("--prompt", required=True, help="Video generation prompt")
-    p_vid.add_argument("--image", required=True, help="Reference image path (starting frame)")
-    p_vid.add_argument("--duration", type=int, required=True, help="Duration in seconds (1-15)")
-    p_vid.add_argument("--resolution", choices=["480p", "720p"], default="480p",
-                       help="Video resolution. Default: 480p")
-    p_vid.add_argument("-o", "--output", required=True, help="Output MP4 path")
-    p_vid.set_defaults(func=cmd_video)
+    p_ss = sub.add_parser("spritesheet", help="Generate 4x4 sprite sheet (10¢, 2K)")
+    p_ss.add_argument("--prompt", required=True, help="Per-frame descriptions (e.g. '2: right foot forward, 3: mid-stride...')")
+    p_ss.add_argument("--reference", help="Reference image path — embedded in cell 1 for character consistency")
+    p_ss.add_argument("--bg", default="#00FF00", help="Background color hex (default: #00FF00 green). Choose a color absent from the subject.")
+    p_ss.add_argument("-o", "--output", required=True, help="Output PNG path")
+    p_ss.set_defaults(func=cmd_spritesheet)
 
-    p_glb = sub.add_parser("glb", help="Convert PNG to GLB 3D model (30-60 cents)")
+    p_glb = sub.add_parser("glb", help="Convert PNG to GLB 3D model (30-40 cents)")
     p_glb.add_argument("--image", required=True, help="Input PNG path")
     p_glb.add_argument("--quality", default="medium", choices=list(QUALITY_PRESETS.keys()), help="Quality preset")
     p_glb.add_argument("-o", "--output", required=True, help="Output GLB path")

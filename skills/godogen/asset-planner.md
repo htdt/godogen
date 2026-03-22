@@ -23,21 +23,18 @@ Read `reference.png` — understand the visual composition: what objects are vis
 Read `STRUCTURE.md` (especially **Asset Hints**) and `PLAN.md` (especially **Assets needed** per task). Cross-reference both with the reference image to build the complete asset list:
 - **3D models**: characters, vehicles, key props, buildings — anything that needs geometry
 - **Textures**: ground surfaces, walls, UI backgrounds — flat materials that tile
-- **Backgrounds**: sky panoramas, parallax layers, title screens, large scenic images — use `--model pro --size 2K` and an appropriate `--aspect-ratio`
+- **Backgrounds**: sky panoramas, parallax layers, title screens, large scenic images — use pro image with `--size 2K` and an appropriate `--aspect-ratio`
 
 The scaffold's Asset Hints describe what the architecture needs. The decomposer's Assets needed fields describe what each task needs. Reconcile both — they may overlap or one may mention assets the other missed.
 
 ### 2. Prioritize and budget
 
 Each asset costs:
-- Texture / sprite / 3D ref: 2 cents (standard model)
-- HQ background / title screen: 7 cents (pro model with `--size 2K`)
-- 3D model: 32 cents (2 cent image + 30 cent GLB at medium quality)
-
-Animated sprites cost more — budget carefully:
-- Animated sprite ref image: 7 cents (pro, once per character)
-- Animation video: 5 cents × duration in seconds
-- Example: 3 animations (walk 3s, attack 2s, idle 2s) for one character = 7 + 15 + 10 + 10 = 42 cents
+- Texture: 7 cents (1K image)
+- HQ texture / background: 10 cents (2K image with `--size 2K`)
+- Large map / panorama: 15 cents (4K image with `--size 4K` — one large image can replace several smaller ones)
+- 3D model: 37 cents (7 cent image + 30 cent GLB at medium quality)
+- Animated character: 5 cent reference + 10 cents per animation sheet (e.g. 3 animations = 35 cents)
 
 Prioritize by visual impact — what makes the game recognizable. Cut low-impact assets first if budget is tight. Reserve ~10% of budget for retries.
 
@@ -60,9 +57,11 @@ To prevent cost overruns, a JSON log is automatically maintained that tracks the
 #### Common Mistakes
 
 - **Detailed image shrunk to a tile** — minimum generation resolution is 1K. A 1024px image downscaled to 64px looks muddy. For small sprites: avoid tiny display sizes (128px+ preferred), generate a kit image with multiple objects sharing one 1K image and crop, or prompt for bold simple forms (thick outlines, flat colors, exaggerated proportions).
-- **Tiling texture for a unique background** — don't tile a small repeating texture where the game needs a single scenic background. Use `--model pro` instead.
+- **Tiling texture for a unique background** — don't tile a small repeating texture where the game needs a single scenic background. Use a Pro image instead.
+- **Sprite sheets for particle effects** — fire, smoke, water, and similar effects look better as procedural particles or shaders. Don't waste a sprite sheet on them unless the game style calls for it.
 - **Image where procedural drawing works** — pure geometric primitives (solid-color rectangles for health bars, single-color circle for a ball, straight divider lines) should be drawn in code. But anything with texture, detail, or artistic style — characters, backgrounds, terrain, objects, icons — should use generated assets even if you *could* approximate it with code. Procedural vector art almost always looks worse than a generated image.
 - **Stretching one texture over a large area** — a small texture stretched across a big surface looks blurry. Use a tileable texture or generate at higher resolution.
+- **Multiple sprite sheets for one character** — the generator cannot reproduce the same character across separate generations. It will look like two different characters. Put all animations for one character into a single sprite sheet (multiple actions across rows).
 
 ### 5. Write ASSETS.md
 
@@ -70,8 +69,8 @@ Every asset row **must** include a **Size** column — the intended in-game dime
 
 - **3D models:** target size in meters, e.g. `4m long` (car), `1.8m tall` (character), `0.3m` (coin)
 - **Textures:** tile size in meters, e.g. `2m tile` (floor repeats every 2m via UV scale)
-- **Backgrounds (pro model):** pixel dimensions to display at, e.g. `1920x1080` (fullscreen), `2560x720` (parallax layer). Mention if it should fill the viewport or scroll.
-- **Sprites:** display size in pixels, e.g. `128x128 px` (player), `64x64 px` (item). This is the size in the game viewport, not the source resolution.
+- **Backgrounds (pro images):** pixel dimensions to display at, e.g. `1920x1080` (fullscreen), `2560x720` (parallax layer). Mention if it should fill the viewport or scroll.
+- **Sprite sheets:** per-frame display size in pixels, e.g. `128x128 px` (player), `64x64 px` (item). This is the size in the game viewport, not the source resolution.
 
 ```markdown
 # Assets
@@ -98,19 +97,12 @@ Every asset row **must** include a **Size** column — the intended in-game dime
 
 ## Sprites
 
-| Name | Description | Size | Image |
-|------|-------------|------|-------|
-| knight | armored knight idle | 128x128 px per frame | assets/img/knight.png |
-
-## Animated Sprites
-
-| Name | Action | Duration | Ref Image | Frames Dir |
-|------|--------|----------|-----------|------------|
-| knight | walk | 3s | assets/img/knight_ref.png | assets/img/knight_walk/ |
-| knight | attack | 2s | assets/img/knight_ref.png | assets/img/knight_attack/ |
+| Name | Description | Size | Ref Image | Sheets |
+|------|-------------|------|-----------|--------|
+| knight | armored knight | 128x128 px per frame | assets/img/knight_ref.png | walk: assets/img/knight_walk.png, attack: assets/img/knight_attack.png |
 ```
 
-All animations for one character share a single reference image (paid once). Generate the ref image first with pro model, review quality before generating videos. Generate videos in parallel. Then ffmpeg extract + batch rembg per animation.
+All animations for one character share a single reference image (paid once). Generate the ref at 512px, review quality, then generate spritesheet per action at 2K. Process: `split-bg` into keyframes → RIFE interpolation (`--mid 3` = 61 smooth frames from 16 keyframes) → optionally batch rembg for transparency.
 
 ### 6. Update PLAN.md with asset assignments
 
