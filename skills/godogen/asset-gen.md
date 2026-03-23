@@ -48,22 +48,22 @@ python3 ${CLAUDE_SKILL_DIR}/tools/asset_gen.py image \
 
 **Step 2: Pose frame (2¢)**
 
-Image-to-image edit: feed the reference, prompt for the animation's key pose. This gives the video a clean starting frame in the right pose.
+Image-to-image edit: feed the reference, prompt only for the action/pose. The model sees the reference — don't re-describe the character, just describe what it should be doing.
 
 ```bash
 python3 ${CLAUDE_SKILL_DIR}/tools/asset_gen.py image \
-  --prompt "same knight walking to the right, mid-stride pose, side view, solid #4A6741 background" \
+  --prompt "walking to the right, mid-stride pose, side view, solid #4A6741 background" \
   --image assets/img/knight_ref.png \
   --aspect-ratio 1:1 -o assets/img/knight_walk_pose.png
 ```
 
 **Step 3: Generate video**
 
-Feed the pose frame (not the reference) as the starting image. Choose duration to fit the action — 3s for walk/run cycles, longer for complex actions.
+Feed the pose frame (not the reference) as the starting image. Prompt focuses on the motion, not appearance. Choose duration to fit the action — 3s for walk/run cycles, longer for complex actions.
 
 ```bash
 python3 ${CLAUDE_SKILL_DIR}/tools/asset_gen.py video \
-  --prompt "knight walking to the right, smooth walk cycle, solid green background" \
+  --prompt "walking to the right, smooth walk cycle, solid green background" \
   --image assets/img/knight_walk_pose.png \
   --duration 3 -o assets/video/knight_walk.mp4
 ```
@@ -190,9 +190,9 @@ No background removal — the entire image IS the texture.
 {name}, {description}. Centered on a solid {bg_color} background.
 ```
 
-**Variant from reference** — same object in different view/pose, or new object in same style:
+**Variant from reference** — the model sees the reference image, so don't re-describe it. Focus on what's different:
 ```
-{description of variant}. Same style.
+{what to change: different angle, pose, color, etc.}
 ```
 `image --prompt "..." --image path_ref.png -o path_variant.png`
 
@@ -205,7 +205,7 @@ Generate multiple objects in one image, then slice. Cheaper than generating indi
 ```
 `image --prompt "..." -o path_grid.png`
 
-To match an existing style, pass a reference:
+To match an existing style, pass a reference — the model sees it, so just describe the items:
 `image --prompt "..." --image path_style_ref.png -o path_grid.png`
 
 Slice into individual PNGs:
@@ -235,15 +235,15 @@ Key: 3/4 front elevated angle, solid white/gray bg, matte finish (no reflections
 
 Review the reference before continuing — it anchors all animations.
 
-**Pose frame (per action):**
+**Pose frame (per action)** — the model sees the reference, so describe only the action:
 ```
-Same {name}, {action pose description}, side view, solid {bg_color} background.
+{action pose description}, side view, solid {bg_color} background.
 ```
 `image --prompt "..." --image path_ref.png -o path_pose.png`
 
-**Video (per action):**
+**Video (per action)** — same principle, focus on motion:
 ```
-{name} performing {action}, smooth animation. Solid {bg_color} background maintained.
+{action}, smooth animation. Solid {bg_color} background.
 ```
 `video --prompt "..." --image path_pose.png --duration N -o path.mp4`
 
@@ -251,6 +251,7 @@ Then: ffmpeg frames → `find_loop_frame.py` (if looping) → trim → batch rem
 
 ## Tips
 
+- **Image-to-image prompting**: when `--image` is provided, the model sees the reference. Don't re-describe the character/object — focus the prompt on what's different (the action, angle, or change). Re-describing appearance competes with the visual reference and dilutes consistency.
 - Generate multiple images in parallel via multiple Bash calls in one message.
 - Always review generated PNGs before GLB conversion — read each image and check: centered? complete? clean background? Regenerate bad ones first; a bad image wastes 30+ cents on GLB.
 - Convert approved images to GLBs in parallel.
