@@ -1,90 +1,80 @@
 # Asset Generator
 
-Generate PNG images (Gemini) and GLB 3D models (Tripo3D) from text prompts.
+Generate PNG images (xAI Grok) and GLB 3D models (Tripo3D) from text prompts.
+
+## Models
+
+| Model | Flag | Cost | Rate limit | Best for |
+|-------|------|------|------------|----------|
+| `grok-imagine-image` | `--model standard` | 2¢ | 300 req/min | Textures, sprites, 3D refs — high-volume |
+| `grok-imagine-image-pro` | `--model pro` | 7¢ | 30 req/min | Backgrounds, title screens, visual targets — quality matters |
+
+Default is `standard`. Use `pro` when visual quality is the priority (backgrounds, hero images, reference.png).
 
 ## CLI Reference
 
 Tools live at `${CLAUDE_SKILL_DIR}/tools/`. Run from the project root.
 
-### Generate image (5-10 cents)
+### Generate image (2-7 cents)
 
 ```bash
 python3 ${CLAUDE_SKILL_DIR}/tools/asset_gen.py image \
   --prompt "the full prompt" -o assets/img/car.png
 ```
 
-`--size` (default `1K`): `512` (5c), `1K` (7c), `2K` (10c)
-`--aspect-ratio` (default `1:1`): `1:1`, `1:4`, `1:8`, `2:3`, `3:2`, `3:4`, `4:1`, `4:3`, `4:5`, `5:4`, `8:1`, `9:16`, `16:9`, `21:9`
+`--model` (default `standard`): `standard` (2¢), `pro` (7¢)
+`--size` (default `1K`): `1K`, `2K`
+`--aspect-ratio` (default `1:1`): `1:1`, `16:9`, `9:16`, `4:3`, `3:4`, `3:2`, `2:3`, `2:1`, `1:2`, `19.5:9`, `9:19.5`, `20:9`, `9:20`, `auto`
 
-Typical combos: `--size 2K --aspect-ratio 16:9` (landscape bg), `--size 2K --aspect-ratio 9:16` (portrait), `--size 1K` (textures, sprites, 3D refs).
+Typical combos: `--model pro --size 2K --aspect-ratio 16:9` (landscape bg), `--model standard --size 1K` (textures, sprites, 3D refs).
 
 ### Remove background
 
 Read `${CLAUDE_SKILL_DIR}/rembg.md` for full guide: CLI, prompting strategy, troubleshooting, batch mode.
 
-### Generate sprite sheet (10 cents)
+### Generate animated sprite video (5¢/sec)
 
-4x4 grid = 16 cells, always 2K (512px/cell). Two modes:
+Full workflow: reference image → video → extract frames → batch rembg → sprite frames.
 
-**With reference** (recommended for characters/animations): generate a 512px reference image first, then pass it with `--reference`. Cell 1 gets the reference, cells 2-16 get per-frame content. Gemini matches the character across all frames.
+**Step 1: Reference image (7¢)**
+
+Pro model, 1:1, neutral pose, solid BG — same color strategy as static sprites. This image becomes the video's starting frame. Review it carefully: a bad reference wastes 5¢/sec on every video generated from it.
 
 ```bash
-# 1. Reference image (5¢) — neutral pose, solid BG
 python3 ${CLAUDE_SKILL_DIR}/tools/asset_gen.py image \
-  --size 512 --prompt "knight in armor, neutral standing pose, facing right, solid #4A6741 background" \
-  -o assets/img/knight_ref.png
-
-# 2. Sprite sheet (10¢ at 2K) — per-frame descriptions
-python3 ${CLAUDE_SKILL_DIR}/tools/asset_gen.py spritesheet \
-  --reference assets/img/knight_ref.png \
-  --prompt "Walk cycle: 2: right foot stepping forward 3: mid-stride right leg ahead 4: right foot planted ... 16: returning to neutral" \
-  --bg "#4A6741" -o assets/img/knight_walk_raw.png
+  --model pro --prompt "knight in armor, neutral standing pose, facing right, solid #4A6741 background" \
+  --aspect-ratio 1:1 -o assets/img/knight_ref.png
 ```
 
-**Without reference** (items, collections): all 16 cells described in the prompt.
+**Step 2: Generate video**
+
+The reference image is auto-resized to match video resolution (480p = 480×480 for 1:1).
 
 ```bash
-python3 ${CLAUDE_SKILL_DIR}/tools/asset_gen.py spritesheet \
-  --prompt "Items: 1: red apple 2: banana 3: orange ..." \
-  --bg "#4A6741" -o assets/img/items_raw.png
+python3 ${CLAUDE_SKILL_DIR}/tools/asset_gen.py video \
+  --prompt "knight walking forward, side view, smooth walk cycle" \
+  --image assets/img/knight_ref.png \
+  --duration 3 -o assets/video/knight_walk.mp4
 ```
 
-`--reference`: reference image path — embedded in cell 1
-`--bg`: background color hex (default: `#00FF00`). See BG color strategy in `${CLAUDE_SKILL_DIR}/rembg.md`.
+`--duration` (1-15 seconds), `--resolution` (default `480p`): `480p`, `720p`
 
-**Multiple spritesheets per character**: same reference, different prompts. Reference paid once (5¢), each sheet 10¢.
+**Step 3: Extract frames**
 
 ```bash
-# Attack sheet — same ref, different action
-python3 ${CLAUDE_SKILL_DIR}/tools/asset_gen.py spritesheet \
-  --reference assets/img/knight_ref.png \
-  --prompt "Sword attack: 2: raising sword overhead 3: sword at peak ..." \
-  --bg "#4A6741" -o assets/img/knight_attack_raw.png
+mkdir -p assets/video/knight_walk_frames
+ffmpeg -i assets/video/knight_walk.mp4 -vsync 0 assets/video/knight_walk_frames/%04d.png
 ```
 
-### Process sprite sheet
+**Step 4: Batch background removal** (see `rembg.md` for full guide)
 
-Crops grid lines, auto-scales margin for 1K/2K sheets. Cell 1 (reference) is dropped by default — use `--keep-first` for item kits where all 16 cells are content.
-
-**Animation keyframes** → split into individual PNGs (then RIFE interpolate):
 ```bash
-python3 ${CLAUDE_SKILL_DIR}/tools/spritesheet_slice.py split-bg \
-  assets/img/knight_walk_raw.png -o assets/img/knight_walk_keyframes/
+python3 ${CLAUDE_SKILL_DIR}/tools/rembg_matting.py \
+  --batch assets/video/knight_walk_frames/ \
+  -o assets/img/knight_walk/
 ```
 
-**Collection of distinct objects** (items, icons, props) → split into 16 individual PNGs:
-```bash
-# All 16 cells are content — keep cell 1
-python3 ${CLAUDE_SKILL_DIR}/tools/spritesheet_slice.py split-bg --keep-first \
-  assets/img/items_raw.png -o assets/img/items/
-
-# With background removed — uses batch rembg
-python3 ${CLAUDE_SKILL_DIR}/tools/spritesheet_slice.py split-clean --keep-first \
-  assets/img/items_raw.png -o assets/img/items/ \
-  --names "apple,banana,orange,grape,cherry,lemon,pear,plum,peach,melon,kiwi,mango,berry,fig,lime,coconut"
-```
-
-For split modes, `-o` is the output **directory**. `--names` provides filenames (without `.png`). Without `--names`, files are numbered `01.png`..`N.png`.
+Multiple animations for one character share the same reference image (paid once). Generate videos in parallel.
 
 ### Convert image to GLB (30-60 cents)
 
@@ -103,7 +93,7 @@ Sets the generation budget to 500 cents. All subsequent generations check remain
 
 ### Output format
 
-JSON to stdout: `{"ok": true, "path": "assets/img/car.png", "cost_cents": 7}`
+JSON to stdout: `{"ok": true, "path": "assets/img/car.png", "cost_cents": 2}`
 
 On failure: `{"ok": false, "error": "...", "cost_cents": 0}`
 
@@ -111,29 +101,23 @@ Progress goes to stderr.
 
 ## Cost Table
 
-| Operation | Preset | Cost | Notes |
-|-----------|--------|------|-------|
-| Image | --size 512 | 5 cents | References, quick tests |
-| Image | --size 1K | 7 cents | Default. Textures, sprites, 3D refs |
-| Image | --size 2K | 10 cents | HQ backgrounds, title screens |
-| Image | --size 4K | 15 cents | Large game maps, panoramic backgrounds |
-| Sprite sheet | — | 10 cents | 2K, 512px/cell |
-| Sprite ref | --size 512 | 5 cents | Paid once per character |
+| Operation | Options | Cost | Notes |
+|-----------|---------|------|-------|
+| Image | --model standard | 2 cents | Default. Fast, high-volume |
+| Image | --model pro | 7 cents | Higher quality output |
 | GLB | medium | 30 cents | 20k faces, good default |
 | GLB | lowpoly | 40 cents | 5k faces, smart topology |
 | GLB | high | 40 cents | Adaptive faces, detailed textures (+10c) |
 | GLB | ultra | 60 cents | Detailed textures + geometry (+10c +20c) |
+| Video | --duration N | 5¢ × N seconds | Reference image (pro, 7¢) paid once per character |
 
-A full 3D asset (image + GLB) costs 37 cents at medium quality. A character with 3 animation sheets costs 35 cents (5¢ ref + 3×10¢ sheets) — each sheet produces 61+ smooth frames after RIFE interpolation. An item kit is 10 cents for 16 objects.
+A full 3D asset (image + GLB) costs 32 cents at medium quality. A texture is 2 cents. A pro background is 7 cents. A 3-second animation costs 22 cents (7¢ ref + 15¢ video); additional animations from the same ref cost only the video.
 
 ## Image Resolution
 
 Use the full generation resolution — don't downscale for aesthetic reasons.
-- `512`: reference images for spritesheets, quick tests
 - Default (`1K`): textures, sprites, 3D references
 - `2K`: HQ objects/textures, backgrounds, title screens
-- `4K`: large game maps (zoom into regions instead of multiple smaller images), panoramic backgrounds
-- Sprite sheets: 2048x2048 total → **512x512 per cell** (after grid crop ~496x496)
 
 ### Small sprites problem
 
@@ -147,18 +131,18 @@ Minimum generation resolution is 1K. A 1024px image downscaled to 64px or even 1
 
 For any asset needing transparency, read `${CLAUDE_SKILL_DIR}/rembg.md` first — covers BG color strategy, CLI, and troubleshooting.
 
-### Background / large scenic image (10c)
+### Background / large scenic image (7c pro)
 
 Title screens, sky panoramas, parallax layers, environmental art. Best place for art direction language.
 
 ```
 {description in the art style}. {composition instructions}.
 ```
-`image --prompt "..." --size 2K --aspect-ratio 16:9 -o path.png`
+`image --model pro --prompt "..." --size 2K --aspect-ratio 16:9 -o path.png`
 
 No post-processing — use as-is.
 
-### Texture (7c)
+### Texture (2c)
 
 Tileable surfaces: ground, walls, floors, UI panels.
 
@@ -169,7 +153,7 @@ Tileable surfaces: ground, walls, floors, UI panels.
 
 No background removal — the entire image IS the texture.
 
-### Single object / sprite (7c)
+### Single object / sprite (2c)
 
 **With background** (object on a known scene background):
 ```
@@ -181,7 +165,7 @@ No background removal — the entire image IS the texture.
 {name}, {description}. Centered on a solid {bg_color} background.
 ```
 
-### 3D model reference (7c) + GLB (30-60c)
+### 3D model reference (2c) + GLB (30-60c)
 
 ```
 3D model reference of {name}. {description}. 3/4 front elevated camera angle, solid white background, soft diffused studio lighting, matte material finish, single centered subject, no shadows on background. Any windows or glass should be solid tinted (opaque).
@@ -190,102 +174,23 @@ Then: `glb --image ... -o ...` — do NOT remove the background; Tripo3D needs t
 
 Key: 3/4 front elevated angle, solid white/gray bg, matte finish (no reflections), opaque glass, single centered subject.
 
-### Animation → Reference + Spritesheet + Interpolation (5¢ + 10¢ per action)
+### Animated sprite — reference image (7c pro) + videos (5c/sec each)
 
-Full pipeline: reference image → spritesheet (15 animation keyframes) → slice (drop reference cell) → RIFE interpolation → smooth animation.
-
-Cell 1 = character reference for Gemini (visual identity only). Animation frames are cells 2-16. After slicing with `--drop-first`, you get 15 keyframes.
-
-**Step 1: Reference image** (5¢, once per character):
+**Reference image:**
 ```
 {name}, {description}. Neutral standing pose, facing right, centered on a solid {bg_color} background. Clean silhouette.
 ```
-`image --size 512 --prompt "..." -o ref.png`
+`image --model pro --prompt "..." -o path_ref.png`
 
-Review the reference before proceeding. A bad reference wastes 10¢ per sheet.
+Then rembg the reference to check quality before committing to videos.
 
-**Step 2: Spritesheet per action** (10¢ each):
+**Video prompt (per action):**
 ```
-{action} animation, side view, full body visible in every frame: 2: {frame 2} 3: {frame 3} ... 16: {frame 16}
+{name} performing {action}, side view, smooth {action} animation. Solid {bg_color} background maintained.
 ```
-`spritesheet --reference ref.png --prompt "..." --bg "{bg_color}" -o action_raw.png`
+`video --prompt "..." --image path_ref.png --duration N -o path.mp4`
 
-Describe cells 2-16 (15 animation frames). Multiple animations per character share one reference — generate sheets in parallel.
-
-**Step 3: Slice into keyframes** (cell 1 dropped by default):
-```bash
-python3 ${CLAUDE_SKILL_DIR}/tools/spritesheet_slice.py split-bg \
-  action_raw.png -o keyframes/
-```
-
-**Step 4: RIFE interpolation** — generates smooth in-between frames:
-```bash
-python3 ${CLAUDE_SKILL_DIR}/tools/interpolate.py \
-  keyframes/ -o smooth_frames/ --mid 3
-```
-
-`--mid N`: interpolated frames between each keyframe pair (default 3). With 15 keyframes and `--mid 3`: 15 + 14×3 = 57 total frames.
-`--gif path.gif --fps 18`: optional preview GIF.
-
-#### Loop vs one-shot animations
-
-**Looping** (walk, run, idle breathing): frame 2 and frame 16 must be the **same pose** — this is the loop point. Don't use the neutral/idle pose; use a pose natural to the action (e.g. mid-stride for walk). The game engine handles transitions between animation states.
-
-**One-shot** (punch, jump, hurt, death): frame 2 = start pose, frame 16 = end pose. These don't need to match each other. They should be a resting pose compatible with whatever animation the engine blends into next (typically idle or combat-ready).
-
-#### How to prompt frames for smooth interpolation
-
-RIFE interpolates pixel motion between consecutive frames. It works when frames differ by small, continuous changes. It fails on large jumps, teleporting limbs, or drastically different poses.
-
-**Rules:**
-- **Small incremental changes** between consecutive frames. Each frame should be a slight progression from the previous one. If you can't imagine a smooth morph between two adjacent frames, add detail between them.
-- **Describe body state, not action verbs.** "right arm at 45 degrees, fist at shoulder height" is interpolatable. "swinging sword" is not — RIFE doesn't know what that means between frames.
-- **Keep the full body in every frame.** Don't let limbs exit the cell or get cropped. Consistent framing = consistent interpolation.
-- **Avoid sudden appearance/disappearance.** Don't introduce effects in one frame and remove them the next. Fade over 2-3 frames.
-- **Use all 15 frames.** Spread the motion evenly. Don't cluster action at the start and pad the end with idle.
-
-**Good prompt** (one-shot punch — small steps, positional descriptions):
-```
-Punch, side view, full body: 2: weight shifting back, right arm drawing behind torso
-3: right arm fully cocked, torso twisting away, knees bent 4: torso rotating forward,
-right arm starting to extend 5: arm at half extension, weight moving forward
-6: arm fully extended, fist at peak reach 7: slight overextension, energy at fist
-8: arm still out, beginning to retract 9: arm halfway back, torso rotating to neutral
-10: arm nearly retracted, weight recentering 11: settling into stance, knees absorbing
-12: arms lowering 13: body straightening 14: upright, arms at sides
-15: combat-ready stance 16: combat-ready stance, still
-```
-
-**Good prompt** (looping walk — frame 2 = frame 16):
-```
-Walk cycle, side view, full body: 2: left foot forward, right foot back, arms swinging
-3: weight on left foot, right leg lifting 4: right knee rising, left arm forward
-5: right leg swinging forward 6: right foot reaching forward, left pushing off
-7: both feet on ground, weight centered 8: weight shifting to right foot, left leg lifting
-9: left knee rising, right arm forward 10: left leg swinging forward
-11: left foot reaching forward, right pushing off 12: both feet on ground, weight centered
-13: weight on left, right beginning to lift 14: right leg swinging through
-15: approaching left-foot-forward position 16: left foot forward, right foot back, matching frame 2
-```
-
-**Bad prompt** (vague, large jumps):
-```
-2: standing 3: punching 4: standing again
-```
-
-### Asset kit (16 objects, consistent style) → Spritesheet (10c)
-
-Generate 16 small objects that share the same visual style (items, icons, props, tiles). Cheaper and more consistent than 16 individual calls (10c vs 112c).
-
-```
-Items: 1: red apple 2: banana 3: orange 4: grape 5: cherry ...
-```
-
-Number every item 1-16. Don't specify grid layout — system prompt handles it. No `--reference` needed.
-
-Post-processing — split into individual images (use `--keep-first` since all 16 cells are content):
-- **Transparent** (preferred): `split-clean --keep-first -o dir/ --names "apple,banana,..."`
-- **With background:** `split-bg --keep-first -o dir/ --names "apple,banana,..."`
+Then: ffmpeg frame extraction → batch rembg → clean RGBA frames. See `rembg.md` for CLI and batch details.
 
 ## Tips
 

@@ -18,7 +18,7 @@ Read each sub-file from `${CLAUDE_SKILL_DIR}/` when you reach its pipeline stage
 | `decomposer.md` | Decompose game into a development plan (`PLAN.md`) |
 | `scaffold.md` | Design architecture and produce compilable Godot skeleton |
 | `asset-planner.md` | Decide what assets the game needs within a budget |
-| `asset-gen.md` | Generate PNGs (Gemini) and GLBs (Tripo3D) from prompts |
+| `asset-gen.md` | Generate PNGs (xAI Grok) and GLBs (Tripo3D) from prompts |
 | `rembg.md` | Background removal guide — read before any rembg operation |
 
 ## Pipeline
