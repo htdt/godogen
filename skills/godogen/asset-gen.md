@@ -32,41 +32,64 @@ Typical combos: `--model pro --size 2K --aspect-ratio 16:9` (landscape bg), `--m
 
 Read `${CLAUDE_SKILL_DIR}/rembg.md` for full guide: CLI, prompting strategy, troubleshooting, batch mode.
 
-### Generate animated sprite video (5¢/sec)
+### Generate animated sprite (2¢ ref + 2¢/pose + 5¢/sec video)
 
-Full workflow: reference image → video → extract frames → batch rembg → sprite frames.
+Workflow: reference → pose frame → video → slice → loop trim → rembg.
 
-**Step 1: Reference image (7¢)**
+**Step 1: Reference image (2¢)**
 
-Pro model, 1:1, neutral pose, solid BG — same color strategy as static sprites. This image becomes the video's starting frame. Review it carefully: a bad reference wastes 5¢/sec on every video generated from it.
+Standard model, 1:1, neutral pose, solid BG — same color strategy as for rembg. Review carefully: this image anchors all subsequent poses and videos.
 
 ```bash
 python3 ${CLAUDE_SKILL_DIR}/tools/asset_gen.py image \
-  --model pro --prompt "knight in armor, neutral standing pose, facing right, solid #4A6741 background" \
+  --prompt "knight in armor, neutral standing pose, facing right, solid #4A6741 background" \
   --aspect-ratio 1:1 -o assets/img/knight_ref.png
 ```
 
-**Step 2: Generate video**
+**Step 2: Pose frame (2¢)**
 
-The reference image is auto-resized to match video resolution (480p = 480×480 for 1:1).
+Image-to-image edit: feed the reference, prompt for the animation's key pose. This gives the video a clean starting frame in the right pose.
+
+```bash
+python3 ${CLAUDE_SKILL_DIR}/tools/asset_gen.py image \
+  --prompt "same knight walking to the right, mid-stride pose, side view, solid #4A6741 background" \
+  --image assets/img/knight_ref.png \
+  --aspect-ratio 1:1 -o assets/img/knight_walk_pose.png
+```
+
+**Step 3: Generate video**
+
+Feed the pose frame (not the reference) as the starting image. Choose duration to fit the action — 3s for walk/run cycles, longer for complex actions.
 
 ```bash
 python3 ${CLAUDE_SKILL_DIR}/tools/asset_gen.py video \
-  --prompt "knight walking forward, side view, smooth walk cycle" \
-  --image assets/img/knight_ref.png \
+  --prompt "knight walking to the right, smooth walk cycle, solid green background" \
+  --image assets/img/knight_walk_pose.png \
   --duration 3 -o assets/video/knight_walk.mp4
 ```
 
 `--duration` (1-15 seconds), `--resolution` (default `480p`): `480p`, `720p`
 
-**Step 3: Extract frames**
+**Step 4: Extract frames**
 
 ```bash
 mkdir -p assets/video/knight_walk_frames
 ffmpeg -i assets/video/knight_walk.mp4 -vsync 0 assets/video/knight_walk_frames/%04d.png
 ```
 
-**Step 4: Batch background removal** (see `rembg.md` for full guide)
+**Step 5: Loop trim (looping animations only)**
+
+For walk/run/idle cycles, find the frame most similar to frame 1 and trim there. Skip for one-shot animations (attack, death, jump).
+
+```bash
+python3 ${CLAUDE_SKILL_DIR}/tools/find_loop_frame.py assets/video/knight_walk_frames/
+```
+
+Output: `{"loop_frame": 27, "similarity": 0.9997, "total_frames": 73}`
+
+Then delete frames after the loop point, or note the range for the next step.
+
+**Step 6: Batch background removal** (see `rembg.md` for full guide)
 
 ```bash
 python3 ${CLAUDE_SKILL_DIR}/tools/rembg_matting.py \
@@ -74,7 +97,9 @@ python3 ${CLAUDE_SKILL_DIR}/tools/rembg_matting.py \
   -o assets/img/knight_walk/
 ```
 
-Multiple animations for one character share the same reference image (paid once). Generate videos in parallel.
+**Step 7: Additional animations**
+
+Repeat from step 2 using the same reference image. Each new animation costs 2¢ (pose) + video duration × 5¢.
 
 ### Convert image to GLB (30-60 cents)
 
@@ -109,9 +134,9 @@ Progress goes to stderr.
 | GLB | lowpoly | 40 cents | 5k faces, smart topology |
 | GLB | high | 40 cents | Adaptive faces, detailed textures (+10c) |
 | GLB | ultra | 60 cents | Detailed textures + geometry (+10c +20c) |
-| Video | --duration N | 5¢ × N seconds | Reference image (pro, 7¢) paid once per character |
+| Video | --duration N | 5¢ × N seconds | Pose frame (2¢) as starting image |
 
-A full 3D asset (image + GLB) costs 32 cents at medium quality. A texture is 2 cents. A pro background is 7 cents. A 3-second animation costs 22 cents (7¢ ref + 15¢ video); additional animations from the same ref cost only the video.
+A full 3D asset (image + GLB) costs 32 cents at medium quality. A texture is 2 cents. A pro background is 7 cents. A 3-second animation costs 19 cents (2¢ ref + 2¢ pose + 15¢ video); additional animations from the same ref cost 2¢ pose + video.
 
 ## Image Resolution
 
@@ -165,6 +190,32 @@ No background removal — the entire image IS the texture.
 {name}, {description}. Centered on a solid {bg_color} background.
 ```
 
+**Variant from reference** — same object in different view/pose, or new object in same style:
+```
+{description of variant}. Same style.
+```
+`image --prompt "..." --image path_ref.png -o path_variant.png`
+
+### Item kit (2c for 4 items)
+
+Generate multiple objects in one image, then slice. Cheaper than generating individually (2¢ total vs 2¢ each).
+
+```
+{item1}, {item2}, {item3}, {item4}. 2x2 grid layout, each item centered in its cell, solid {bg_color} background. {art style}.
+```
+`image --prompt "..." -o path_grid.png`
+
+To match an existing style, pass a reference:
+`image --prompt "..." --image path_style_ref.png -o path_grid.png`
+
+Slice into individual PNGs:
+```bash
+python3 ${CLAUDE_SKILL_DIR}/tools/grid_slice.py path_grid.png \
+  -o assets/img/items/ --grid 2x2 --names "sword,shield,potion,helm"
+```
+
+Then rembg each item if transparency is needed. Supports any grid: `2x2`, `3x3`, `2x4`, etc.
+
 ### 3D model reference (2c) + GLB (30-60c)
 
 ```
@@ -174,23 +225,29 @@ Then: `glb --image ... -o ...` — do NOT remove the background; Tripo3D needs t
 
 Key: 3/4 front elevated angle, solid white/gray bg, matte finish (no reflections), opaque glass, single centered subject.
 
-### Animated sprite — reference image (7c pro) + videos (5c/sec each)
+### Animated sprite — reference (2c) + pose (2c each) + video (5c/sec each)
 
 **Reference image:**
 ```
 {name}, {description}. Neutral standing pose, facing right, centered on a solid {bg_color} background. Clean silhouette.
 ```
-`image --model pro --prompt "..." -o path_ref.png`
+`image --prompt "..." -o path_ref.png`
 
-Then rembg the reference to check quality before committing to videos.
+Review the reference before continuing — it anchors all animations.
 
-**Video prompt (per action):**
+**Pose frame (per action):**
 ```
-{name} performing {action}, side view, smooth {action} animation. Solid {bg_color} background maintained.
+Same {name}, {action pose description}, side view, solid {bg_color} background.
 ```
-`video --prompt "..." --image path_ref.png --duration N -o path.mp4`
+`image --prompt "..." --image path_ref.png -o path_pose.png`
 
-Then: ffmpeg frame extraction → batch rembg → clean RGBA frames. See `rembg.md` for CLI and batch details.
+**Video (per action):**
+```
+{name} performing {action}, smooth animation. Solid {bg_color} background maintained.
+```
+`video --prompt "..." --image path_pose.png --duration N -o path.mp4`
+
+Then: ffmpeg frames → `find_loop_frame.py` (if looping) → trim → batch rembg. See `rembg.md` for batch details.
 
 ## Tips
 

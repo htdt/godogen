@@ -10,35 +10,20 @@ Output: JSON to stdout. Progress to stderr.
 
 import argparse
 import base64
-import io
 import json
-import os
 import sys
-import time
 from pathlib import Path
 
 import requests
-from PIL import Image
+import xai_sdk
 
 from tripo3d import MODEL_V3, image_to_glb
 
 TOOLS_DIR = Path(__file__).parent
 BUDGET_FILE = Path("assets/budget.json")
 
-XAI_API_URL = "https://api.x.ai/v1/images/generations"
-XAI_VIDEO_URL = "https://api.x.ai/v1/videos/generations"
-XAI_VIDEO_POLL_URL = "https://api.x.ai/v1/videos"
 VIDEO_MODEL = "grok-imagine-video"
 VIDEO_COST_PER_SEC = 5  # cents
-VIDEO_POLL_INTERVAL = 5  # seconds
-VIDEO_POLL_TIMEOUT = 600  # seconds
-
-
-def get_xai_api_key() -> str:
-    key = os.environ.get("XAI_API_KEY")
-    if not key:
-        raise ValueError("XAI_API_KEY environment variable not set")
-    return key
 
 
 def _load_budget():
@@ -123,6 +108,12 @@ IMAGE_ASPECT_RATIOS = [
 ]
 
 
+def _image_data_uri(image_path: Path) -> str:
+    """Load image and return as base64 data URI."""
+    b64 = base64.b64encode(image_path.read_bytes()).decode()
+    return f"data:image/png;base64,{b64}"
+
+
 def cmd_image(args):
     tier = args.model
     cost = IMAGE_COSTS[tier]
@@ -132,74 +123,35 @@ def cmd_image(args):
 
     model = IMAGE_MODELS[tier]
     label = f"{tier} {args.size} {args.aspect_ratio}"
+    if args.image:
+        label += " (image-to-image)"
     print(f"Generating image ({label})...", file=sys.stderr)
 
-    key = get_xai_api_key()
-    resp = requests.post(
-        XAI_API_URL,
-        headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"},
-        json={
-            "model": model,
-            "prompt": args.prompt,
-            "n": 1,
-            "response_format": "b64_json",
-            "resolution": args.size.lower(),
-            "aspect_ratio": args.aspect_ratio,
-        },
-        timeout=120,
-    )
+    image_url = None
+    if args.image:
+        ref_path = Path(args.image)
+        if not ref_path.exists():
+            result_json(False, error=f"Reference image not found: {ref_path}")
+            sys.exit(1)
+        image_url = _image_data_uri(ref_path)
 
-    if resp.status_code != 200:
-        try:
-            err = resp.json().get("error", {}).get("message", resp.text)
-        except Exception:
-            err = resp.text
-        result_json(False, error=f"xAI API error {resp.status_code}: {err}")
+    try:
+        client = xai_sdk.Client()
+        resp = client.image.sample(
+            prompt=args.prompt,
+            model=model,
+            image_url=image_url,
+            aspect_ratio=args.aspect_ratio,
+            resolution=args.size.lower(),
+        )
+        output.write_bytes(resp.image)
+    except Exception as e:
+        result_json(False, error=str(e))
         sys.exit(1)
 
-    data = resp.json().get("data", [])
-    if not data or "b64_json" not in data[0]:
-        result_json(False, error="No image returned")
-        sys.exit(1)
-
-    output.write_bytes(base64.b64decode(data[0]["b64_json"]))
     print(f"Saved: {output}", file=sys.stderr)
     record_spend(cost, "xai")
     result_json(True, path=str(output), cost_cents=cost)
-
-
-def _resize_to_data_uri(image_path: Path, size: int) -> str:
-    """Load image, resize to size×size, return as base64 data URI."""
-    img = Image.open(image_path).convert("RGB")
-    img = img.resize((size, size), Image.Resampling.LANCZOS)
-    buf = io.BytesIO()
-    img.save(buf, format="PNG")
-    b64 = base64.b64encode(buf.getvalue()).decode()
-    return f"data:image/png;base64,{b64}"
-
-
-def _poll_video(request_id: str, key: str) -> dict:
-    """Poll video generation until done. Returns response JSON."""
-    url = f"{XAI_VIDEO_POLL_URL}/{request_id}"
-    headers = {"Authorization": f"Bearer {key}"}
-    start = time.time()
-    while time.time() - start < VIDEO_POLL_TIMEOUT:
-        resp = requests.get(url, headers=headers, timeout=30)
-        if resp.status_code != 200:
-            result_json(False, error=f"Poll error {resp.status_code}: {resp.text}")
-            sys.exit(1)
-        data = resp.json()
-        status = data.get("status", "")
-        elapsed = int(time.time() - start)
-        print(f"  [{elapsed}s] status={status}", file=sys.stderr)
-        if status == "done":
-            return data
-        if status in ("failed", "expired"):
-            result_json(False, error=f"Video generation {status}: {data}")
-            sys.exit(1)
-        time.sleep(VIDEO_POLL_INTERVAL)
-    result_json(False, error=f"Video generation timed out after {VIDEO_POLL_TIMEOUT}s")
-    sys.exit(1)
 
 
 def cmd_video(args):
@@ -213,55 +165,27 @@ def cmd_video(args):
         result_json(False, error=f"Reference image not found: {image_path}")
         sys.exit(1)
 
-    # 480p 1:1 = 480×480
-    res_px = {"480p": 480, "720p": 720}[args.resolution]
-    print(f"Generating {args.duration}s video ({args.resolution}, {res_px}×{res_px})...", file=sys.stderr)
-    print(f"  Resizing {image_path} to {res_px}×{res_px}...", file=sys.stderr)
-    image_uri = _resize_to_data_uri(image_path, res_px)
+    print(f"Generating {args.duration}s video ({args.resolution})...", file=sys.stderr)
+    image_url = _image_data_uri(image_path)
 
-    key = get_xai_api_key()
-    resp = requests.post(
-        XAI_VIDEO_URL,
-        headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"},
-        json={
-            "model": VIDEO_MODEL,
-            "prompt": args.prompt,
-            "duration": args.duration,
-            "aspect_ratio": "1:1",
-            "resolution": args.resolution,
-            "image_url": image_uri,
-        },
-        timeout=60,
-    )
-
-    if resp.status_code != 200:
-        try:
-            err = resp.json().get("error", {}).get("message", resp.text)
-        except Exception:
-            err = resp.text
-        result_json(False, error=f"xAI video API error {resp.status_code}: {err}")
+    try:
+        client = xai_sdk.Client()
+        resp = client.video.generate(
+            prompt=args.prompt,
+            model=VIDEO_MODEL,
+            image_url=image_url,
+            duration=args.duration,
+            aspect_ratio="1:1",
+            resolution=args.resolution,
+        )
+        # Download MP4
+        print("  Downloading video...", file=sys.stderr)
+        dl = requests.get(resp.url, timeout=120)
+        dl.raise_for_status()
+        output.write_bytes(dl.content)
+    except Exception as e:
+        result_json(False, error=str(e))
         sys.exit(1)
-
-    request_id = resp.json().get("request_id")
-    if not request_id:
-        result_json(False, error=f"No request_id in response: {resp.text}")
-        sys.exit(1)
-    print(f"  request_id={request_id}", file=sys.stderr)
-
-    # Poll until done
-    data = _poll_video(request_id, key)
-    video_url = data.get("video", {}).get("url")
-    if not video_url:
-        result_json(False, error=f"No video URL in response: {data}")
-        sys.exit(1)
-
-    # Download MP4
-    print(f"  Downloading video...", file=sys.stderr)
-    dl = requests.get(video_url, timeout=120)
-    if dl.status_code != 200:
-        result_json(False, error=f"Video download failed: {dl.status_code}")
-        sys.exit(1)
-    output.write_bytes(dl.content)
 
     print(f"Saved: {output}", file=sys.stderr)
     record_spend(cost, "xai-video")
@@ -324,6 +248,7 @@ def main():
                        help="Resolution: 1K or 2K. Default: 1K.")
     p_img.add_argument("--aspect-ratio", choices=IMAGE_ASPECT_RATIOS, default="1:1",
                        help="Aspect ratio. Default: 1:1")
+    p_img.add_argument("--image", default=None, help="Reference image for image-to-image edit")
     p_img.add_argument("-o", "--output", required=True, help="Output PNG path")
     p_img.set_defaults(func=cmd_image)
 
