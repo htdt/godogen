@@ -8,7 +8,6 @@ When a task requires both scene(s) and script(s):
 3. **Attach scripts in scene builder** — use `node.set_script(load("res://scripts/foo.gd"))` as specified in STRUCTURE.md
 4. **Connect signals in scripts, not scenes** — signal connections go in the script's `_ready()`, NOT in the scene builder (scripts aren't instantiated at build-time)
 5. **Match extends to node type** — the script's `extends CharacterBody3D` must match the node it's attached to in the scene
-6. **C# projects: build before Godot validation** — after writing `.cs` scripts, run `dotnet build` before any `godot --headless` commands. Godot cannot see C# scripts until they are compiled into the DLL.
 
 ## Example
 

@@ -95,7 +95,7 @@ python3 ${CLAUDE_SKILL_DIR}/tools/asset_gen.py audio \
 
 Output is always `.ogg` (OGG Vorbis) — the standard format for Godot audio. If the backend produces a different format, ffmpeg converts automatically.
 
-**Backend selection:** Start with `gemini` (cheapest API integration, already connected). Use `local` for zero-cost basic effects (tones, noise). Use `elevenlabs` or `suno` for premium quality when budget allows.
+**Backend selection:** The `gemini` backend is the default since the API key is already available for image generation. However, audio model capabilities evolve quickly — verify the current model's quality before relying on it for production assets. Use `elevenlabs` for high-quality SFX, `suno` for music, or `local` for zero-cost basic effects (tones, noise). The backend architecture is designed to be swappable as better options emerge.
 
 ### Set budget
 

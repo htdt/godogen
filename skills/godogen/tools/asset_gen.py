@@ -108,7 +108,7 @@ def result_json(ok: bool, path: str | None = None, cost_cents: int = 0, error: s
 
 
 IMAGE_MODEL = "gemini-3.1-flash-image-preview"
-AUDIO_MODEL = "gemini-2.0-flash-exp"  # Experimental — audio generation support
+AUDIO_MODEL = "gemini-2.5-flash"  # Audio generation — update model ID when better options are verified
 IMAGE_SIZES = ["512", "1K", "2K", "4K"]
 IMAGE_COSTS = {"512": 5, "1K": 7, "2K": 10, "4K": 15}
 IMAGE_ASPECT_RATIOS = ["1:1", "1:4", "1:8", "2:3", "3:2", "3:4", "4:1", "4:3", "4:5", "5:4", "8:1", "9:16", "16:9", "21:9"]

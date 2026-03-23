@@ -95,16 +95,9 @@ pivot.add_child(camera)
 
 ```gdscript
 # Attach scripts listed in STRUCTURE.md "Attaches to" fields
-# GDScript projects:
 var script := load("res://scripts/player_controller.gd")
 player_node.set_script(script)
-
-# C# projects — use .cs path (requires dotnet build first):
-# var script := load("res://scripts/PlayerController.cs")
-# player_node.set_script(script)
 ```
-
-**C# note:** Check the `## Language:` field in `STRUCTURE.md`. If C#, use `.cs` paths with PascalCase filenames. The Godot .NET build must have been run (`dotnet build`) before scene builders can load C# scripts.
 
 ## Asset Loading
 

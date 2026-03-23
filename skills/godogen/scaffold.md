@@ -99,8 +99,6 @@ Complete architecture reference. Always written in full, even for incremental up
 
 ## Dimension: {2D or 3D}
 
-## Language: {GDScript or C#}
-
 ## Input Actions
 
 | Action | Keys |
@@ -192,29 +190,6 @@ func _on_hurt_entered(area: Area3D) -> void:
 
 Correct `extends`, signal declarations, `@export` defaults, empty lifecycle and handler methods.
 
-### C# Script Stubs (when language is C#)
-
-```csharp
-using Godot;
-
-public partial class PlayerController : CharacterBody3D
-{
-    [Signal] public delegate void DiedEventHandler();
-
-    [Export] public float Speed { get; set; } = 7.0f;
-
-    public override void _Ready()
-    {
-    }
-
-    public override void _PhysicsProcess(double delta)
-    {
-    }
-}
-```
-
-Correct `partial class`, matching `: BaseType`, `[Signal]` delegates, `[Export]` properties, empty lifecycle methods.
-
 ### 5. Scene builder stubs: `scenes/build_*.gd`
 
 Write each scene builder using this template — replace all UPPER_CASE placeholders with concrete values, delete optional blocks (SCRIPT, CHILDREN) that don't apply:
@@ -228,7 +203,7 @@ func _initialize() -> void:
 	root.name = "ROOT_NAME"         # REPLACE ROOT_NAME — e.g. "Player"
 
 	# SCRIPT — delete block if no script on root
-	root.set_script(load("SCRIPT_PATH"))  # REPLACE SCRIPT_PATH — e.g. "res://scripts/player.gd" (GDScript) or "res://scripts/Player.cs" (C#)
+	root.set_script(load("SCRIPT_PATH"))  # REPLACE SCRIPT_PATH — e.g. "res://scripts/player.gd"
 
 	# CHILDREN — delete block if none, duplicate per child
 	var CHILD_VAR = load("CHILD_PATH").instantiate()  # REPLACE CHILD_VAR, CHILD_PATH
@@ -328,11 +303,6 @@ The scaffold also creates audio directories. Add to the scaffold workflow after 
     mkdir -p assets/audio/sfx assets/audio/music
     ```
 
-7c. **C# projects only:**
-    - Write `.cs` script stubs to `scripts/` instead of `.gd`
-    - Run `godot --headless --quit` to auto-generate `.csproj` and `.sln`
-    - Run `dotnet restore` to pull NuGet packages
-    - Run `dotnet build` to verify compilation
 ```
 
 **Audio bus note:** The `&"SFX"` and `&"Music"` buses referenced in AudioManager are optional. Godot falls back to "Master" if they don't exist. If per-bus volume control is needed, the scaffold creates a `default_bus_layout.tres` — but for most projects, the Master bus suffices and bus creation can be skipped.

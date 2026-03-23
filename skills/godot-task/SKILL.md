@@ -22,11 +22,6 @@ All files below are in `${CLAUDE_SKILL_DIR}/`. Load progressively — read each 
 | `doc_api/_common.md` | Index of ~128 common Godot classes (one-line each) | Need API ref; scan to find class names |
 | `doc_api/_other.md` | Index of ~732 remaining Godot classes | Need API ref; class isn't in `_common.md` |
 | `doc_api/{ClassName}.md` | Full API reference for a single Godot class | Need API ref; look up specific class |
-| `csharp.md` | C# + Godot .NET reference | Language is C# and before writing any code |
-| `script-generation-csharp.md` | Writing C# runtime scripts | Language is C# and targets include `.cs` |
-| `quirks-csharp.md` | C#-specific Godot pitfalls | Language is C# and before writing any code |
-
-**Language detection:** Read `STRUCTURE.md` for the `## Language:` field. If `C#`, load C#-specific references instead of GDScript equivalents. If `GDScript` or absent, use the default GDScript references.
 
 Bootstrap doc_api: `bash ${CLAUDE_SKILL_DIR}/tools/ensure_doc_api.sh`
 
@@ -43,12 +38,8 @@ $ARGUMENTS
 2. **Import assets** — run `timeout 60 godot --headless --import` to generate `.import` files for any new textures, GLBs, or resources. Without this, `load()` fails with "No loader found" errors. Re-run after modifying existing assets.
 3. **Generate scene(s)** — write GDScript scene builder, compile to produce `.tscn`
 4. **Generate script(s)** — write `.gd` files to `scripts/`
-5. **Pre-validate scripts** — catch compilation errors early before full project validation:
-   - **GDScript:** for each newly written or modified `.gd` file, run `timeout 30 godot --headless --quit 2>&1` and filter the output for errors mentioning that file's path.
-   - **C#:** run `dotnet build 2>&1` and check for `error CS` lines. This validates all `.cs` files at once.
-6. **Validate** — run the appropriate build/parse check:
-   - **GDScript:** `timeout 60 godot --headless --quit 2>&1`
-   - **C#:** `dotnet build 2>&1` — MSBuild errors are more structured. Parse for `error CS` lines.
+5. **Pre-validate scripts** — catch compilation errors early before full project validation. For each newly written or modified `.gd` file, run `timeout 30 godot --headless --quit 2>&1` and filter the output for errors mentioning that file's path.
+6. **Validate** — run `timeout 60 godot --headless --quit 2>&1` to parse-check all project scripts.
 7. **Fix errors** — if Godot reports errors, read output, fix files, re-run. Repeat until clean.
 8. **Generate test harness** — write `test/test_{task_id}.gd` implementing the task's **Verify** scenario.
 9. **Capture screenshots** — run test with GPU display (or xvfb fallback) and `--write-movie` to produce PNGs
