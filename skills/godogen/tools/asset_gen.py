@@ -256,8 +256,8 @@ def main():
     p_vid.add_argument("--prompt", required=True, help="Video generation prompt")
     p_vid.add_argument("--image", required=True, help="Reference image path (starting frame)")
     p_vid.add_argument("--duration", type=int, required=True, help="Duration in seconds (1-15)")
-    p_vid.add_argument("--resolution", choices=["480p", "720p"], default="480p",
-                       help="Video resolution. Default: 480p")
+    p_vid.add_argument("--resolution", choices=["480p", "720p"], default="720p",
+                       help="Video resolution. Default: 720p")
     p_vid.add_argument("-o", "--output", required=True, help="Output MP4 path")
     p_vid.set_defaults(func=cmd_video)
 

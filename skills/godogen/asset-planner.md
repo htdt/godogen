@@ -24,6 +24,7 @@ Read `STRUCTURE.md` (especially **Asset Hints**) and `PLAN.md` (especially **Ass
 - **3D models**: characters, vehicles, key props, buildings — anything that needs geometry
 - **Textures**: ground surfaces, walls, UI backgrounds — flat materials that tile
 - **Backgrounds**: sky panoramas, parallax layers, title screens, large scenic images — use `--model pro --size 2K` and an appropriate `--aspect-ratio`
+- **Animated sprites**: characters or objects with multiple actions (walk, attack, idle) — plan the motion graph before generating
 
 The scaffold's Asset Hints describe what the architecture needs. The decomposer's Assets needed fields describe what each task needs. Reconcile both — they may overlap or one may mention assets the other missed.
 
@@ -35,9 +36,11 @@ Each asset costs:
 - 3D model: 32 cents (2 cent image + 30 cent GLB at medium quality)
 
 Animated sprites cost more — budget carefully:
-- Animated sprite ref image: 7 cents (pro, once per character)
-- Animation video: 5 cents × duration in seconds
-- Example: 3 animations (walk 3s, attack 2s, idle 2s) for one character = 7 + 15 + 10 + 10 = 42 cents
+- Reference image: 2 cents (once per character — all animations share it)
+- Root action (from ref): 2 cent pose + 5 cents × duration
+- Chained action (from predecessor's last frame): 5 cents × duration only
+- Example: knight with walk 3s, idle 2s (roots) + attack 2s (chained from walk)
+  = 2 (ref) + 17 (walk) + 12 (idle) + 10 (attack) = 41 cents
 
 Prioritize by visual impact — what makes the game recognizable. Cut low-impact assets first if budget is tight. Reserve ~10% of budget for retries.
 
@@ -51,9 +54,22 @@ Read the **Art direction** from `ASSETS.md` (written by visual-target). Use it a
 
 Craft each prompt for its specific goal. The art direction tells you the visual identity; translate it appropriately per asset type.
 
+#### Using image references for consistency
+
+Feed a generated image as `--image` input when subsequent assets need to match it. Identify which assets are **anchors** (generated first, reviewed) and which are **derivatives** (use the anchor as input). Common patterns:
+
+- **Style family** — generate one hero asset, use it as input for the rest of the set (one enemy → all enemies, one tree → all vegetation, one weapon → full arsenal)
+- **Multiple views** — front view as input → side, back, 3/4 angle for 3D references or sprite variants
+- **Variants** — base object as input → recolors, damaged versions, size variants (red potion → blue, green)
+- **Scene coherence** — use the background as input when generating foreground props that should feel part of the same world
+
+Generate anchors first, review, then fan out derivatives in parallel. Budget 1 retry per anchor since derivatives amplify any problems in it.
+
 ### 4. Generate images, review, convert to GLBs
 
 Use the asset-gen instructions for prompt templates, CLI commands, and review guidance. Generate all images in parallel, review each PNG, regenerate bad ones (max 1 retry each), then convert approved 3D images to GLBs in parallel.
+
+For animated sprites, generate in dependency order per the Start From column in ASSETS.md — root actions first (parallel), extract frames and trim loops, then chained actions from their predecessors' last frames (parallel).
 
 To prevent cost overruns, a JSON log is automatically maintained that tracks the cost of each request.
 
@@ -100,17 +116,35 @@ Every asset row **must** include a **Size** column — the intended in-game dime
 
 | Name | Description | Size | Image |
 |------|-------------|------|-------|
-| knight | armored knight idle | 128x128 px per frame | assets/img/knight.png |
+| coin | spinning gold coin | 64x64 px | assets/img/coin.png |
 
 ## Animated Sprites
 
-| Name | Action | Duration | Ref Image | Frames Dir |
-|------|--------|----------|-----------|------------|
-| knight | walk | 3s | assets/img/knight_ref.png | assets/img/knight_walk/ |
-| knight | attack | 2s | assets/img/knight_ref.png | assets/img/knight_attack/ |
+### knight
+
+**Reference:** `assets/img/knight_ref.png`
+**Transitions:** idle ↔ walk, walk → attack → idle, walk → jump → land → idle
+
+| Action | Type | Size | Duration | Start From | Frames Dir |
+|--------|------|------|----------|------------|------------|
+| idle | loop | 128x128 px | 2s | ref | assets/img/knight_idle/ |
+| walk | loop | 128x128 px | 3s | ref | assets/img/knight_walk/ |
+| attack | one-shot | 128x128 px | 2s | walk | assets/img/knight_attack/ |
+| jump | one-shot | 128x128 px | 1s | ref | assets/img/knight_jump/ |
+| land | one-shot | 128x128 px | 1s | jump | assets/img/knight_land/ |
 ```
 
-All animations for one character share a single reference image (paid once). Generate the ref image first with pro model, review quality before generating videos. Generate videos in parallel. Then ffmpeg extract + batch rembg per animation.
+One reference per character anchors all animations. **Loops** (idle, walk) repeat seamlessly — trimmed to loop point. **One-shots** (attack, death) play once.
+
+**Chaining:** last extracted frame of action A → starting image for action B's video. Maintains visual continuity across transitions and skips the pose step for chained actions. Keep chains short (max 1-2 deep) — each link drifts further from the reference. Prefer ref → pose → video for most actions; only chain when the transition genuinely needs positional continuity (e.g., walk → attack where the stride pose matters).
+
+**Start From column:** `ref` = generate pose from reference, then video from pose. Action name = use that action's last extracted frame as video input directly.
+
+**Background removal:** almost always needed for sprites. Same rules as static sprites — prompt for solid background color, no cast shadows, no ground shadows, clean silhouette. This applies to the reference, every pose frame, and video prompts (the solid BG must persist through the whole animation).
+
+**Small display size:** same as static sprites — if the character renders small in-game, prompt for bold simple forms, thick outlines, flat colors, exaggerated proportions. Fine detail disappears when 1K frames are downscaled to 64-128px.
+
+**Generation order:** roots first (parallel) → extract frames + loop trim → chains (parallel) → extract → batch rembg all.
 
 ### 6. Update PLAN.md with asset assignments
 

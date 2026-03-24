@@ -42,33 +42,35 @@ Standard model, 1:1, neutral pose, solid BG — same color strategy as for rembg
 
 ```bash
 python3 ${CLAUDE_SKILL_DIR}/tools/asset_gen.py image \
-  --prompt "knight in armor, neutral standing pose, facing right, solid #4A6741 background" \
+  --prompt "knight in armor, neutral standing pose, facing right, solid dark-green background" \
   --aspect-ratio 1:1 -o assets/img/knight_ref.png
 ```
 
 **Step 2: Pose frame (2¢)**
 
-Image-to-image edit: feed the reference, prompt only for the action/pose. The model sees the reference — don't re-describe the character, just describe what it should be doing.
+Image-to-image edit: feed the reference, prompt only for the action/pose.
 
 ```bash
 python3 ${CLAUDE_SKILL_DIR}/tools/asset_gen.py image \
-  --prompt "walking to the right, mid-stride pose, side view, solid #4A6741 background" \
+  --prompt "walking to the right, mid-stride pose, side view, solid dark-green background" \
   --image assets/img/knight_ref.png \
   --aspect-ratio 1:1 -o assets/img/knight_walk_pose.png
 ```
 
 **Step 3: Generate video**
 
-Feed the pose frame (not the reference) as the starting image. Prompt focuses on the motion, not appearance. Choose duration to fit the action — 3s for walk/run cycles, longer for complex actions.
+Feed the pose frame (not the reference) as the starting image. Prompt focuses on the motion, not appearance. Choose duration to fit the action — 2s for walk/run cycles, longer for complex actions.
 
 ```bash
 python3 ${CLAUDE_SKILL_DIR}/tools/asset_gen.py video \
-  --prompt "walking to the right, smooth walk cycle, solid green background" \
+  --prompt "walking to the right, smooth walk cycle, solid dark-green background" \
   --image assets/img/knight_walk_pose.png \
-  --duration 3 -o assets/video/knight_walk.mp4
+  --duration 2 -o assets/video/knight_walk.mp4
 ```
 
-`--duration` (1-15 seconds), `--resolution` (default `480p`): `480p`, `720p`
+`--duration` (1-15 seconds), `--resolution` (default `720p`): `720p`, `480p`
+
+Same cost per second at both resolutions — always use `720p`. Fall back to `480p` only if 720p fails (e.g. timeout or API error).
 
 **Step 4: Extract frames**
 
@@ -190,7 +192,7 @@ No background removal — the entire image IS the texture.
 {name}, {description}. Centered on a solid {bg_color} background.
 ```
 
-**Variant from reference** — the model sees the reference image, so don't re-describe it. Focus on what's different:
+**Variant from reference** (uses `--image`; see Tips for prompting guidance):
 ```
 {what to change: different angle, pose, color, etc.}
 ```
@@ -225,29 +227,15 @@ Then: `glb --image ... -o ...` — do NOT remove the background; Tripo3D needs t
 
 Key: 3/4 front elevated angle, solid white/gray bg, matte finish (no reflections), opaque glass, single centered subject.
 
-### Animated sprite — reference (2c) + pose (2c each) + video (5c/sec each)
+### Animated sprite
 
-**Reference image:**
-```
-{name}, {description}. Neutral standing pose, facing right, centered on a solid {bg_color} background. Clean silhouette.
-```
-`image --prompt "..." -o path_ref.png`
+Full workflow (ref → pose → video → frames → loop trim → rembg) is in CLI Reference above. Prompt templates:
 
-Review the reference before continuing — it anchors all animations.
+**Reference:** `{name}, {description}. Neutral standing pose, facing right, centered on a solid {bg_color} background. Clean silhouette.`
 
-**Pose frame (per action)** — the model sees the reference, so describe only the action:
-```
-{action pose description}, side view, solid {bg_color} background.
-```
-`image --prompt "..." --image path_ref.png -o path_pose.png`
+**Pose (per action):** `{action pose description}, side view, solid {bg_color} background.`
 
-**Video (per action)** — same principle, focus on motion:
-```
-{action}, smooth animation. Solid {bg_color} background.
-```
-`video --prompt "..." --image path_pose.png --duration N -o path.mp4`
-
-Then: ffmpeg frames → `find_loop_frame.py` (if looping) → trim → batch rembg. See `rembg.md` for batch details.
+**Video (per action):** `{action}, smooth animation. Solid {bg_color} background.`
 
 ## Tips
 

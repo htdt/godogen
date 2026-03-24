@@ -12,7 +12,7 @@ Any asset that needs transparency: characters, props, icons, UI elements, animat
 
 Pick a prompt bg color that is (1) **distinct from the subject** so the mask separates cleanly, and (2) **close to the expected in-game environment** so residual fringe blends naturally.
 
-Examples: forest game → `#4A6741`; sky/water → `#4A6B8A`; dungeon → `#2A2A2A`; generic → `#808080`.
+Examples: forest game → `dark-green`; sky/water → `steel-blue`; dungeon → `dark-gray`; generic → `medium-gray`.
 
 Avoid pure chromakey colors like `#00FF00` — they create unnatural green fringing.
 
