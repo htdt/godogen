@@ -13,6 +13,8 @@ Usage:
 """
 
 import argparse
+import shutil
+import subprocess
 import sys
 from pathlib import Path
 
@@ -31,6 +33,58 @@ DEFAULTS = {
     "adapt": {"bg_thresh": 0.05, "fg_thresh": 0.20},   # adaptive
     "color": {"bg_thresh": 0.10, "fg_thresh": 0.10},   # uniform
 }
+
+
+def _has_nvidia_gpu() -> bool:
+    """Check if an NVIDIA GPU is present via nvidia-smi."""
+    if not shutil.which("nvidia-smi"):
+        return False
+    try:
+        r = subprocess.run(["nvidia-smi", "--query-gpu=name", "--format=csv,noheader"],
+                           capture_output=True, text=True, timeout=5)
+        return r.returncode == 0 and bool(r.stdout.strip())
+    except Exception:
+        return False
+
+
+def _check_cuda_available() -> bool:
+    """Check if onnxruntime can actually use CUDA."""
+    try:
+        import onnxruntime as ort
+        return "CUDAExecutionProvider" in ort.get_available_providers()
+    except Exception:
+        return False
+
+
+def create_session(model: str = "birefnet-general"):
+    """Create a rembg session with GPU acceleration when available.
+
+    Tries CUDA first, falls back to CPU. Warns loudly if GPU is present
+    but CUDA providers are missing (missing deps).
+    """
+    has_gpu = _has_nvidia_gpu()
+    cuda_ok = _check_cuda_available() if has_gpu else False
+
+    if has_gpu and cuda_ok:
+        print("rembg: using GPU (CUDAExecutionProvider)", file=sys.stderr)
+        return new_session(model, providers=["CUDAExecutionProvider", "CPUExecutionProvider"])
+
+    if has_gpu and not cuda_ok:
+        print(
+            "\n"
+            "WARNING: NVIDIA GPU detected but CUDA is not available for rembg/onnxruntime.\n"
+            "  Background removal will run on CPU (much slower).\n"
+            "  To fix, install GPU dependencies:\n"
+            "    pip install onnxruntime-gpu nvidia-cudnn-cu12==9.*\n"
+            "  Then verify:\n"
+            "    python -c \"import onnxruntime; print(onnxruntime.get_available_providers())\"\n"
+            "  Expected output should include 'CUDAExecutionProvider'.\n",
+            file=sys.stderr,
+        )
+
+    # CPU fallback
+    print("rembg: using CPU", file=sys.stderr)
+    return new_session(model, providers=["CPUExecutionProvider"])
 
 
 def sample_bg_color(img: np.ndarray, block: int = 2) -> np.ndarray:
@@ -64,7 +118,7 @@ def compute_alpha_color(img: np.ndarray, bg_color: np.ndarray) -> np.ndarray:
 def get_soft_mask(img_pil: Image.Image, session=None) -> np.ndarray:
     """Get soft mask from BiRefNet (0-1 float, not binary)."""
     if session is None:
-        session = new_session("birefnet-general")
+        session = create_session("birefnet-general")
     mask_pil = remove(img_pil, session=session, only_mask=True,
                       post_process_mask=False)
     return np.array(mask_pil, dtype=np.float64) / 255.0
@@ -171,7 +225,7 @@ def process_batch(input_dir: Path, output_dir: Path, regime: str = "auto",
         print("No PNG files found", file=sys.stderr)
         sys.exit(1)
 
-    session = new_session("birefnet-general")
+    session = create_session("birefnet-general")
     print(f"Processing {len(frames)} frames...")
 
     for i, frame_path in enumerate(frames):

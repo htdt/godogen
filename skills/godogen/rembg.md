@@ -21,6 +21,23 @@ The prompt must include a solid flat background color. Without it, the generator
 {name}, {description}. Centered on a solid {bg_color} background.
 ```
 
+## GPU acceleration
+
+The script auto-detects NVIDIA GPUs and uses CUDA when available. If a GPU is present but CUDA deps are missing, it prints a clear warning and falls back to CPU.
+
+Required for GPU:
+```bash
+pip install onnxruntime-gpu nvidia-cudnn-cu12==9.*
+```
+
+Verify CUDA is working:
+```bash
+python -c "import onnxruntime; print(onnxruntime.get_available_providers())"
+# Should include 'CUDAExecutionProvider'
+```
+
+If the script warns about GPU detected but CUDA unavailable — install the deps above. CPU fallback works but is significantly slower, especially for batch processing.
+
 ## CLI
 
 Dependencies in `${CLAUDE_SKILL_DIR}/tools/requirements.txt`. If rembg is not installed:

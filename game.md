@@ -5,11 +5,9 @@ Visual quality is the top priority. Example failures:
 - Tiling textures where a single high-quality drawn background is needed
 - Using sprite sheets for fire, smoke, or water instead of procedural particles or shaders
 
-# Telegram Status
+# Status Updates
 
-When a Telegram channel is connected, broadcast progress via `reply`. This is a one-way status feed.
-
-Use `files` parameter with absolute paths to attach screenshots and videos.
+When a channel is connected (Telegram, Slack, etc.), broadcast progress via `reply`. If the channel supports file attachments, include screenshots and videos using `files` with absolute paths.
 
 ## godogen orchestrator
 

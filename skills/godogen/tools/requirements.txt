@@ -3,4 +3,5 @@ requests
 numpy
 pillow
 rembg
-onnxruntime
+onnxruntime-gpu
+nvidia-cudnn-cu12==9.*
