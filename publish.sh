@@ -3,7 +3,7 @@
 # Creates .claude/skills/ and copies a CLAUDE.md.
 #
 # Usage: ./publish.sh <target_dir> [claude_md]
-#   claude_md  Path to CLAUDE.md to use (default: teleforge.md)
+#   claude_md  Path to CLAUDE.md to use (default: game.md)
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "$0")" && pwd)"
@@ -14,7 +14,7 @@ if [ $# -lt 1 ]; then
 fi
 
 TARGET="$(cd "$1" 2>/dev/null && pwd || (mkdir -p "$1" && cd "$1" && pwd))"
-CLAUDE_MD="${2:-$REPO_ROOT/teleforge.md}"
+CLAUDE_MD="${2:-$REPO_ROOT/game.md}"
 
 echo "Publishing to: $TARGET"
 

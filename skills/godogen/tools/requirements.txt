@@ -2,8 +2,7 @@ google-genai
 requests
 numpy
 pillow
-scipy
 rembg
 pymatting
-onnxruntime
-pydub
+onnxruntime-gpu
+nvidia-cudnn-cu12==9.*

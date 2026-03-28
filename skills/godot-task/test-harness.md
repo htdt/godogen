@@ -1,7 +1,5 @@
 # Test Harness & Visual Verification
 
-**Language note:** Test harnesses are always GDScript (`extends SceneTree`) regardless of the project's scripting language. They are build/test-time tools, not shipped code.
-
 Write `test/test_{task_id}.gd` (e.g., `test/test_T3.gd`) — a SceneTree script that loads the scene under test and **thoroughly verifies the task's goal**. Do NOT call `quit()` — the movie writer handles exit.
 
 **Verify what the task actually asks for.** Read the Verify description and think about what would convince you — a skeptic, not the author — that the task is done. A decoration task needs multiple camera angles to check placement and scale. A movement task needs the camera to follow the action over time. A UI task needs the full interface visible. Match the test to the goal.

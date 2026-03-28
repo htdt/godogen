@@ -1,8 +1,0 @@
-## NavigationServer3DManager <- Object
-
-NavigationServer3DManager is the API for registering NavigationServer3D implementations and setting the default implementation. **Note:** It is not possible to switch servers at runtime. This class is only used on startup at the server initialization level.
-
-**Methods:**
-- register_server(name: String, create_callback: Callable)
-- set_default_server(name: String, priority: int)
-
