@@ -11,6 +11,17 @@ sudo apt-get install mesa-utils ffmpeg
 
 No xvfb needed when a GPU is available.
 
+## macOS
+
+```bash
+brew install coreutils ffmpeg
+```
+
+- **coreutils** — provides `gtimeout`; the capture script falls back to a perl-based timeout if missing
+- **ffmpeg** — AVI→MP4 conversion
+- Godot 4 must be on `PATH` (symlink from `Godot.app/Contents/MacOS/Godot` or install via Homebrew)
+- macOS uses Metal natively — no xvfb or Vulkan setup needed.
+
 ## Python
 
 Requires Python 3.10+.

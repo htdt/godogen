@@ -110,17 +110,6 @@ python3 ${CLAUDE_SKILL_DIR}/tools/asset_gen.py glb \
   --image assets/img/car.png --quality medium -o assets/glb/car.glb
 ```
 
-### Generate audio (3 cents)
-
-```bash
-python3 ${CLAUDE_SKILL_DIR}/tools/asset_gen.py audio \
-  --prompt "metallic sword clash, short impact" -o assets/audio/sfx/sword_hit.ogg
-```
-
-`--duration` (default `2.0`): target duration in seconds
-
-Output is always `.ogg` (OGG Vorbis) — the standard format for Godot audio. The Gemini backend produces raw audio which ffmpeg converts automatically.
-
 ### Set budget
 
 ```bash
@@ -148,7 +137,6 @@ Progress goes to stderr.
 | GLB | high | 40 cents | Adaptive faces, detailed textures (+10c) |
 | GLB | ultra | 60 cents | Detailed textures + geometry (+10c +20c) |
 | Video | --duration N | 5¢ × N seconds | Pose frame (2¢) as starting image |
-| Audio | gemini | 3 cents | OGG output via ffmpeg conversion |
 
 A full 3D asset (image + GLB) costs 32 cents at medium quality. A texture is 2 cents. A pro background is 7 cents. A 3-second animation costs 19 cents (2¢ ref + 2¢ pose + 15¢ video); additional animations from the same ref cost 2¢ pose + video.
 

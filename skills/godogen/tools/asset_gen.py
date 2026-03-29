@@ -1,11 +1,10 @@
 #!/usr/bin/env python3
-"""Asset Generator CLI - creates images (xAI Grok), GLBs (Tripo3D), and audio (Gemini).
+"""Asset Generator CLI - creates images (xAI Grok) and GLBs (Tripo3D).
 
 Subcommands:
   image   Generate a PNG from a prompt (2¢ standard, 7¢ pro)
   video   Generate MP4 video from prompt + reference image (5¢/sec)
   glb     Convert a PNG to a GLB 3D model via Tripo3D (30-60¢)
-  audio   Generate audio from a text prompt via Gemini (3¢)
 
 Output: JSON to stdout. Progress to stderr.
 """
@@ -13,7 +12,6 @@ Output: JSON to stdout. Progress to stderr.
 import argparse
 import base64
 import json
-import subprocess
 import sys
 from pathlib import Path
 
@@ -27,9 +25,6 @@ BUDGET_FILE = Path("assets/budget.json")
 
 VIDEO_MODEL = "grok-imagine-video"
 VIDEO_COST_PER_SEC = 5  # cents
-
-AUDIO_MODEL = "gemini-2.5-flash"
-AUDIO_COST = 3  # cents
 
 
 def _load_budget():
@@ -231,61 +226,6 @@ def cmd_glb(args):
     result_json(True, path=str(output), cost_cents=preset["cost_cents"])
 
 
-def cmd_audio(args):
-    """Generate audio from a text prompt via Gemini."""
-    import google.genai as genai
-    from google.genai import types
-
-    check_budget(AUDIO_COST)
-
-    output = Path(args.output)
-    output.parent.mkdir(parents=True, exist_ok=True)
-
-    prompt = f"{args.prompt}. Duration: approximately {args.duration} seconds."
-
-    client = genai.Client()
-
-    response = client.models.generate_content(
-        model=AUDIO_MODEL,
-        contents=prompt,
-        config=types.GenerateContentConfig(
-            response_modalities=["AUDIO"],
-        ),
-    )
-
-    if not response.candidates or not response.candidates[0].content or not response.candidates[0].content.parts:
-        reason = getattr(response.candidates[0], "finish_reason", "unknown") if response.candidates else "no candidates"
-        result_json(False, error=f"Audio generation failed: {reason}")
-        sys.exit(1)
-
-    audio_data = None
-    for part in response.candidates[0].content.parts:
-        if part.inline_data and part.inline_data.mime_type.startswith("audio/"):
-            audio_data = part.inline_data.data
-            break
-
-    if audio_data is None:
-        result_json(False, error="No audio data in response")
-        sys.exit(1)
-
-    # Write raw audio, then convert to OGG via ffmpeg
-    tmp_path = output.with_suffix(".tmp.wav")
-    tmp_path.write_bytes(audio_data)
-
-    ret = subprocess.run(
-        ["ffmpeg", "-y", "-i", str(tmp_path), "-c:a", "libvorbis", "-q:a", "4", str(output)],
-        capture_output=True, text=True,
-    )
-    tmp_path.unlink(missing_ok=True)
-
-    if ret.returncode != 0:
-        result_json(False, error=f"ffmpeg conversion failed: {ret.stderr[:200]}")
-        sys.exit(1)
-
-    record_spend(AUDIO_COST, "gemini_audio")
-    result_json(True, path=str(output), cost_cents=AUDIO_COST)
-
-
 def cmd_set_budget(args):
     BUDGET_FILE.parent.mkdir(parents=True, exist_ok=True)
     budget = {"budget_cents": args.cents, "log": []}
@@ -298,7 +238,7 @@ def cmd_set_budget(args):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Asset Generator — images (xAI Grok), GLBs (Tripo3D), and audio (Gemini)")
+    parser = argparse.ArgumentParser(description="Asset Generator — images (xAI Grok) and GLBs (Tripo3D)")
     sub = parser.add_subparsers(dest="command", required=True)
 
     p_img = sub.add_parser("image", help="Generate a PNG image (2¢ standard, 7¢ pro)")
@@ -331,12 +271,6 @@ def main():
     p_budget = sub.add_parser("set_budget", help="Set the asset generation budget in cents")
     p_budget.add_argument("cents", type=int, help="Budget in cents")
     p_budget.set_defaults(func=cmd_set_budget)
-
-    p_audio = sub.add_parser("audio", help="Generate audio from prompt (3¢, Gemini)")
-    p_audio.add_argument("--prompt", required=True)
-    p_audio.add_argument("--duration", type=float, default=2.0, help="Target duration in seconds")
-    p_audio.add_argument("-o", "--output", required=True)
-    p_audio.set_defaults(func=cmd_audio)
 
     args = parser.parse_args()
     args.func(args)

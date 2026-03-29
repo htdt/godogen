@@ -25,7 +25,6 @@ Read `STRUCTURE.md` (especially **Asset Hints**) and `PLAN.md` (especially **Ass
 - **Textures**: ground surfaces, walls, UI backgrounds — flat materials that tile
 - **Backgrounds**: sky panoramas, parallax layers, title screens, large scenic images — use `--model pro --size 2K` and an appropriate `--aspect-ratio`
 - **Animated sprites**: characters or objects with multiple actions (walk, attack, idle) — plan the motion graph before generating
-- **Audio**: sound effects for gameplay events, background music loops, ambient sounds — determine what sounds are needed for game feel
 
 The scaffold's Asset Hints describe what the architecture needs. The decomposer's Assets needed fields describe what each task needs. Reconcile both — they may overlap or one may mention assets the other missed.
 
@@ -35,7 +34,6 @@ Each asset costs:
 - Texture / sprite / 3D ref: 2 cents (standard model)
 - HQ background / title screen: 7 cents (pro model with `--size 2K`)
 - 3D model: 32 cents (2 cent image + 30 cent GLB at medium quality)
-- Audio SFX: 3 cents (Gemini)
 
 Animated sprites cost more — budget carefully:
 - Reference image: 2 cents (once per character — all animations share it)
@@ -134,19 +132,6 @@ Every asset row **must** include a **Size** column — the intended in-game dime
 | attack | one-shot | 128x128 px | 2s | walk | assets/img/knight_attack/ |
 | jump | one-shot | 128x128 px | 1s | ref | assets/img/knight_jump/ |
 | land | one-shot | 128x128 px | 1s | jump | assets/img/knight_land/ |
-
-## Sound Effects
-
-| Name | Description | Duration | File |
-|------|-------------|----------|------|
-| jump | springy jump launch | 0.3s | assets/audio/sfx/jump.ogg |
-| hit | blunt impact | 0.2s | assets/audio/sfx/hit.ogg |
-
-## Music
-
-| Name | Description | Duration | Loop | File |
-|------|-------------|----------|------|------|
-| gameplay_loop | upbeat chiptune loop | 30s | yes | assets/audio/music/gameplay.ogg |
 ```
 
 One reference per character anchors all animations. **Loops** (idle, walk) repeat seamlessly — trimmed to loop point. **One-shots** (attack, death) play once.
