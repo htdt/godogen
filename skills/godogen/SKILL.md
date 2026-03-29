@@ -20,6 +20,7 @@ Read each sub-file from `${CLAUDE_SKILL_DIR}/` when you reach its pipeline stage
 | `asset-planner.md` | Decide what assets the game needs within a budget |
 | `asset-gen.md` | Generate PNGs (xAI Grok) and GLBs (Tripo3D) from prompts |
 | `rembg.md` | Background removal guide — read before any rembg operation |
+| `android-build.md` | Android APK export — read when user requests an Android build |
 
 ## Pipeline
 
@@ -52,6 +53,9 @@ User request
     |   +- Mark task completed in PLAN.md OR replan based on the outcome, summarize to user
     |   +- git add . && git commit -m "Task N done"
     |   +- Find next ready task
+    |
+    +- If user requested Android app:
+    |   +- Read android-build.md, add ETC2/ASTC to project.godot, create export_presets.cfg, export APK
     |
     +- Summary of completed game
 ```

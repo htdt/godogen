@@ -52,7 +52,6 @@ The skills were tested across different setups. Claude Code with Opus 4.6 delive
 
 ## Roadmap
 
-- Add recipes for game builds (Android export)
 - Explore C# as GDScript alternative
 - Publish a full game end-to-end as a public demo
 - Explore Bevy Engine as Godot alternative
