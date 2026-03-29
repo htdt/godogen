@@ -29,8 +29,8 @@ Skip on macOS — Metal rendering is always available natively.
 ```bash
 GPU_DISPLAY=""
 if [[ "$PLATFORM" == "Linux" ]]; then
-    for lock in /tmp/.X*-lock; do
-      d=":${lock##/tmp/.X}"; d="${d%-lock}"
+    for sock in /tmp/.X11-unix/X*; do
+      d=":${sock##*/X}"
       if DISPLAY=$d $TIMEOUT_CMD 2 glxinfo 2>/dev/null | grep -qi nvidia; then
         GPU_DISPLAY=$d; break
       fi
