@@ -1,0 +1,212 @@
+## Color
+
+A color represented in RGBA format by a red (`r`), green (`g`), blue (`b`), and alpha (`a`) component. Each component is a 32-bit floating-point value, usually ranging from `0.0` to `1.0`. Some properties (such as `CanvasItem.modulate`) may support values greater than `1.0`, for overbright or HDR (High Dynamic Range) colors. Colors can be created in a number of ways: By the various Color constructors, by static methods such as `from_hsv`, and by using a name from the set of standardized colors based on with the addition of `TRANSPARENT`. Although Color may be used to store values of any encoding, the red (`r`), green (`g`), and blue (`b`) properties of Color are expected by Godot to be encoded using the unless otherwise stated. This color encoding is used by many traditional art and web tools, making it easy to match colors between Godot and these tools. Godot uses color primaries, which are used by the sRGB standard. All physical simulation, such as lighting calculations, and colorimetry transformations, such as `get_luminance`, must be performed on linearly encoded values to produce correct results. When performing these calculations, convert Color to and from linear encoding using `srgb_to_linear` and `linear_to_srgb`. **Note:** In a boolean context, a Color will evaluate to `false` if it is equal to `Color(0, 0, 0, 1)` (opaque black). Otherwise, a Color will always evaluate to `true`.
+
+**Props:**
+- a: float = 1.0
+- a8: int = 255
+- b: float = 0.0
+- b8: int = 0
+- g: float = 0.0
+- g8: int = 0
+- h: float = 0.0
+- ok_hsl_h: float = 0.0
+- ok_hsl_l: float = 0.0
+- ok_hsl_s: float = 0.0
+- r: float = 0.0
+- r8: int = 0
+- s: float = 0.0
+- v: float = 0.0
+
+- **a**: The color's alpha component, typically on the range of 0 to 1. A value of 0 means that the color is fully transparent. A value of 1 means that the color is fully opaque. **Note:** The alpha channel is always stored with linear encoding, regardless of the encoding of the other color channels. The `linear_to_srgb` and `srgb_to_linear` methods do not affect the alpha channel.
+- **a8**: Wrapper for `a` that uses the range 0 to 255, instead of 0 to 1.
+- **b**: The color's blue component, typically on the range of 0 to 1.
+- **b8**: Wrapper for `b` that uses the range 0 to 255, instead of 0 to 1.
+- **g**: The color's green component, typically on the range of 0 to 1.
+- **g8**: Wrapper for `g` that uses the range 0 to 255, instead of 0 to 1.
+- **h**: The HSV hue of this color, on the range 0 to 1.
+- **ok_hsl_h**: The OKHSL hue of this color, on the range 0 to 1.
+- **ok_hsl_l**: The OKHSL lightness of this color, on the range 0 to 1.
+- **ok_hsl_s**: The OKHSL saturation of this color, on the range 0 to 1.
+- **r**: The color's red component, typically on the range of 0 to 1.
+- **r8**: Wrapper for `r` that uses the range 0 to 255, instead of 0 to 1.
+- **s**: The HSV saturation of this color, on the range 0 to 1.
+- **v**: The HSV value (brightness) of this color, on the range 0 to 1.
+
+**Methods:**
+- blend(over: Color) -> Color - Returns a new color resulting from overlaying this color over the given color. In a painting program, you can imagine it as the `over` color painted over this color (including alpha).
+- clamp(min: Color = Color(0, 0, 0, 0), max: Color = Color(1, 1, 1, 1)) -> Color - Returns a new color with all components clamped between the components of `min` and `max`, by running `@GlobalScope.clamp` on each component.
+- darkened(amount: float) -> Color - Returns a new color resulting from making this color darker by the specified `amount` (ratio from 0.0 to 1.0). See also `lightened`.
+- from_hsv(h: float, s: float, v: float, alpha: float = 1.0) -> Color - Constructs a color from an . The hue (`h`), saturation (`s`), and value (`v`) are typically between 0.0 and 1.0.
+- from_ok_hsl(h: float, s: float, l: float, alpha: float = 1.0) -> Color - Constructs a color from an . The hue (`h`), saturation (`s`), and lightness (`l`) are typically between 0.0 and 1.0.
+- from_rgba8(r8: int, g8: int, b8: int, a8: int = 255) -> Color - Returns a Color constructed from red (`r8`), green (`g8`), blue (`b8`), and optionally alpha (`a8`) integer channels, each divided by `255.0` for their final value. **Note:** Due to the lower precision of `from_rgba8` compared to the standard Color constructor, a color created with `from_rgba8` will generally not be equal to the same color created with the standard Color constructor. Use `is_equal_approx` for comparisons to avoid issues with floating-point precision error.
+- from_rgbe9995(rgbe: int) -> Color - Decodes a Color from an RGBE9995 format integer. See `Image.FORMAT_RGBE9995`.
+- from_string(str: String, default: Color) -> Color - Creates a Color from the given string, which can be either an HTML color code or a named color (case-insensitive). Returns `default` if the color cannot be inferred from the string. If you want to create a color from String in a constant expression, use the equivalent constructor instead (i.e. `Color("color string")`).
+- get_luminance() -> float - Returns the light intensity of the color, as a value between 0.0 and 1.0 (inclusive). This is useful when determining light or dark color. Colors with a luminance smaller than 0.5 can be generally considered dark. **Note:** `get_luminance` relies on the color using linear encoding to return an accurate relative luminance value. If the color uses the default nonlinear sRGB encoding, use `srgb_to_linear` to convert it to linear encoding first.
+- hex(hex: int) -> Color - Returns the Color associated with the provided `hex` integer in 32-bit RGBA format (8 bits per channel). This method is the inverse of `to_rgba32`. In GDScript and C#, the [int] is best visualized with hexadecimal notation (`"0x"` prefix, making it `"0xRRGGBBAA"`). If you want to use hex notation in a constant expression, use the equivalent constructor instead (i.e. `Color(0xRRGGBBAA)`).
+- hex64(hex: int) -> Color - Returns the Color associated with the provided `hex` integer in 64-bit RGBA format (16 bits per channel). This method is the inverse of `to_rgba64`. In GDScript and C#, the [int] is best visualized with hexadecimal notation (`"0x"` prefix, making it `"0xRRRRGGGGBBBBAAAA"`).
+- html(rgba: String) -> Color - Returns a new color from `rgba`, an HTML hexadecimal color string. `rgba` is not case-sensitive, and may be prefixed by a hash sign (`#`). `rgba` must be a valid three-digit or six-digit hexadecimal color string, and may contain an alpha channel value. If `rgba` does not contain an alpha channel value, an alpha channel value of 1.0 is applied. If `rgba` is invalid, returns an empty color.
+- html_is_valid(color: String) -> bool - Returns `true` if `color` is a valid HTML hexadecimal color string. The string must be a hexadecimal value (case-insensitive) of either 3, 4, 6 or 8 digits, and may be prefixed by a hash sign (`#`). This method is identical to `String.is_valid_html_color`.
+- inverted() -> Color - Returns the color with its `r`, `g`, and `b` components inverted (`(1 - r, 1 - g, 1 - b, a)`).
+- is_equal_approx(to: Color) -> bool - Returns `true` if this color and `to` are approximately equal, by running `@GlobalScope.is_equal_approx` on each component.
+- lerp(to: Color, weight: float) -> Color - Returns the linear interpolation between this color's components and `to`'s components. The interpolation factor `weight` should be between 0.0 and 1.0 (inclusive). See also `@GlobalScope.lerp`.
+- lightened(amount: float) -> Color - Returns a new color resulting from making this color lighter by the specified `amount`, which should be a ratio from 0.0 to 1.0. See also `darkened`.
+- linear_to_srgb() -> Color - Returns a copy of the color that is encoded using the . This method requires the original color to use linear encoding. See also `srgb_to_linear` which performs the opposite operation. **Note:** The color's alpha channel (`a`) is not affected. The alpha channel is always stored with linear encoding, regardless of the color space of the other color channels.
+- srgb_to_linear() -> Color - Returns a copy of the color that uses linear encoding. This method requires the original color to be encoded using the . See also `linear_to_srgb` which performs the opposite operation. **Note:** The color's alpha channel (`a`) is not affected. The alpha channel is always stored with linear encoding, regardless of the color space of the other color channels.
+- to_abgr32() -> int - Returns the color converted to a 32-bit integer in ABGR format (each component is 8 bits). ABGR is the reversed version of the default RGBA format.
+- to_abgr64() -> int - Returns the color converted to a 64-bit integer in ABGR format (each component is 16 bits). ABGR is the reversed version of the default RGBA format.
+- to_argb32() -> int - Returns the color converted to a 32-bit integer in ARGB format (each component is 8 bits). ARGB is more compatible with DirectX.
+- to_argb64() -> int - Returns the color converted to a 64-bit integer in ARGB format (each component is 16 bits). ARGB is more compatible with DirectX.
+- to_html(with_alpha: bool = true) -> String - Returns the color converted to an HTML hexadecimal color String in RGBA format, without the hash (`#`) prefix. Setting `with_alpha` to `false`, excludes alpha from the hexadecimal string, using RGB format instead of RGBA format.
+- to_rgba32() -> int - Returns the color converted to a 32-bit integer in RGBA format (each component is 8 bits). RGBA is Godot's default format. This method is the inverse of `hex`.
+- to_rgba64() -> int - Returns the color converted to a 64-bit integer in RGBA format (each component is 16 bits). RGBA is Godot's default format. This method is the inverse of `hex64`.
+
+**Enums:**
+**Constants:** ALICE_BLUE=Color(0.9411765, 0.972549, 1, 1), ANTIQUE_WHITE=Color(0.98039216, 0.92156863, 0.84313726, 1), AQUA=Color(0, 1, 1, 1), AQUAMARINE=Color(0.49803922, 1, 0.83137256, 1), AZURE=Color(0.9411765, 1, 1, 1), BEIGE=Color(0.9607843, 0.9607843, 0.8627451, 1), BISQUE=Color(1, 0.89411765, 0.76862746, 1), BLACK=Color(0, 0, 0, 1), BLANCHED_ALMOND=Color(1, 0.92156863, 0.8039216, 1), BLUE=Color(0, 0, 1, 1), ...
+  - ALICE_BLUE: Alice blue color.
+  - ANTIQUE_WHITE: Antique white color.
+  - AQUA: Aqua color.
+  - AQUAMARINE: Aquamarine color.
+  - AZURE: Azure color.
+  - BEIGE: Beige color.
+  - BISQUE: Bisque color.
+  - BLACK: Black color. In GDScript, this is the default value of any color.
+  - BLANCHED_ALMOND: Blanched almond color.
+  - BLUE: Blue color.
+  - BLUE_VIOLET: Blue violet color.
+  - BROWN: Brown color.
+  - BURLYWOOD: Burlywood color.
+  - CADET_BLUE: Cadet blue color.
+  - CHARTREUSE: Chartreuse color.
+  - CHOCOLATE: Chocolate color.
+  - CORAL: Coral color.
+  - CORNFLOWER_BLUE: Cornflower blue color.
+  - CORNSILK: Cornsilk color.
+  - CRIMSON: Crimson color.
+  - CYAN: Cyan color.
+  - DARK_BLUE: Dark blue color.
+  - DARK_CYAN: Dark cyan color.
+  - DARK_GOLDENROD: Dark goldenrod color.
+  - DARK_GRAY: Dark gray color.
+  - DARK_GREEN: Dark green color.
+  - DARK_KHAKI: Dark khaki color.
+  - DARK_MAGENTA: Dark magenta color.
+  - DARK_OLIVE_GREEN: Dark olive green color.
+  - DARK_ORANGE: Dark orange color.
+  - DARK_ORCHID: Dark orchid color.
+  - DARK_RED: Dark red color.
+  - DARK_SALMON: Dark salmon color.
+  - DARK_SEA_GREEN: Dark sea green color.
+  - DARK_SLATE_BLUE: Dark slate blue color.
+  - DARK_SLATE_GRAY: Dark slate gray color.
+  - DARK_TURQUOISE: Dark turquoise color.
+  - DARK_VIOLET: Dark violet color.
+  - DEEP_PINK: Deep pink color.
+  - DEEP_SKY_BLUE: Deep sky blue color.
+  - DIM_GRAY: Dim gray color.
+  - DODGER_BLUE: Dodger blue color.
+  - FIREBRICK: Firebrick color.
+  - FLORAL_WHITE: Floral white color.
+  - FOREST_GREEN: Forest green color.
+  - FUCHSIA: Fuchsia color.
+  - GAINSBORO: Gainsboro color.
+  - GHOST_WHITE: Ghost white color.
+  - GOLD: Gold color.
+  - GOLDENROD: Goldenrod color.
+  - GRAY: Gray color.
+  - GREEN: Green color.
+  - GREEN_YELLOW: Green yellow color.
+  - HONEYDEW: Honeydew color.
+  - HOT_PINK: Hot pink color.
+  - INDIAN_RED: Indian red color.
+  - INDIGO: Indigo color.
+  - IVORY: Ivory color.
+  - KHAKI: Khaki color.
+  - LAVENDER: Lavender color.
+  - LAVENDER_BLUSH: Lavender blush color.
+  - LAWN_GREEN: Lawn green color.
+  - LEMON_CHIFFON: Lemon chiffon color.
+  - LIGHT_BLUE: Light blue color.
+  - LIGHT_CORAL: Light coral color.
+  - LIGHT_CYAN: Light cyan color.
+  - LIGHT_GOLDENROD: Light goldenrod color.
+  - LIGHT_GRAY: Light gray color.
+  - LIGHT_GREEN: Light green color.
+  - LIGHT_PINK: Light pink color.
+  - LIGHT_SALMON: Light salmon color.
+  - LIGHT_SEA_GREEN: Light sea green color.
+  - LIGHT_SKY_BLUE: Light sky blue color.
+  - LIGHT_SLATE_GRAY: Light slate gray color.
+  - LIGHT_STEEL_BLUE: Light steel blue color.
+  - LIGHT_YELLOW: Light yellow color.
+  - LIME: Lime color.
+  - LIME_GREEN: Lime green color.
+  - LINEN: Linen color.
+  - MAGENTA: Magenta color.
+  - MAROON: Maroon color.
+  - MEDIUM_AQUAMARINE: Medium aquamarine color.
+  - MEDIUM_BLUE: Medium blue color.
+  - MEDIUM_ORCHID: Medium orchid color.
+  - MEDIUM_PURPLE: Medium purple color.
+  - MEDIUM_SEA_GREEN: Medium sea green color.
+  - MEDIUM_SLATE_BLUE: Medium slate blue color.
+  - MEDIUM_SPRING_GREEN: Medium spring green color.
+  - MEDIUM_TURQUOISE: Medium turquoise color.
+  - MEDIUM_VIOLET_RED: Medium violet red color.
+  - MIDNIGHT_BLUE: Midnight blue color.
+  - MINT_CREAM: Mint cream color.
+  - MISTY_ROSE: Misty rose color.
+  - MOCCASIN: Moccasin color.
+  - NAVAJO_WHITE: Navajo white color.
+  - NAVY_BLUE: Navy blue color.
+  - OLD_LACE: Old lace color.
+  - OLIVE: Olive color.
+  - OLIVE_DRAB: Olive drab color.
+  - ORANGE: Orange color.
+  - ORANGE_RED: Orange red color.
+  - ORCHID: Orchid color.
+  - PALE_GOLDENROD: Pale goldenrod color.
+  - PALE_GREEN: Pale green color.
+  - PALE_TURQUOISE: Pale turquoise color.
+  - PALE_VIOLET_RED: Pale violet red color.
+  - PAPAYA_WHIP: Papaya whip color.
+  - PEACH_PUFF: Peach puff color.
+  - PERU: Peru color.
+  - PINK: Pink color.
+  - PLUM: Plum color.
+  - POWDER_BLUE: Powder blue color.
+  - PURPLE: Purple color.
+  - REBECCA_PURPLE: Rebecca purple color.
+  - RED: Red color.
+  - ROSY_BROWN: Rosy brown color.
+  - ROYAL_BLUE: Royal blue color.
+  - SADDLE_BROWN: Saddle brown color.
+  - SALMON: Salmon color.
+  - SANDY_BROWN: Sandy brown color.
+  - SEA_GREEN: Sea green color.
+  - SEASHELL: Seashell color.
+  - SIENNA: Sienna color.
+  - SILVER: Silver color.
+  - SKY_BLUE: Sky blue color.
+  - SLATE_BLUE: Slate blue color.
+  - SLATE_GRAY: Slate gray color.
+  - SNOW: Snow color.
+  - SPRING_GREEN: Spring green color.
+  - STEEL_BLUE: Steel blue color.
+  - TAN: Tan color.
+  - TEAL: Teal color.
+  - THISTLE: Thistle color.
+  - TOMATO: Tomato color.
+  - TRANSPARENT: Transparent color (white with zero alpha).
+  - TURQUOISE: Turquoise color.
+  - VIOLET: Violet color.
+  - WEB_GRAY: Web gray color.
+  - WEB_GREEN: Web green color.
+  - WEB_MAROON: Web maroon color.
+  - WEB_PURPLE: Web purple color.
+  - WHEAT: Wheat color.
+  - WHITE: White color.
+  - WHITE_SMOKE: White smoke color.
+  - YELLOW: Yellow color.
+  - YELLOW_GREEN: Yellow green color.
+

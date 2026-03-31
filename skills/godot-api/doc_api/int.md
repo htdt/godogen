@@ -1,0 +1,4 @@
+## int
+
+Signed 64-bit integer type. This means that it can take values from `-2^63` to `2^63 - 1`, i.e. from `-9223372036854775808` to `9223372036854775807`. When it exceeds these bounds, it will wrap around. [int]s can be automatically converted to [float]s when necessary, for example when passing them as arguments in functions. The [float] will be as close to the original integer as possible. Likewise, [float]s can be automatically converted into [int]s. This will truncate the [float], discarding anything after the floating-point. **Note:** In a boolean context, an [int] will evaluate to `false` if it equals `0`, and to `true` otherwise. You can use the `0b` literal for binary representation, the `0x` literal for hexadecimal representation, and the `_` symbol to separate long numbers and improve readability.
+

@@ -1,0 +1,153 @@
+## CodeEdit <- TextEdit
+
+CodeEdit is a specialized TextEdit designed for editing plain text code files. It has many features commonly found in code editors such as line numbers, line folding, code completion, indent management, and string/comment management. **Note:** Regardless of locale, CodeEdit will by default always use left-to-right text direction to correctly display source code.
+
+**Props:**
+- auto_brace_completion_enabled: bool = false
+- auto_brace_completion_highlight_matching: bool = false
+- auto_brace_completion_pairs: Dictionary = { "\"": "\"", "'": "'", "(": ")", "[": "]", "{": "}" }
+- code_completion_enabled: bool = false
+- code_completion_prefixes: String[] = []
+- delimiter_comments: String[] = []
+- delimiter_strings: String[] = ["' '", "\" \""]
+- gutters_draw_bookmarks: bool = false
+- gutters_draw_breakpoints_gutter: bool = false
+- gutters_draw_executing_lines: bool = false
+- gutters_draw_fold_gutter: bool = false
+- gutters_draw_line_numbers: bool = false
+- gutters_line_numbers_min_digits: int = 3
+- gutters_zero_pad_line_numbers: bool = false
+- indent_automatic: bool = false
+- indent_automatic_prefixes: String[] = [":", "{", "[", "("]
+- indent_size: int = 4
+- indent_use_spaces: bool = false
+- layout_direction: int (Control.LayoutDirection) = 2
+- line_folding: bool = false
+- line_length_guidelines: int[] = []
+- symbol_lookup_on_click: bool = false
+- symbol_tooltip_on_hover: bool = false
+- text_direction: int (Control.TextDirection) = 1
+
+- **auto_brace_completion_enabled**: If `true`, uses `auto_brace_completion_pairs` to automatically insert the closing brace when the opening brace is inserted by typing or autocompletion. Also automatically removes the closing brace when using backspace on the opening brace.
+- **auto_brace_completion_highlight_matching**: If `true`, highlights brace pairs when the caret is on either one, using `auto_brace_completion_pairs`. If matching, the pairs will be underlined. If a brace is unmatched, it is colored with [theme_item brace_mismatch_color].
+- **auto_brace_completion_pairs**: Sets the brace pairs to be autocompleted. For each entry in the dictionary, the key is the opening brace and the value is the closing brace that matches it. A brace is a String made of symbols. See `auto_brace_completion_enabled` and `auto_brace_completion_highlight_matching`.
+- **code_completion_enabled**: If `true`, the `ProjectSettings.input/ui_text_completion_query` action requests code completion. To handle it, see `_request_code_completion` or `code_completion_requested`.
+- **code_completion_prefixes**: Sets prefixes that will trigger code completion.
+- **delimiter_comments**: Sets the comment delimiters. All existing comment delimiters will be removed.
+- **delimiter_strings**: Sets the string delimiters. All existing string delimiters will be removed.
+- **gutters_draw_bookmarks**: If `true`, bookmarks are drawn in the gutter. This gutter is shared with breakpoints and executing lines. See `set_line_as_bookmarked`.
+- **gutters_draw_breakpoints_gutter**: If `true`, breakpoints are drawn in the gutter. This gutter is shared with bookmarks and executing lines. Clicking the gutter will toggle the breakpoint for the line, see `set_line_as_breakpoint`.
+- **gutters_draw_executing_lines**: If `true`, executing lines are marked in the gutter. This gutter is shared with breakpoints and bookmarks. See `set_line_as_executing`.
+- **gutters_draw_fold_gutter**: If `true`, the fold gutter is drawn. In this gutter, the [theme_item can_fold_code_region] icon is drawn for each foldable line (see `can_fold_line`) and the [theme_item folded_code_region] icon is drawn for each folded line (see `is_line_folded`). These icons can be clicked to toggle the fold state, see `toggle_foldable_line`. `line_folding` must be `true` to show icons.
+- **gutters_draw_line_numbers**: If `true`, the line number gutter is drawn. Line numbers start at `1` and are incremented for each line of text. Clicking and dragging in the line number gutter will select entire lines of text.
+- **gutters_line_numbers_min_digits**: The minimum width in digits reserved for the line number gutter.
+- **gutters_zero_pad_line_numbers**: If `true`, line numbers drawn in the gutter are zero padded based on the total line count. Requires `gutters_draw_line_numbers` to be set to `true`.
+- **indent_automatic**: If `true`, an extra indent is automatically inserted when a new line is added and a prefix in `indent_automatic_prefixes` is found. If a brace pair opening key is found, the matching closing brace will be moved to another new line (see `auto_brace_completion_pairs`).
+- **indent_automatic_prefixes**: Prefixes to trigger an automatic indent. Used when `indent_automatic` is set to `true`.
+- **indent_size**: Size of the tabulation indent (one [kbd]Tab[/kbd] press) in characters. If `indent_use_spaces` is enabled the number of spaces to use.
+- **indent_use_spaces**: Use spaces instead of tabs for indentation.
+- **line_folding**: If `true`, lines can be folded. Otherwise, line folding methods like `fold_line` will not work and `can_fold_line` will always return `false`. See `gutters_draw_fold_gutter`.
+- **line_length_guidelines**: Draws vertical lines at the provided columns. The first entry is considered a main hard guideline and is drawn more prominently.
+- **symbol_lookup_on_click**: Set when a validated word from `symbol_validate` is clicked, the `symbol_lookup` should be emitted.
+- **symbol_tooltip_on_hover**: If `true`, the `symbol_hovered` signal is emitted when hovering over a word.
+
+**Methods:**
+- _confirm_code_completion(replace: bool) - Override this method to define how the selected entry should be inserted. If `replace` is `true`, any existing text should be replaced.
+- _filter_code_completion_candidates(candidates: Dictionary[]) -> Dictionary[] - Override this method to define what items in `candidates` should be displayed. Both `candidates` and the return is an Array of Dictionary, see `get_code_completion_option` for Dictionary content.
+- _request_code_completion(force: bool) - Override this method to define what happens when the user requests code completion. If `force` is `true`, any checks should be bypassed.
+- add_auto_brace_completion_pair(start_key: String, end_key: String) - Adds a brace pair. Both the start and end keys must be symbols. Only the start key has to be unique.
+- add_code_completion_option(type: int, display_text: String, insert_text: String, text_color: Color = Color(1, 1, 1, 1), icon: Resource = null, value: Variant = null, location: int = 1024) - Submits an item to the queue of potential candidates for the autocomplete menu. Call `update_code_completion_options` to update the list. `location` indicates location of the option relative to the location of the code completion query. See `CodeEdit.CodeCompletionLocation` for how to set this value. **Note:** This list will replace all current candidates.
+- add_comment_delimiter(start_key: String, end_key: String, line_only: bool = false) - Adds a comment delimiter from `start_key` to `end_key`. Both keys should be symbols, and `start_key` must not be shared with other delimiters. If `line_only` is `true` or `end_key` is an empty String, the region does not carry over to the next line.
+- add_string_delimiter(start_key: String, end_key: String, line_only: bool = false) - Defines a string delimiter from `start_key` to `end_key`. Both keys should be symbols, and `start_key` must not be shared with other delimiters. If `line_only` is `true` or `end_key` is an empty String, the region does not carry over to the next line.
+- can_fold_line(line: int) -> bool - Returns `true` if the given line is foldable. A line is foldable if it is the start of a valid code region (see `get_code_region_start_tag`), if it is the start of a comment or string block, or if the next non-empty line is more indented (see `TextEdit.get_indent_level`).
+- cancel_code_completion() - Cancels the autocomplete menu.
+- clear_bookmarked_lines() - Clears all bookmarked lines.
+- clear_breakpointed_lines() - Clears all breakpointed lines.
+- clear_comment_delimiters() - Removes all comment delimiters.
+- clear_executing_lines() - Clears all executed lines.
+- clear_string_delimiters() - Removes all string delimiters.
+- confirm_code_completion(replace: bool = false) - Inserts the selected entry into the text. If `replace` is `true`, any existing text is replaced rather than merged.
+- convert_indent(from_line: int = -1, to_line: int = -1) - Converts the indents of lines between `from_line` and `to_line` to tabs or spaces as set by `indent_use_spaces`. Values of `-1` convert the entire text.
+- create_code_region() - Creates a new code region with the selection. At least one single line comment delimiter have to be defined (see `add_comment_delimiter`). A code region is a part of code that is highlighted when folded and can help organize your script. Code region start and end tags can be customized (see `set_code_region_tags`). Code regions are delimited using start and end tags (respectively `region` and `endregion` by default) preceded by one line comment delimiter. (eg. `#region` and `#endregion`)
+- delete_lines() - Deletes all lines that are selected or have a caret on them.
+- do_indent() - If there is no selection, indentation is inserted at the caret. Otherwise, the selected lines are indented like `indent_lines`. Equivalent to the `ProjectSettings.input/ui_text_indent` action. The indentation characters used depend on `indent_use_spaces` and `indent_size`.
+- duplicate_lines() - Duplicates all lines currently selected with any caret. Duplicates the entire line beneath the current one no matter where the caret is within the line.
+- duplicate_selection() - Duplicates all selected text and duplicates all lines with a caret on them.
+- fold_all_lines() - Folds all lines that are possible to be folded (see `can_fold_line`).
+- fold_line(line: int) - Folds the given line, if possible (see `can_fold_line`).
+- get_auto_brace_completion_close_key(open_key: String) -> String - Gets the matching auto brace close key for `open_key`.
+- get_bookmarked_lines() -> PackedInt32Array - Gets all bookmarked lines.
+- get_breakpointed_lines() -> PackedInt32Array - Gets all breakpointed lines.
+- get_code_completion_option(index: int) -> Dictionary - Gets the completion option at `index`. The return Dictionary has the following key-values: `kind`: `CodeCompletionKind` `display_text`: Text that is shown on the autocomplete menu. `insert_text`: Text that is to be inserted when this item is selected. `font_color`: Color of the text on the autocomplete menu. `icon`: Icon to draw on the autocomplete menu. `default_value`: Value of the symbol.
+- get_code_completion_options() -> Dictionary[] - Gets all completion options, see `get_code_completion_option` for return content.
+- get_code_completion_selected_index() -> int - Gets the index of the current selected completion option.
+- get_code_region_end_tag() -> String - Returns the code region end tag (without comment delimiter).
+- get_code_region_start_tag() -> String - Returns the code region start tag (without comment delimiter).
+- get_delimiter_end_key(delimiter_index: int) -> String - Gets the end key for a string or comment region index.
+- get_delimiter_end_position(line: int, column: int) -> Vector2 - If `line` `column` is in a string or comment, returns the end position of the region. If not or no end could be found, both Vector2 values will be `-1`.
+- get_delimiter_start_key(delimiter_index: int) -> String - Gets the start key for a string or comment region index.
+- get_delimiter_start_position(line: int, column: int) -> Vector2 - If `line` `column` is in a string or comment, returns the start position of the region. If not or no start could be found, both Vector2 values will be `-1`.
+- get_executing_lines() -> PackedInt32Array - Gets all executing lines.
+- get_folded_lines() -> int[] - Returns all lines that are currently folded.
+- get_text_for_code_completion() -> String - Returns the full text with char `0xFFFF` at the caret location.
+- get_text_for_symbol_lookup() -> String - Returns the full text with char `0xFFFF` at the cursor location.
+- get_text_with_cursor_char(line: int, column: int) -> String - Returns the full text with char `0xFFFF` at the specified location.
+- has_auto_brace_completion_close_key(close_key: String) -> bool - Returns `true` if close key `close_key` exists.
+- has_auto_brace_completion_open_key(open_key: String) -> bool - Returns `true` if open key `open_key` exists.
+- has_comment_delimiter(start_key: String) -> bool - Returns `true` if comment `start_key` exists.
+- has_string_delimiter(start_key: String) -> bool - Returns `true` if string `start_key` exists.
+- indent_lines() - Indents all lines that are selected or have a caret on them. Uses spaces or a tab depending on `indent_use_spaces`. See `unindent_lines`.
+- is_in_comment(line: int, column: int = -1) -> int - Returns delimiter index if `line` `column` is in a comment. If `column` is not provided, will return delimiter index if the entire `line` is a comment. Otherwise `-1`.
+- is_in_string(line: int, column: int = -1) -> int - Returns the delimiter index if `line` `column` is in a string. If `column` is not provided, will return the delimiter index if the entire `line` is a string. Otherwise `-1`.
+- is_line_bookmarked(line: int) -> bool - Returns `true` if the given line is bookmarked. See `set_line_as_bookmarked`.
+- is_line_breakpointed(line: int) -> bool - Returns `true` if the given line is breakpointed. See `set_line_as_breakpoint`.
+- is_line_code_region_end(line: int) -> bool - Returns `true` if the given line is a code region end. See `set_code_region_tags`.
+- is_line_code_region_start(line: int) -> bool - Returns `true` if the given line is a code region start. See `set_code_region_tags`.
+- is_line_executing(line: int) -> bool - Returns `true` if the given line is marked as executing. See `set_line_as_executing`.
+- is_line_folded(line: int) -> bool - Returns `true` if the given line is folded. See `fold_line`.
+- join_lines(line_ending: String = " ") - Joins all selected lines or lines containing a caret with their next line. Whitespace in between will be removed. If the next line has content, the `line_ending` will be inserted in between.
+- move_lines_down() - Moves all lines down that are selected or have a caret on them.
+- move_lines_up() - Moves all lines up that are selected or have a caret on them.
+- remove_comment_delimiter(start_key: String) - Removes the comment delimiter with `start_key`.
+- remove_string_delimiter(start_key: String) - Removes the string delimiter with `start_key`.
+- request_code_completion(force: bool = false) - Emits `code_completion_requested`, if `force` is `true` will bypass all checks. Otherwise will check that the caret is in a word or in front of a prefix. Will ignore the request if all current options are of type file path, node path, or signal.
+- set_code_completion_selected_index(index: int) - Sets the current selected completion option.
+- set_code_hint(code_hint: String) - Sets the code hint text. Pass an empty string to clear.
+- set_code_hint_draw_below(draw_below: bool) - If `true`, the code hint will draw below the main caret. If `false`, the code hint will draw above the main caret. See `set_code_hint`.
+- set_code_region_tags(start: String = "region", end: String = "endregion") - Sets the code region start and end tags (without comment delimiter).
+- set_line_as_bookmarked(line: int, bookmarked: bool) - Sets the given line as bookmarked. If `true` and `gutters_draw_bookmarks` is `true`, draws the [theme_item bookmark] icon in the gutter for this line. See `get_bookmarked_lines` and `is_line_bookmarked`.
+- set_line_as_breakpoint(line: int, breakpointed: bool) - Sets the given line as a breakpoint. If `true` and `gutters_draw_breakpoints_gutter` is `true`, draws the [theme_item breakpoint] icon in the gutter for this line. See `get_breakpointed_lines` and `is_line_breakpointed`.
+- set_line_as_executing(line: int, executing: bool) - Sets the given line as executing. If `true` and `gutters_draw_executing_lines` is `true`, draws the [theme_item executing_line] icon in the gutter for this line. See `get_executing_lines` and `is_line_executing`.
+- set_symbol_lookup_word_as_valid(valid: bool) - Sets the symbol emitted by `symbol_validate` as a valid lookup.
+- toggle_foldable_line(line: int) - Toggle the folding of the code block at the given line.
+- toggle_foldable_lines_at_carets() - Toggle the folding of the code block on all lines with a caret on them.
+- unfold_all_lines() - Unfolds all lines that are folded.
+- unfold_line(line: int) - Unfolds the given line if it is folded or if it is hidden under a folded line.
+- unindent_lines() - Unindents all lines that are selected or have a caret on them. Uses spaces or a tab depending on `indent_use_spaces`. Equivalent to the `ProjectSettings.input/ui_text_dedent` action. See `indent_lines`.
+- update_code_completion_options(force: bool) - Submits all completion options added with `add_code_completion_option`. Will try to force the autocomplete menu to popup, if `force` is `true`. **Note:** This will replace all current candidates.
+
+**Signals:**
+- breakpoint_toggled(line: int) - Emitted when a breakpoint is added or removed from a line. If the line is removed via backspace, a signal is emitted at the old line.
+- code_completion_requested - Emitted when the user requests code completion. This signal will not be sent if `_request_code_completion` is overridden or `code_completion_enabled` is `false`.
+- symbol_hovered(symbol: String, line: int, column: int) - Emitted when the user hovers over a symbol. Unlike `Control.mouse_entered`, this signal is not emitted immediately, but when the cursor is over the symbol for `ProjectSettings.gui/timers/tooltip_delay_sec` seconds. **Note:** `symbol_tooltip_on_hover` must be `true` for this signal to be emitted.
+- symbol_lookup(symbol: String, line: int, column: int) - Emitted when the user has clicked on a valid symbol.
+- symbol_validate(symbol: String) - Emitted when the user hovers over a symbol. The symbol should be validated and responded to, by calling `set_symbol_lookup_word_as_valid`. **Note:** `symbol_lookup_on_click` must be `true` for this signal to be emitted.
+
+**Enums:**
+**CodeCompletionKind:** KIND_CLASS=0, KIND_FUNCTION=1, KIND_SIGNAL=2, KIND_VARIABLE=3, KIND_MEMBER=4, KIND_ENUM=5, KIND_CONSTANT=6, KIND_NODE_PATH=7, KIND_FILE_PATH=8, KIND_PLAIN_TEXT=9
+  - KIND_CLASS: Marks the option as a class.
+  - KIND_FUNCTION: Marks the option as a function.
+  - KIND_SIGNAL: Marks the option as a Godot signal.
+  - KIND_VARIABLE: Marks the option as a variable.
+  - KIND_MEMBER: Marks the option as a member.
+  - KIND_ENUM: Marks the option as an enum entry.
+  - KIND_CONSTANT: Marks the option as a constant.
+  - KIND_NODE_PATH: Marks the option as a Godot node path.
+  - KIND_FILE_PATH: Marks the option as a file path.
+  - KIND_PLAIN_TEXT: Marks the option as unclassified or plain text.
+**CodeCompletionLocation:** LOCATION_LOCAL=0, LOCATION_PARENT_MASK=256, LOCATION_OTHER_USER_CODE=512, LOCATION_OTHER=1024
+  - LOCATION_LOCAL: The option is local to the location of the code completion query - e.g. a local variable. Subsequent value of location represent options from the outer class, the exact value represent how far they are (in terms of inner classes).
+  - LOCATION_PARENT_MASK: The option is from the containing class or a parent class, relative to the location of the code completion query. Perform a bitwise OR with the class depth (e.g. `0` for the local class, `1` for the parent, `2` for the grandparent, etc.) to store the depth of an option in the class or a parent class.
+  - LOCATION_OTHER_USER_CODE: The option is from user code which is not local and not in a derived class (e.g. Autoload Singletons).
+  - LOCATION_OTHER: The option is from other engine code, not covered by the other enum constants - e.g. built-in classes.
+

@@ -1,0 +1,162 @@
+## LineEdit <- Control
+
+LineEdit provides an input field for editing a single line of text. - When the LineEdit control is focused using the keyboard arrow keys, it will only gain focus and not enter edit mode. - To enter edit mode, click on the control with the mouse, see also `keep_editing_on_text_submit`. - To exit edit mode, press `ui_text_submit` or `ui_cancel` (by default [kbd]Escape[/kbd]) actions. - Check `edit`, `unedit`, `is_editing`, and `editing_toggled` for more information. While entering text, it is possible to insert special characters using Unicode, OEM or Windows alt codes: - To enter Unicode codepoints, hold [kbd]Alt[/kbd] and type the codepoint on the numpad. For example, to enter the character `á` (U+00E1), hold [kbd]Alt[/kbd] and type [kbd]+E1[/kbd] on the numpad (the leading zeroes can be omitted). - To enter OEM codepoints, hold [kbd]Alt[/kbd] and type the code on the numpad. For example, to enter the character `á` (OEM 160), hold [kbd]Alt[/kbd] and type `160` on the numpad. - To enter Windows codepoints, hold [kbd]Alt[/kbd] and type the code on the numpad. For example, to enter the character `á` (Windows 0225), hold [kbd]Alt[/kbd] and type [kbd]0[/kbd], [kbd]2[/kbd], [kbd]2[/kbd], [kbd]5[/kbd] on the numpad. The leading zero here must **not** be omitted, as this is how Windows codepoints are distinguished from OEM codepoints. **Important:** - Focusing the LineEdit with `ui_focus_next` (by default [kbd]Tab[/kbd]) or `ui_focus_prev` (by default [kbd]Shift + Tab[/kbd]) or `Control.grab_focus` still enters edit mode (for compatibility). LineEdit features many built-in shortcuts that are always available ([kbd]Ctrl[/kbd] here maps to [kbd]Cmd[/kbd] on macOS): - [kbd]Ctrl + C[/kbd]: Copy - [kbd]Ctrl + X[/kbd]: Cut - [kbd]Ctrl + V[/kbd] or [kbd]Ctrl + Y[/kbd]: Paste/"yank" - [kbd]Ctrl + Z[/kbd]: Undo - [kbd]Ctrl + ~[/kbd]: Swap input direction. - [kbd]Ctrl + Shift + Z[/kbd]: Redo - [kbd]Ctrl + U[/kbd]: Delete text from the caret position to the beginning of the line - [kbd]Ctrl + K[/kbd]: Delete text from the caret position to the end of the line - [kbd]Ctrl + A[/kbd]: Select all text - [kbd]Up Arrow[/kbd]/[kbd]Down Arrow[/kbd]: Move the caret to the beginning/end of the line On macOS, some extra keyboard shortcuts are available: - [kbd]Cmd + F[/kbd]: Same as [kbd]Right Arrow[/kbd], move the caret one character right - [kbd]Cmd + B[/kbd]: Same as [kbd]Left Arrow[/kbd], move the caret one character left - [kbd]Cmd + P[/kbd]: Same as [kbd]Up Arrow[/kbd], move the caret to the previous line - [kbd]Cmd + N[/kbd]: Same as [kbd]Down Arrow[/kbd], move the caret to the next line - [kbd]Cmd + D[/kbd]: Same as [kbd]Delete[/kbd], delete the character on the right side of caret - [kbd]Cmd + H[/kbd]: Same as [kbd]Backspace[/kbd], delete the character on the left side of the caret - [kbd]Cmd + A[/kbd]: Same as [kbd]Home[/kbd], move the caret to the beginning of the line - [kbd]Cmd + E[/kbd]: Same as [kbd]End[/kbd], move the caret to the end of the line - [kbd]Cmd + Left Arrow[/kbd]: Same as [kbd]Home[/kbd], move the caret to the beginning of the line - [kbd]Cmd + Right Arrow[/kbd]: Same as [kbd]End[/kbd], move the caret to the end of the line **Note:** Caret movement shortcuts listed above are not affected by `shortcut_keys_enabled`.
+
+**Props:**
+- alignment: int (HorizontalAlignment) = 0
+- backspace_deletes_composite_character_enabled: bool = false
+- caret_blink: bool = false
+- caret_blink_interval: float = 0.65
+- caret_column: int = 0
+- caret_force_displayed: bool = false
+- caret_mid_grapheme: bool = false
+- clear_button_enabled: bool = false
+- context_menu_enabled: bool = true
+- deselect_on_focus_loss_enabled: bool = true
+- drag_and_drop_selection_enabled: bool = true
+- draw_control_chars: bool = false
+- editable: bool = true
+- emoji_menu_enabled: bool = true
+- expand_to_text_length: bool = false
+- flat: bool = false
+- focus_mode: int (Control.FocusMode) = 2
+- icon_expand_mode: int (LineEdit.ExpandMode) = 0
+- keep_editing_on_text_submit: bool = false
+- language: String = ""
+- max_length: int = 0
+- middle_mouse_paste_enabled: bool = true
+- mouse_default_cursor_shape: int (Control.CursorShape) = 1
+- placeholder_text: String = ""
+- right_icon: Texture2D
+- right_icon_scale: float = 1.0
+- secret: bool = false
+- secret_character: String = "•"
+- select_all_on_focus: bool = false
+- selecting_enabled: bool = true
+- shortcut_keys_enabled: bool = true
+- structured_text_bidi_override: int (TextServer.StructuredTextParser) = 0
+- structured_text_bidi_override_options: Array = []
+- text: String = ""
+- text_direction: int (Control.TextDirection) = 0
+- virtual_keyboard_enabled: bool = true
+- virtual_keyboard_show_on_focus: bool = true
+- virtual_keyboard_type: int (LineEdit.VirtualKeyboardType) = 0
+
+- **alignment**: The text's horizontal alignment.
+- **backspace_deletes_composite_character_enabled**: If `true` and `caret_mid_grapheme` is `false`, backspace deletes an entire composite character such as ❤️‍🩹, instead of deleting part of the composite character.
+- **caret_blink**: If `true`, makes the caret blink.
+- **caret_blink_interval**: The interval at which the caret blinks (in seconds).
+- **caret_column**: The caret's column position inside the LineEdit. When set, the text may scroll to accommodate it.
+- **caret_force_displayed**: If `true`, the LineEdit will always show the caret, even if not editing or focus is lost.
+- **caret_mid_grapheme**: Allow moving caret, selecting and removing the individual composite character components. **Note:** [kbd]Backspace[/kbd] is always removing individual composite character components.
+- **clear_button_enabled**: If `true`, the LineEdit will show a clear button if `text` is not empty, which can be used to clear the text quickly.
+- **context_menu_enabled**: If `true`, the context menu will appear when right-clicked.
+- **deselect_on_focus_loss_enabled**: If `true`, the selected text will be deselected when focus is lost.
+- **drag_and_drop_selection_enabled**: If `true`, allow drag and drop of selected text.
+- **draw_control_chars**: If `true`, control characters are displayed.
+- **editable**: If `false`, existing text cannot be modified and new text cannot be added.
+- **emoji_menu_enabled**: If `true`, "Emoji and Symbols" menu is enabled.
+- **expand_to_text_length**: If `true`, the LineEdit width will increase to stay longer than the `text`. It will **not** compress if the `text` is shortened.
+- **flat**: If `true`, the LineEdit doesn't display decoration.
+- **icon_expand_mode**: Define the scaling behavior of the `right_icon`.
+- **keep_editing_on_text_submit**: If `true`, the LineEdit will not exit edit mode when text is submitted by pressing `ui_text_submit` action (by default: [kbd]Enter[/kbd] or [kbd]Kp Enter[/kbd]).
+- **language**: Language code used for line-breaking and text shaping algorithms. If left empty, the current locale is used instead.
+- **max_length**: Maximum number of characters that can be entered inside the LineEdit. If `0`, there is no limit. When a limit is defined, characters that would exceed `max_length` are truncated. This happens both for existing `text` contents when setting the max length, or for new text inserted in the LineEdit, including pasting. If any input text is truncated, the `text_change_rejected` signal is emitted with the truncated substring as a parameter:
+- **middle_mouse_paste_enabled**: If `false`, using middle mouse button to paste clipboard will be disabled. **Note:** This method is only implemented on Linux.
+- **placeholder_text**: Text shown when the LineEdit is empty. It is **not** the LineEdit's default value (see `text`).
+- **right_icon**: Sets the icon that will appear in the right end of the LineEdit if there's no `text`, or always, if `clear_button_enabled` is set to `false`.
+- **right_icon_scale**: Scale ratio of the icon when `icon_expand_mode` is set to `EXPAND_MODE_FIT_TO_LINE_EDIT`.
+- **secret**: If `true`, every character is replaced with the secret character (see `secret_character`).
+- **secret_character**: The character to use to mask secret input. Only a single character can be used as the secret character. If it is longer than one character, only the first one will be used. If it is empty, a space will be used instead.
+- **select_all_on_focus**: If `true`, the LineEdit will select the whole text when it gains focus.
+- **selecting_enabled**: If `false`, it's impossible to select the text using mouse nor keyboard.
+- **shortcut_keys_enabled**: If `true`, shortcut keys for context menu items are enabled, even if the context menu is disabled.
+- **structured_text_bidi_override**: Set BiDi algorithm override for the structured text.
+- **structured_text_bidi_override_options**: Set additional options for BiDi override.
+- **text**: String value of the LineEdit. **Note:** Changing text using this property won't emit the `text_changed` signal.
+- **text_direction**: Base text writing direction.
+- **virtual_keyboard_enabled**: If `true`, the native virtual keyboard is enabled on platforms that support it.
+- **virtual_keyboard_show_on_focus**: If `true`, the native virtual keyboard is shown on focus events on platforms that support it.
+- **virtual_keyboard_type**: Specifies the type of virtual keyboard to show.
+
+**Methods:**
+- apply_ime() - Applies text from the (IME) and closes the IME if it is open.
+- cancel_ime() - Closes the (IME) if it is open. Any text in the IME will be lost.
+- clear() - Erases the LineEdit's `text`.
+- delete_char_at_caret() - Deletes one character at the caret's current position (equivalent to pressing [kbd]Delete[/kbd]).
+- delete_text(from_column: int, to_column: int) - Deletes a section of the `text` going from position `from_column` to `to_column`. Both parameters should be within the text's length.
+- deselect() - Clears the current selection.
+- edit(hide_focus: bool = false) - Allows entering edit mode whether the LineEdit is focused or not. If `hide_focus` is `true`, the focused state will not be shown (see `Control.grab_focus`). See also `keep_editing_on_text_submit`.
+- get_menu() -> PopupMenu - Returns the PopupMenu of this LineEdit. By default, this menu is displayed when right-clicking on the LineEdit. You can add custom menu items or remove standard ones. Make sure your IDs don't conflict with the standard ones (see `MenuItems`). For example: **Warning:** This is a required internal node, removing and freeing it may cause a crash. If you wish to hide it or any of its children, use their `Window.visible` property.
+- get_next_composite_character_column(column: int) -> int - Returns the correct column at the end of a composite character like ❤️‍🩹 (mending heart; Unicode: `U+2764 U+FE0F U+200D U+1FA79`) which is comprised of more than one Unicode code point, if the caret is at the start of the composite character. Also returns the correct column with the caret at mid grapheme and for non-composite characters. **Note:** To check at caret location use `get_next_composite_character_column(get_caret_column())`
+- get_previous_composite_character_column(column: int) -> int - Returns the correct column at the start of a composite character like ❤️‍🩹 (mending heart; Unicode: `U+2764 U+FE0F U+200D U+1FA79`) which is comprised of more than one Unicode code point, if the caret is at the end of the composite character. Also returns the correct column with the caret at mid grapheme and for non-composite characters. **Note:** To check at caret location use `get_previous_composite_character_column(get_caret_column())`
+- get_scroll_offset() -> float - Returns the scroll offset due to `caret_column`, as a number of characters.
+- get_selected_text() -> String - Returns the text inside the selection.
+- get_selection_from_column() -> int - Returns the selection begin column.
+- get_selection_to_column() -> int - Returns the selection end column.
+- has_ime_text() -> bool - Returns `true` if the user has text in the (IME).
+- has_redo() -> bool - Returns `true` if a "redo" action is available.
+- has_selection() -> bool - Returns `true` if the user has selected text.
+- has_undo() -> bool - Returns `true` if an "undo" action is available.
+- insert_text_at_caret(text: String) - Inserts `text` at the caret. If the resulting value is longer than `max_length`, nothing happens.
+- is_editing() -> bool - Returns whether the LineEdit is being edited.
+- is_menu_visible() -> bool - Returns whether the menu is visible. Use this instead of `get_menu().visible` to improve performance (so the creation of the menu is avoided).
+- menu_option(option: int) - Executes a given action as defined in the `MenuItems` enum.
+- select(from: int = 0, to: int = -1) - Selects characters inside LineEdit between `from` and `to`. By default, `from` is at the beginning and `to` at the end.
+- select_all() - Selects the whole String.
+- unedit() - Allows exiting edit mode while preserving focus.
+
+**Signals:**
+- editing_toggled(toggled_on: bool) - Emitted when the LineEdit switches in or out of edit mode.
+- text_change_rejected(rejected_substring: String) - Emitted when appending text that overflows the `max_length`. The appended text is truncated to fit `max_length`, and the part that couldn't fit is passed as the `rejected_substring` argument.
+- text_changed(new_text: String) - Emitted when the text changes.
+- text_submitted(new_text: String) - Emitted when the user presses the `ui_text_submit` action (by default: [kbd]Enter[/kbd] or [kbd]Kp Enter[/kbd]) while the LineEdit has focus.
+
+**Enums:**
+**MenuItems:** MENU_CUT=0, MENU_COPY=1, MENU_PASTE=2, MENU_CLEAR=3, MENU_SELECT_ALL=4, MENU_UNDO=5, MENU_REDO=6, MENU_SUBMENU_TEXT_DIR=7, MENU_DIR_INHERITED=8, MENU_DIR_AUTO=9, ...
+  - MENU_CUT: Cuts (copies and clears) the selected text.
+  - MENU_COPY: Copies the selected text.
+  - MENU_PASTE: Pastes the clipboard text over the selected text (or at the caret's position). Non-printable escape characters are automatically stripped from the OS clipboard via `String.strip_escapes`.
+  - MENU_CLEAR: Erases the whole LineEdit text.
+  - MENU_SELECT_ALL: Selects the whole LineEdit text.
+  - MENU_UNDO: Undoes the previous action.
+  - MENU_REDO: Reverse the last undo action.
+  - MENU_SUBMENU_TEXT_DIR: ID of "Text Writing Direction" submenu.
+  - MENU_DIR_INHERITED: Sets text direction to inherited.
+  - MENU_DIR_AUTO: Sets text direction to automatic.
+  - MENU_DIR_LTR: Sets text direction to left-to-right.
+  - MENU_DIR_RTL: Sets text direction to right-to-left.
+  - MENU_DISPLAY_UCC: Toggles control character display.
+  - MENU_SUBMENU_INSERT_UCC: ID of "Insert Control Character" submenu.
+  - MENU_INSERT_LRM: Inserts left-to-right mark (LRM) character.
+  - MENU_INSERT_RLM: Inserts right-to-left mark (RLM) character.
+  - MENU_INSERT_LRE: Inserts start of left-to-right embedding (LRE) character.
+  - MENU_INSERT_RLE: Inserts start of right-to-left embedding (RLE) character.
+  - MENU_INSERT_LRO: Inserts start of left-to-right override (LRO) character.
+  - MENU_INSERT_RLO: Inserts start of right-to-left override (RLO) character.
+  - MENU_INSERT_PDF: Inserts pop direction formatting (PDF) character.
+  - MENU_INSERT_ALM: Inserts Arabic letter mark (ALM) character.
+  - MENU_INSERT_LRI: Inserts left-to-right isolate (LRI) character.
+  - MENU_INSERT_RLI: Inserts right-to-left isolate (RLI) character.
+  - MENU_INSERT_FSI: Inserts first strong isolate (FSI) character.
+  - MENU_INSERT_PDI: Inserts pop direction isolate (PDI) character.
+  - MENU_INSERT_ZWJ: Inserts zero width joiner (ZWJ) character.
+  - MENU_INSERT_ZWNJ: Inserts zero width non-joiner (ZWNJ) character.
+  - MENU_INSERT_WJ: Inserts word joiner (WJ) character.
+  - MENU_INSERT_SHY: Inserts soft hyphen (SHY) character.
+  - MENU_EMOJI_AND_SYMBOL: Opens system emoji and symbol picker.
+  - MENU_MAX: Represents the size of the `MenuItems` enum.
+**VirtualKeyboardType:** KEYBOARD_TYPE_DEFAULT=0, KEYBOARD_TYPE_MULTILINE=1, KEYBOARD_TYPE_NUMBER=2, KEYBOARD_TYPE_NUMBER_DECIMAL=3, KEYBOARD_TYPE_PHONE=4, KEYBOARD_TYPE_EMAIL_ADDRESS=5, KEYBOARD_TYPE_PASSWORD=6, KEYBOARD_TYPE_URL=7
+  - KEYBOARD_TYPE_DEFAULT: Default text virtual keyboard.
+  - KEYBOARD_TYPE_MULTILINE: Multiline virtual keyboard.
+  - KEYBOARD_TYPE_NUMBER: Virtual number keypad, useful for PIN entry.
+  - KEYBOARD_TYPE_NUMBER_DECIMAL: Virtual number keypad, useful for entering fractional numbers.
+  - KEYBOARD_TYPE_PHONE: Virtual phone number keypad.
+  - KEYBOARD_TYPE_EMAIL_ADDRESS: Virtual keyboard with additional keys to assist with typing email addresses.
+  - KEYBOARD_TYPE_PASSWORD: Virtual keyboard for entering a password. On most platforms, this should disable autocomplete and autocapitalization. **Note:** This is not supported on Web. Instead, this behaves identically to `KEYBOARD_TYPE_DEFAULT`.
+  - KEYBOARD_TYPE_URL: Virtual keyboard with additional keys to assist with typing URLs.
+**ExpandMode:** EXPAND_MODE_ORIGINAL_SIZE=0, EXPAND_MODE_FIT_TO_TEXT=1, EXPAND_MODE_FIT_TO_LINE_EDIT=2
+  - EXPAND_MODE_ORIGINAL_SIZE: Use the original size for the right icon.
+  - EXPAND_MODE_FIT_TO_TEXT: Scale the right icon's size to match the size of the text.
+  - EXPAND_MODE_FIT_TO_LINE_EDIT: Scale the right icon to fit the LineEdit.
+

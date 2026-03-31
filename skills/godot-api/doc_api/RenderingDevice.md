@@ -1,0 +1,702 @@
+## RenderingDevice <- Object
+
+RenderingDevice is an abstraction for working with modern low-level graphics APIs such as Vulkan. Compared to RenderingServer (which works with Godot's own rendering subsystems), RenderingDevice is much lower-level and allows working more directly with the underlying graphics APIs. RenderingDevice is used in Godot to provide support for several modern low-level graphics APIs while reducing the amount of code duplication required. RenderingDevice can also be used in your own projects to perform things that are not exposed by RenderingServer or high-level nodes, such as using compute shaders. On startup, Godot creates a global RenderingDevice which can be retrieved using `RenderingServer.get_rendering_device`. This global RenderingDevice performs drawing to the screen. **Local RenderingDevices:** Using `RenderingServer.create_local_rendering_device`, you can create "secondary" rendering devices to perform drawing and GPU compute operations on separate threads. **Note:** RenderingDevice assumes intermediate knowledge of modern graphics APIs such as Vulkan, Direct3D 12, Metal or WebGPU. These graphics APIs are lower-level than OpenGL or Direct3D 11, requiring you to perform what was previously done by the graphics driver itself. If you have difficulty understanding the concepts used in this class, follow the or . It's recommended to have existing modern OpenGL or Direct3D 11 knowledge before attempting to learn a low-level graphics API. **Note:** RenderingDevice is not available when running in headless mode or when using the Compatibility rendering method.
+
+**Methods:**
+- acceleration_structure_build(acceleration_structure: RID) -> int - Builds the `acceleration_structure`.
+- barrier(from: int = 32767, to: int = 32767) - This method does nothing.
+- blas_create(vertex_array: RID, index_array: RID, geometry_bits: int = 0, position_attribute_location: int = 0) -> RID - Creates a new Bottom Level Acceleration Structure. It can be accessed with the RID that is returned. Once finished with your RID, you will want to free the RID using the RenderingDevice's `free_rid` method. `position_attribute_location` selects which vertex attribute location supplies the position data (default is 0).
+- buffer_clear(buffer: RID, offset: int, size_bytes: int) -> int - Clears the contents of the `buffer`, clearing `size_bytes` bytes, starting at `offset`. Prints an error if: - the size isn't a multiple of four - the region specified by `offset` + `size_bytes` exceeds the buffer - a draw list is currently active (created by `draw_list_begin`) - a compute list is currently active (created by `compute_list_begin`)
+- buffer_copy(src_buffer: RID, dst_buffer: RID, src_offset: int, dst_offset: int, size: int) -> int - Copies `size` bytes from the `src_buffer` at `src_offset` into `dst_buffer` at `dst_offset`. Prints an error if: - `size` exceeds the size of either `src_buffer` or `dst_buffer` at their corresponding offsets - a draw list is currently active (created by `draw_list_begin`) - a compute list is currently active (created by `compute_list_begin`)
+- buffer_get_data(buffer: RID, offset_bytes: int = 0, size_bytes: int = 0) -> PackedByteArray - Returns a copy of the data of the specified `buffer`, optionally `offset_bytes` and `size_bytes` can be set to copy only a portion of the buffer. **Note:** This method will block the GPU from working until the data is retrieved. Refer to `buffer_get_data_async` for an alternative that returns the data in more performant way.
+- buffer_get_data_async(buffer: RID, callback: Callable, offset_bytes: int = 0, size_bytes: int = 0) -> int - Asynchronous version of `buffer_get_data`. RenderingDevice will call `callback` in a certain amount of frames with the data the buffer had at the time of the request. **Note:** At the moment, the delay corresponds to the amount of frames specified by `ProjectSettings.rendering/rendering_device/vsync/frame_queue_size`. **Note:** Downloading large buffers can have a prohibitive cost for real-time even when using the asynchronous method due to hardware bandwidth limitations. When dealing with large resources, you can adjust settings such as `ProjectSettings.rendering/rendering_device/staging_buffer/block_size_kb` to improve the transfer speed at the cost of extra memory.
+- buffer_get_device_address(buffer: RID) -> int - Returns the address of the given `buffer` which can be passed to shaders in any way to access underlying data. Buffer must have been created with this feature enabled. **Note:** You must check that the GPU supports this functionality by calling `has_feature` with `SUPPORTS_BUFFER_DEVICE_ADDRESS` as a parameter.
+- buffer_update(buffer: RID, offset: int, size_bytes: int, data: PackedByteArray) -> int - Updates a region of `size_bytes` bytes, starting at `offset`, in the buffer, with the specified `data`. Prints an error if: - the region specified by `offset` + `size_bytes` exceeds the buffer - a draw list is currently active (created by `draw_list_begin`) - a compute list is currently active (created by `compute_list_begin`)
+- capture_timestamp(name: String) - Creates a timestamp marker with the specified `name`. This is used for performance reporting with the `get_captured_timestamp_cpu_time`, `get_captured_timestamp_gpu_time` and `get_captured_timestamp_name` methods.
+- compute_list_add_barrier(compute_list: int) - Raises a Vulkan compute barrier in the specified `compute_list`.
+- compute_list_begin() -> int - Starts a list of compute commands created with the `compute_*` methods. The returned value should be passed to other `compute_list_*` functions. Multiple compute lists cannot be created at the same time; you must finish the previous compute list first using `compute_list_end`. A simple compute operation might look like this (code is not a complete example):
+- compute_list_bind_compute_pipeline(compute_list: int, compute_pipeline: RID) - Tells the GPU what compute pipeline to use when processing the compute list. If the shader has changed since the last time this function was called, Godot will unbind all descriptor sets and will re-bind them inside `compute_list_dispatch`.
+- compute_list_bind_uniform_set(compute_list: int, uniform_set: RID, set_index: int) - Binds the `uniform_set` to this `compute_list`. Godot ensures that all textures in the uniform set have the correct Vulkan access masks. If Godot had to change access masks of textures, it will raise a Vulkan image memory barrier.
+- compute_list_dispatch(compute_list: int, x_groups: int, y_groups: int, z_groups: int) - Submits the compute list for processing on the GPU. This is the compute equivalent to `draw_list_draw`.
+- compute_list_dispatch_indirect(compute_list: int, buffer: RID, offset: int) - Submits the compute list for processing on the GPU with the given group counts stored in the `buffer` at `offset`. Buffer must have been created with `STORAGE_BUFFER_USAGE_DISPATCH_INDIRECT` flag.
+- compute_list_end() - Finishes a list of compute commands created with the `compute_*` methods.
+- compute_list_set_push_constant(compute_list: int, buffer: PackedByteArray, size_bytes: int) - Sets the push constant data to `buffer` for the specified `compute_list`. The shader determines how this binary data is used. The buffer's size in bytes must also be specified in `size_bytes` (this can be obtained by calling the `PackedByteArray.size` method on the passed `buffer`).
+- compute_pipeline_create(shader: RID, specialization_constants: RDPipelineSpecializationConstant[] = []) -> RID - Creates a new compute pipeline. It can be accessed with the RID that is returned. Once finished with your RID, you will want to free the RID using the RenderingDevice's `free_rid` method. This will be freed automatically when the `shader` is freed.
+- compute_pipeline_is_valid(compute_pipeline: RID) -> bool - Returns `true` if the compute pipeline specified by the `compute_pipeline` RID is valid, `false` otherwise.
+- create_local_device() -> RenderingDevice - Create a new local RenderingDevice. This is most useful for performing compute operations on the GPU independently from the rest of the engine.
+- draw_command_begin_label(name: String, color: Color) - Create a command buffer debug label region that can be displayed in third-party tools such as . All regions must be ended with a `draw_command_end_label` call. When viewed from the linear series of submissions to a single queue, calls to `draw_command_begin_label` and `draw_command_end_label` must be matched and balanced. The `VK_EXT_DEBUG_UTILS_EXTENSION_NAME` Vulkan extension must be available and enabled for command buffer debug label region to work. See also `draw_command_end_label`.
+- draw_command_end_label() - Ends the command buffer debug label region started by a `draw_command_begin_label` call.
+- draw_command_insert_label(name: String, color: Color) - This method does nothing.
+- draw_list_begin(framebuffer: RID, draw_flags: int = 0, clear_color_values: PackedColorArray = PackedColorArray(), clear_depth_value: float = 1.0, clear_stencil_value: int = 0, region: Rect2 = Rect2(0, 0, 0, 0), breadcrumb: int = 0) -> int - Starts a list of raster drawing commands created with the `draw_*` methods. The returned value should be passed to other `draw_list_*` functions. Multiple draw lists cannot be created at the same time; you must finish the previous draw list first using `draw_list_end`. A simple drawing operation might look like this (code is not a complete example): The `draw_flags` indicates if the texture attachments of the framebuffer should be cleared or ignored. Only one of the two flags can be used for each individual attachment. Ignoring an attachment means that any contents that existed before the draw list will be completely discarded, reducing the memory bandwidth used by the render pass but producing garbage results if the pixels aren't replaced. The default behavior allows the engine to figure out the right operation to use if the texture is discardable, which can result in increased performance. See RDTextureFormat or `texture_set_discardable`. The `breadcrumb` parameter can be an arbitrary 32-bit integer that is useful to diagnose GPU crashes. If Godot is built in dev or debug mode; when the GPU crashes Godot will dump all shaders that were being executed at the time of the crash and the breadcrumb is useful to diagnose what passes did those shaders belong to. It does not affect rendering behavior and can be set to 0. It is recommended to use `BreadcrumbMarker` enumerations for consistency but it's not required. It is also possible to use bitwise operations to add extra data. e.g.
+- draw_list_begin_for_screen(screen: int = 0, clear_color: Color = Color(0, 0, 0, 1)) -> int - High-level variant of `draw_list_begin`, with the parameters automatically being adjusted for drawing onto the window specified by the `screen` ID. **Note:** Cannot be used with local RenderingDevices, as these don't have a screen. If called on a local RenderingDevice, `draw_list_begin_for_screen` returns `INVALID_ID`.
+- draw_list_begin_split(framebuffer: RID, splits: int, initial_color_action: int, final_color_action: int, initial_depth_action: int, final_depth_action: int, clear_color_values: PackedColorArray = PackedColorArray(), clear_depth: float = 1.0, clear_stencil: int = 0, region: Rect2 = Rect2(0, 0, 0, 0), storage_textures: RID[] = []) -> PackedInt64Array - This method does nothing and always returns an empty PackedInt64Array.
+- draw_list_bind_index_array(draw_list: int, index_array: RID) - Binds `index_array` to the specified `draw_list`.
+- draw_list_bind_render_pipeline(draw_list: int, render_pipeline: RID) - Binds `render_pipeline` to the specified `draw_list`.
+- draw_list_bind_uniform_set(draw_list: int, uniform_set: RID, set_index: int) - Binds `uniform_set` to the specified `draw_list`. A `set_index` must also be specified, which is an identifier starting from `0` that must match the one expected by the draw list.
+- draw_list_bind_vertex_array(draw_list: int, vertex_array: RID) - Binds `vertex_array` to the specified `draw_list`.
+- draw_list_bind_vertex_buffers_format(draw_list: int, vertex_format: int, vertex_count: int, vertex_buffers: RID[], offsets: PackedInt64Array = PackedInt64Array()) - Binds a set of `vertex_buffers` directly to the specified `draw_list` using `vertex_format` without creating a vertex array RID. Provide the number of vertices in `vertex_count`; optional per-buffer byte `offsets` may also be supplied.
+- draw_list_disable_scissor(draw_list: int) - Removes and disables the scissor rectangle for the specified `draw_list`. See also `draw_list_enable_scissor`.
+- draw_list_draw(draw_list: int, use_indices: bool, instances: int, procedural_vertex_count: int = 0) - Submits `draw_list` for rendering on the GPU. This is the raster equivalent to `compute_list_dispatch`.
+- draw_list_draw_indirect(draw_list: int, use_indices: bool, buffer: RID, offset: int = 0, draw_count: int = 1, stride: int = 0) - Submits `draw_list` for rendering on the GPU with the given parameters stored in the `buffer` at `offset`. Parameters being integers: vertex count, instance count, first vertex, first instance. And when using indices: index count, instance count, first index, vertex offset, first instance. Buffer must have been created with `STORAGE_BUFFER_USAGE_DISPATCH_INDIRECT` flag.
+- draw_list_enable_scissor(draw_list: int, rect: Rect2 = Rect2(0, 0, 0, 0)) - Creates a scissor rectangle and enables it for the specified `draw_list`. Scissor rectangles are used for clipping by discarding fragments that fall outside a specified rectangular portion of the screen. See also `draw_list_disable_scissor`. **Note:** The specified `rect` is automatically intersected with the screen's dimensions, which means it cannot exceed the screen's dimensions.
+- draw_list_end() - Finishes a list of raster drawing commands created with the `draw_*` methods.
+- draw_list_set_blend_constants(draw_list: int, color: Color) - Sets blend constants for the specified `draw_list` to `color`. Blend constants are used only if the graphics pipeline is created with `DYNAMIC_STATE_BLEND_CONSTANTS` flag set.
+- draw_list_set_push_constant(draw_list: int, buffer: PackedByteArray, size_bytes: int) - Sets the push constant data to `buffer` for the specified `draw_list`. The shader determines how this binary data is used. The buffer's size in bytes must also be specified in `size_bytes` (this can be obtained by calling the `PackedByteArray.size` method on the passed `buffer`).
+- draw_list_switch_to_next_pass() -> int - Switches to the next draw pass.
+- draw_list_switch_to_next_pass_split(splits: int) -> PackedInt64Array - This method does nothing and always returns an empty PackedInt64Array.
+- framebuffer_create(textures: RID[], validate_with_format: int = -1, view_count: int = 1) -> RID - Creates a new framebuffer. It can be accessed with the RID that is returned. Once finished with your RID, you will want to free the RID using the RenderingDevice's `free_rid` method. This will be freed automatically when any of the `textures` is freed.
+- framebuffer_create_empty(size: Vector2i, samples: int = 0, validate_with_format: int = -1) -> RID - Creates a new empty framebuffer. It can be accessed with the RID that is returned. Once finished with your RID, you will want to free the RID using the RenderingDevice's `free_rid` method.
+- framebuffer_create_multipass(textures: RID[], passes: RDFramebufferPass[], validate_with_format: int = -1, view_count: int = 1) -> RID - Creates a new multipass framebuffer. It can be accessed with the RID that is returned. Once finished with your RID, you will want to free the RID using the RenderingDevice's `free_rid` method. This will be freed automatically when any of the `textures` is freed.
+- framebuffer_format_create(attachments: RDAttachmentFormat[], view_count: int = 1) -> int - Creates a new framebuffer format with the specified `attachments` and `view_count`. Returns the new framebuffer's unique framebuffer format ID. If `view_count` is greater than or equal to `2`, enables multiview which is used for VR rendering. This requires support for the Vulkan multiview extension.
+- framebuffer_format_create_empty(samples: int = 0) -> int - Creates a new empty framebuffer format with the specified number of `samples` and returns its ID.
+- framebuffer_format_create_multipass(attachments: RDAttachmentFormat[], passes: RDFramebufferPass[], view_count: int = 1) -> int - Creates a multipass framebuffer format with the specified `attachments`, `passes` and `view_count` and returns its ID. If `view_count` is greater than or equal to `2`, enables multiview which is used for VR rendering. This requires support for the Vulkan multiview extension.
+- framebuffer_format_get_texture_samples(format: int, render_pass: int = 0) -> int - Returns the number of texture samples used for the given framebuffer `format` ID (returned by `framebuffer_get_format`).
+- framebuffer_get_format(framebuffer: RID) -> int - Returns the format ID of the framebuffer specified by the `framebuffer` RID. This ID is guaranteed to be unique for the same formats and does not need to be freed.
+- framebuffer_is_valid(framebuffer: RID) -> bool - Returns `true` if the framebuffer specified by the `framebuffer` RID is valid, `false` otherwise.
+- free_rid(rid: RID) - Tries to free an object in the RenderingDevice. To avoid memory leaks, this should be called after using an object as memory management does not occur automatically when using RenderingDevice directly.
+- full_barrier() - This method does nothing.
+- get_captured_timestamp_cpu_time(index: int) -> int - Returns the timestamp in CPU time for the rendering step specified by `index` (in microseconds since the engine started). See also `get_captured_timestamp_gpu_time` and `capture_timestamp`.
+- get_captured_timestamp_gpu_time(index: int) -> int - Returns the timestamp in GPU time for the rendering step specified by `index` (in microseconds since the engine started). See also `get_captured_timestamp_cpu_time` and `capture_timestamp`.
+- get_captured_timestamp_name(index: int) -> String - Returns the timestamp's name for the rendering step specified by `index`. See also `capture_timestamp`.
+- get_captured_timestamps_count() -> int - Returns the total number of timestamps (rendering steps) available for profiling.
+- get_captured_timestamps_frame() -> int - Returns the index of the last frame rendered that has rendering timestamps available for querying.
+- get_device_allocation_count() -> int - Returns how many allocations the GPU has performed for internal driver structures. This is only used by Vulkan in debug builds and can return 0 when this information is not tracked or unknown.
+- get_device_allocs_by_object_type(type: int) -> int - Same as `get_device_allocation_count` but filtered for a given object type. The type argument must be in range `[0; get_tracked_object_type_count - 1]`. If `get_tracked_object_type_count` is 0, then type argument is ignored and always returns 0. This is only used by Vulkan in debug builds and can return 0 when this information is not tracked or unknown.
+- get_device_memory_by_object_type(type: int) -> int - Same as `get_device_total_memory` but filtered for a given object type. The type argument must be in range `[0; get_tracked_object_type_count - 1]`. If `get_tracked_object_type_count` is 0, then type argument is ignored and always returns 0. This is only used by Vulkan in debug builds and can return 0 when this information is not tracked or unknown.
+- get_device_name() -> String - Returns the name of the video adapter (e.g. "GeForce GTX 1080/PCIe/SSE2"). Equivalent to `RenderingServer.get_video_adapter_name`. See also `get_device_vendor_name`.
+- get_device_pipeline_cache_uuid() -> String - Returns the universally unique identifier for the pipeline cache. This is used to cache shader files on disk, which avoids shader recompilations on subsequent engine runs. This UUID varies depending on the graphics card model, but also the driver version. Therefore, updating graphics drivers will invalidate the shader cache.
+- get_device_total_memory() -> int - Returns how much bytes the GPU is using. This is only used by Vulkan in debug builds and can return 0 when this information is not tracked or unknown.
+- get_device_vendor_name() -> String - Returns the vendor of the video adapter (e.g. "NVIDIA Corporation"). Equivalent to `RenderingServer.get_video_adapter_vendor`. See also `get_device_name`.
+- get_driver_allocation_count() -> int - Returns how many allocations the GPU driver has performed for internal driver structures. This is only used by Vulkan in debug builds and can return 0 when this information is not tracked or unknown.
+- get_driver_allocs_by_object_type(type: int) -> int - Same as `get_driver_allocation_count` but filtered for a given object type. The type argument must be in range `[0; get_tracked_object_type_count - 1]`. If `get_tracked_object_type_count` is 0, then type argument is ignored and always returns 0. This is only used by Vulkan in debug builds and can return 0 when this information is not tracked or unknown.
+- get_driver_and_device_memory_report() -> String - Returns string report in CSV format using the following methods: - `get_tracked_object_name` - `get_tracked_object_type_count` - `get_driver_total_memory` - `get_driver_allocation_count` - `get_driver_memory_by_object_type` - `get_driver_allocs_by_object_type` - `get_device_total_memory` - `get_device_allocation_count` - `get_device_memory_by_object_type` - `get_device_allocs_by_object_type` This is only used by Vulkan in debug builds. Godot must also be started with the `--extra-gpu-memory-tracking` .
+- get_driver_memory_by_object_type(type: int) -> int - Same as `get_driver_total_memory` but filtered for a given object type. The type argument must be in range `[0; get_tracked_object_type_count - 1]`. If `get_tracked_object_type_count` is 0, then type argument is ignored and always returns 0. This is only used by Vulkan in debug builds and can return 0 when this information is not tracked or unknown.
+- get_driver_resource(resource: int, rid: RID, index: int) -> int - Returns the unique identifier of the driver `resource` for the specified `rid`. Some driver resource types ignore the specified `rid`. `index` is always ignored but must be specified anyway.
+- get_driver_total_memory() -> int - Returns how much bytes the GPU driver is using for internal driver structures. This is only used by Vulkan in debug builds and can return 0 when this information is not tracked or unknown.
+- get_frame_delay() -> int - Returns the frame count kept by the graphics API. Higher values result in higher input lag, but with more consistent throughput. For the main RenderingDevice, frames are cycled (usually 3 with triple-buffered V-Sync enabled). However, local RenderingDevices only have 1 frame.
+- get_memory_usage(type: int) -> int - Returns the memory usage in bytes corresponding to the given `type`. When using Vulkan, these statistics are calculated by .
+- get_perf_report() -> String - Returns a string with a performance report from the past frame. Updates every frame.
+- get_tracked_object_name(type_index: int) -> String - Returns the name of the type of object for the given `type_index`. This value must be in range `[0; get_tracked_object_type_count - 1]`. If `get_tracked_object_type_count` is 0, then type argument is ignored and always returns the same string. The return value is important because it gives meaning to the types passed to `get_driver_memory_by_object_type`, `get_driver_allocs_by_object_type`, `get_device_memory_by_object_type`, and `get_device_allocs_by_object_type`. Examples of strings it can return (not exhaustive): - DEVICE_MEMORY - PIPELINE_CACHE - SWAPCHAIN_KHR - COMMAND_POOL Thus if e.g. `get_tracked_object_name(5)` returns "COMMAND_POOL", then `get_device_memory_by_object_type(5)` returns the bytes used by the GPU for command pools. This is only used by Vulkan in debug builds. Godot must also be started with the `--extra-gpu-memory-tracking` .
+- get_tracked_object_type_count() -> int - Returns how many types of trackable objects there are. This is only used by Vulkan in debug builds. Godot must also be started with the `--extra-gpu-memory-tracking` .
+- has_feature(feature: int) -> bool - Returns `true` if the `feature` is supported by the GPU.
+- index_array_create(index_buffer: RID, index_offset: int, index_count: int) -> RID - Creates a new index array. It can be accessed with the RID that is returned. Once finished with your RID, you will want to free the RID using the RenderingDevice's `free_rid` method. This will be freed automatically when the `index_buffer` is freed.
+- index_buffer_create(size_indices: int, format: int, data: PackedByteArray = PackedByteArray(), use_restart_indices: bool = false, creation_bits: int = 0) -> RID - Creates a new index buffer. It can be accessed with the RID that is returned. Once finished with your RID, you will want to free the RID using the RenderingDevice's `free_rid` method.
+- limit_get(limit: int) -> int - Returns the value of the specified `limit`. This limit varies depending on the current graphics hardware (and sometimes the driver version). If the given limit is exceeded, rendering errors will occur. Limits for various graphics hardware can be found in the .
+- raytracing_list_begin() -> int - Starts a list of raytracing commands. The returned value should be passed to other `raytracing_list_*` functions. Multiple raytracing lists cannot be created at the same time; you must finish the previous raytracing list first using `raytracing_list_end`. A simple raytracing operation might look like this (code is not a complete example):
+- raytracing_list_bind_raytracing_pipeline(raytracing_list: int, raytracing_pipeline: RID) - Binds `raytracing_pipeline` to the specified `raytracing_list`.
+- raytracing_list_bind_uniform_set(raytracing_list: int, uniform_set: RID, set_index: int) - Binds the `uniform_set` to this `raytracing_list`.
+- raytracing_list_end() - Finishes a list of raytracing commands created with the `raytracing_*` methods.
+- raytracing_list_set_push_constant(raytracing_list: int, buffer: PackedByteArray, size_bytes: int) - Sets the push constant data to `buffer` for the specified `raytracing_list`. The shader determines how this binary data is used. The buffer's size in bytes must also be specified in `size_bytes` (this can be obtained by calling the `PackedByteArray.size` method on the passed `buffer`).
+- raytracing_list_trace_rays(raytracing_list: int, width: int, height: int) - Initializes a ray tracing dispatch for the specified `raytracing_list` assembling a group of `width` x `height` rays.
+- raytracing_pipeline_create(shader: RID, specialization_constants: RDPipelineSpecializationConstant[] = []) -> RID - Creates a new raytracing pipeline. It can be accessed with the RID that is returned. Once finished with your RID, you will want to free the RID using the RenderingDevice's `free_rid` method. **Note:**: Recursive raytracing is not permitted.
+- raytracing_pipeline_is_valid(raytracing_pipeline: RID) -> bool - Returns `true` if the raytracing pipeline specified by the `raytracing_pipeline` RID is valid, `false` otherwise.
+- render_pipeline_create(shader: RID, framebuffer_format: int, vertex_format: int, primitive: int, rasterization_state: RDPipelineRasterizationState, multisample_state: RDPipelineMultisampleState, stencil_state: RDPipelineDepthStencilState, color_blend_state: RDPipelineColorBlendState, dynamic_state_flags: int = 0, for_render_pass: int = 0, specialization_constants: RDPipelineSpecializationConstant[] = []) -> RID - Creates a new render pipeline. It can be accessed with the RID that is returned. Once finished with your RID, you will want to free the RID using the RenderingDevice's `free_rid` method. This will be freed automatically when the `shader` is freed.
+- render_pipeline_is_valid(render_pipeline: RID) -> bool - Returns `true` if the render pipeline specified by the `render_pipeline` RID is valid, `false` otherwise.
+- sampler_create(state: RDSamplerState) -> RID - Creates a new sampler. It can be accessed with the RID that is returned. Once finished with your RID, you will want to free the RID using the RenderingDevice's `free_rid` method.
+- sampler_is_format_supported_for_filter(format: int, sampler_filter: int) -> bool - Returns `true` if implementation supports using a texture of `format` with the given `sampler_filter`.
+- screen_get_framebuffer_format(screen: int = 0) -> int - Returns the framebuffer format of the given screen. **Note:** Only the main RenderingDevice returned by `RenderingServer.get_rendering_device` has a format. If called on a local RenderingDevice, this method prints an error and returns `INVALID_ID`.
+- screen_get_height(screen: int = 0) -> int - Returns the window height matching the graphics API context for the given window ID (in pixels). Despite the parameter being named `screen`, this returns the *window* size. See also `screen_get_width`. **Note:** Only the main RenderingDevice returned by `RenderingServer.get_rendering_device` has a height. If called on a local RenderingDevice, this method prints an error and returns `INVALID_ID`.
+- screen_get_width(screen: int = 0) -> int - Returns the window width matching the graphics API context for the given window ID (in pixels). Despite the parameter being named `screen`, this returns the *window* size. See also `screen_get_height`. **Note:** Only the main RenderingDevice returned by `RenderingServer.get_rendering_device` has a width. If called on a local RenderingDevice, this method prints an error and returns `INVALID_ID`.
+- set_resource_name(id: RID, name: String) - Sets the resource name for `id` to `name`. This is used for debugging with third-party tools such as . The following types of resources can be named: texture, sampler, vertex buffer, index buffer, uniform buffer, texture buffer, storage buffer, uniform set buffer, shader, render pipeline and compute pipeline. Framebuffers cannot be named. Attempting to name an incompatible resource type will print an error. **Note:** Resource names are only set when the engine runs in verbose mode (`OS.is_stdout_verbose` = `true`), or when using an engine build compiled with the `dev_mode=yes` SCons option. The graphics driver must also support the `VK_EXT_DEBUG_UTILS_EXTENSION_NAME` Vulkan extension for named resources to work.
+- shader_compile_binary_from_spirv(spirv_data: RDShaderSPIRV, name: String = "") -> PackedByteArray - Compiles a binary shader from `spirv_data` and returns the compiled binary data as a PackedByteArray. This compiled shader is specific to the GPU model and driver version used; it will not work on different GPU models or even different driver versions. See also `shader_compile_spirv_from_source`. `name` is an optional human-readable name that can be given to the compiled shader for organizational purposes.
+- shader_compile_spirv_from_source(shader_source: RDShaderSource, allow_cache: bool = true) -> RDShaderSPIRV - Compiles a SPIR-V from the shader source code in `shader_source` and returns the SPIR-V as an RDShaderSPIRV. This intermediate language shader is portable across different GPU models and driver versions, but cannot be run directly by GPUs until compiled into a binary shader using `shader_compile_binary_from_spirv`. If `allow_cache` is `true`, make use of the shader cache generated by Godot. This avoids a potentially lengthy shader compilation step if the shader is already in cache. If `allow_cache` is `false`, Godot's shader cache is ignored and the shader will always be recompiled.
+- shader_create_from_bytecode(binary_data: PackedByteArray, placeholder_rid: RID = RID()) -> RID - Creates a new shader instance from a binary compiled shader. It can be accessed with the RID that is returned. Once finished with your RID, you will want to free the RID using the RenderingDevice's `free_rid` method. See also `shader_compile_binary_from_spirv` and `shader_create_from_spirv`.
+- shader_create_from_spirv(spirv_data: RDShaderSPIRV, name: String = "") -> RID - Creates a new shader instance from SPIR-V intermediate code. It can be accessed with the RID that is returned. Once finished with your RID, you will want to free the RID using the RenderingDevice's `free_rid` method. See also `shader_compile_spirv_from_source` and `shader_create_from_bytecode`.
+- shader_create_placeholder() -> RID - Create a placeholder RID by allocating an RID without initializing it for use in `shader_create_from_bytecode`. This allows you to create an RID for a shader and pass it around, but defer compiling the shader to a later time.
+- shader_get_vertex_input_attribute_mask(shader: RID) -> int - Returns the internal vertex input mask. Internally, the vertex input mask is an unsigned integer consisting of the locations (specified in GLSL via. `layout(location = ...)`) of the input variables (specified in GLSL by the `in` keyword).
+- storage_buffer_create(size_bytes: int, data: PackedByteArray = PackedByteArray(), usage: int = 0, creation_bits: int = 0) -> RID - Creates a with the specified `data` and `usage`. It can be accessed with the RID that is returned. Once finished with your RID, you will want to free the RID using the RenderingDevice's `free_rid` method.
+- submit() - Pushes the frame setup and draw command buffers then marks the local device as currently processing (which allows calling `sync`). **Note:** Only available in local RenderingDevices.
+- sync() - Forces a synchronization between the CPU and GPU, which may be required in certain cases. Only call this when needed, as CPU-GPU synchronization has a performance cost. **Note:** Only available in local RenderingDevices. **Note:** `sync` can only be called after a `submit`.
+- texture_buffer_create(size_bytes: int, format: int, data: PackedByteArray = PackedByteArray()) -> RID - Creates a new texture buffer. It can be accessed with the RID that is returned. Once finished with your RID, you will want to free the RID using the RenderingDevice's `free_rid` method.
+- texture_clear(texture: RID, color: Color, base_mipmap: int, mipmap_count: int, base_layer: int, layer_count: int) -> int - Clears the specified `texture` by replacing all of its pixels with the specified `color`. `base_mipmap` and `mipmap_count` determine which mipmaps of the texture are affected by this clear operation, while `base_layer` and `layer_count` determine which layers of a 3D texture (or texture array) are affected by this clear operation. For 2D textures (which only have one layer by design), `base_layer` must be `0` and `layer_count` must be `1`. **Note:** `texture` can't be cleared while a draw list that uses it as part of a framebuffer is being created. Ensure the draw list is finalized (and that the color/depth texture using it is not set to `FINAL_ACTION_CONTINUE`) to clear this texture.
+- texture_copy(from_texture: RID, to_texture: RID, from_pos: Vector3, to_pos: Vector3, size: Vector3, src_mipmap: int, dst_mipmap: int, src_layer: int, dst_layer: int) -> int - Copies the `from_texture` to `to_texture` with the specified `from_pos`, `to_pos` and `size` coordinates. The Z axis of the `from_pos`, `to_pos` and `size` must be `0` for 2-dimensional textures. Source and destination mipmaps/layers must also be specified, with these parameters being `0` for textures without mipmaps or single-layer textures. Returns `@GlobalScope.OK` if the texture copy was successful or `@GlobalScope.ERR_INVALID_PARAMETER` otherwise. **Note:** `from_texture` texture can't be copied while a draw list that uses it as part of a framebuffer is being created. Ensure the draw list is finalized (and that the color/depth texture using it is not set to `FINAL_ACTION_CONTINUE`) to copy this texture. **Note:** `from_texture` texture requires the `TEXTURE_USAGE_CAN_COPY_FROM_BIT` to be retrieved. **Note:** `to_texture` can't be copied while a draw list that uses it as part of a framebuffer is being created. Ensure the draw list is finalized (and that the color/depth texture using it is not set to `FINAL_ACTION_CONTINUE`) to copy this texture. **Note:** `to_texture` requires the `TEXTURE_USAGE_CAN_COPY_TO_BIT` to be retrieved. **Note:** `from_texture` and `to_texture` must be of the same type (color or depth).
+- texture_create(format: RDTextureFormat, view: RDTextureView, data: PackedByteArray[] = []) -> RID - Creates a new texture. It can be accessed with the RID that is returned. Once finished with your RID, you will want to free the RID using the RenderingDevice's `free_rid` method. **Note:** `data` takes an Array of PackedByteArrays. For `TEXTURE_TYPE_1D`, `TEXTURE_TYPE_2D`, and `TEXTURE_TYPE_3D` types, this array should only have one element, a PackedByteArray containing all the data for the texture. For `_ARRAY` and `_CUBE` types, the length should be the same as the number of `RDTextureFormat.array_layers` in `format`. **Note:** Not to be confused with `RenderingServer.texture_2d_create`, which creates the Godot-specific Texture2D resource as opposed to the graphics API's own texture type.
+- texture_create_from_extension(type: int, format: int, samples: int, usage_flags: int, image: int, width: int, height: int, depth: int, layers: int, mipmaps: int = 1) -> RID - Returns an RID for an existing `image` (`VkImage`) with the given `type`, `format`, `samples`, `usage_flags`, `width`, `height`, `depth`, `layers`, and `mipmaps`. This can be used to allow Godot to render onto foreign images.
+- texture_create_shared(view: RDTextureView, with_texture: RID) -> RID - Creates a shared texture using the specified `view` and the texture information from `with_texture`. This will be freed automatically when the `with_texture` is freed.
+- texture_create_shared_from_slice(view: RDTextureView, with_texture: RID, layer: int, mipmap: int, mipmaps: int = 1, slice_type: int = 0) -> RID - Creates a shared texture using the specified `view` and the texture information from `with_texture`'s `layer` and `mipmap`. The number of included mipmaps from the original texture can be controlled using the `mipmaps` parameter. Only relevant for textures with multiple layers, such as 3D textures, texture arrays and cubemaps. For single-layer textures, use `texture_create_shared`. For 2D textures (which only have one layer), `layer` must be `0`. **Note:** Layer slicing is only supported for 2D texture arrays, not 3D textures or cubemaps. This will be freed automatically when the `with_texture` is freed.
+- texture_get_data(texture: RID, layer: int) -> PackedByteArray - Returns the `texture` data for the specified `layer` as raw binary data. For 2D textures (which only have one layer), `layer` must be `0`. **Note:** `texture` can't be retrieved while a draw list that uses it as part of a framebuffer is being created. Ensure the draw list is finalized (and that the color/depth texture using it is not set to `FINAL_ACTION_CONTINUE`) to retrieve this texture. Otherwise, an error is printed and an empty PackedByteArray is returned. **Note:** `texture` requires the `TEXTURE_USAGE_CAN_COPY_FROM_BIT` to be retrieved. Otherwise, an error is printed and an empty PackedByteArray is returned. **Note:** This method will block the GPU from working until the data is retrieved. Refer to `texture_get_data_async` for an alternative that returns the data in more performant way.
+- texture_get_data_async(texture: RID, layer: int, callback: Callable) -> int - Asynchronous version of `texture_get_data`. RenderingDevice will call `callback` in a certain amount of frames with the data the texture had at the time of the request. **Note:** At the moment, the delay corresponds to the amount of frames specified by `ProjectSettings.rendering/rendering_device/vsync/frame_queue_size`. **Note:** Downloading large textures can have a prohibitive cost for real-time even when using the asynchronous method due to hardware bandwidth limitations. When dealing with large resources, you can adjust settings such as `ProjectSettings.rendering/rendering_device/staging_buffer/texture_download_region_size_px` and `ProjectSettings.rendering/rendering_device/staging_buffer/block_size_kb` to improve the transfer speed at the cost of extra memory.
+- texture_get_format(texture: RID) -> RDTextureFormat - Returns the data format used to create this texture.
+- texture_get_native_handle(texture: RID) -> int - Returns the internal graphics handle for this texture object. For use when communicating with third-party APIs mostly with GDExtension. **Note:** This function returns a `uint64_t` which internally maps to a `GLuint` (OpenGL) or `VkImage` (Vulkan).
+- texture_is_discardable(texture: RID) -> bool - Returns `true` if the `texture` is discardable, `false` otherwise. See RDTextureFormat or `texture_set_discardable`.
+- texture_is_format_supported_for_usage(format: int, usage_flags: int) -> bool - Returns `true` if the specified `format` is supported for the given `usage_flags`, `false` otherwise.
+- texture_is_shared(texture: RID) -> bool - Returns `true` if the `texture` is shared, `false` otherwise. See RDTextureView.
+- texture_is_valid(texture: RID) -> bool - Returns `true` if the `texture` is valid, `false` otherwise.
+- texture_resolve_multisample(from_texture: RID, to_texture: RID) -> int - Resolves the `from_texture` texture onto `to_texture` with multisample antialiasing enabled. This must be used when rendering a framebuffer for MSAA to work. Returns `@GlobalScope.OK` if successful, `@GlobalScope.ERR_INVALID_PARAMETER` otherwise. **Note:** `from_texture` and `to_texture` textures must have the same dimension, format and type (color or depth). **Note:** `from_texture` can't be copied while a draw list that uses it as part of a framebuffer is being created. Ensure the draw list is finalized (and that the color/depth texture using it is not set to `FINAL_ACTION_CONTINUE`) to resolve this texture. **Note:** `from_texture` requires the `TEXTURE_USAGE_CAN_COPY_FROM_BIT` to be retrieved. **Note:** `from_texture` must be multisampled and must also be 2D (or a slice of a 3D/cubemap texture). **Note:** `to_texture` can't be copied while a draw list that uses it as part of a framebuffer is being created. Ensure the draw list is finalized (and that the color/depth texture using it is not set to `FINAL_ACTION_CONTINUE`) to resolve this texture. **Note:** `to_texture` texture requires the `TEXTURE_USAGE_CAN_COPY_TO_BIT` to be retrieved. **Note:** `to_texture` texture must **not** be multisampled and must also be 2D (or a slice of a 3D/cubemap texture).
+- texture_set_discardable(texture: RID, discardable: bool) - Updates the discardable property of `texture`. If a texture is discardable, its contents do not need to be preserved between frames. This flag is only relevant when the texture is used as target in a draw list. This information is used by RenderingDevice to figure out if a texture's contents can be discarded, eliminating unnecessary writes to memory and boosting performance.
+- texture_update(texture: RID, layer: int, data: PackedByteArray) -> int - Updates texture data with new data, replacing the previous data in place. The updated texture data must have the same dimensions and format. For 2D textures (which only have one layer), `layer` must be `0`. Returns `@GlobalScope.OK` if the update was successful, `@GlobalScope.ERR_INVALID_PARAMETER` otherwise. **Note:** Updating textures is forbidden during creation of a draw or compute list. **Note:** The existing `texture` can't be updated while a draw list that uses it as part of a framebuffer is being created. Ensure the draw list is finalized (and that the color/depth texture using it is not set to `FINAL_ACTION_CONTINUE`) to update this texture. **Note:** The existing `texture` requires the `TEXTURE_USAGE_CAN_UPDATE_BIT` to be updatable.
+- tlas_create(instances_buffer: RID) -> RID - Creates a new Top Level Acceleration Structure. It can be accessed with the RID that is returned. The instances buffer passed as input is expected to be filled before building the TLAS. Once finished with your RID, you will want to free the RID using the RenderingDevice's `free_rid` method.
+- tlas_instances_buffer_create(instance_count: int, creation_bits: int = 0) -> RID - Creates a new instances buffer which can be used to create a TLAS. It can be accessed with the RID that is returned. Once finished with your RID, you will want to free the RID using the RenderingDevice's `free_rid` method.
+- tlas_instances_buffer_fill(instances_buffer: RID, blases: RID[], transforms: Transform3D[]) - Fills the content of an instances buffer. The number of BLASes and transforms passed as input should be the same and should equal the instance count used at instance buffer creation time.
+- uniform_buffer_create(size_bytes: int, data: PackedByteArray = PackedByteArray(), creation_bits: int = 0) -> RID - Creates a new uniform buffer. It can be accessed with the RID that is returned. Once finished with your RID, you will want to free the RID using the RenderingDevice's `free_rid` method.
+- uniform_set_create(uniforms: RDUniform[], shader: RID, shader_set: int) -> RID - Creates a new uniform set. It can be accessed with the RID that is returned. Once finished with your RID, you will want to free the RID using the RenderingDevice's `free_rid` method. This will be freed automatically when the `shader` or any of the RIDs in the `uniforms` is freed.
+- uniform_set_is_valid(uniform_set: RID) -> bool - Checks if the `uniform_set` is valid, i.e. is owned.
+- vertex_array_create(vertex_count: int, vertex_format: int, src_buffers: RID[], offsets: PackedInt64Array = PackedInt64Array()) -> RID - Creates a vertex array based on the specified buffers. Optionally, `offsets` (in bytes) may be defined for each buffer. Once finished with your RID, you will want to free the RID using the RenderingDevice's `free_rid` method. This will be freed automatically when any of the `src_buffers` is freed.
+- vertex_buffer_create(size_bytes: int, data: PackedByteArray = PackedByteArray(), creation_bits: int = 0) -> RID - Creates a new vertex buffer. It can be accessed with the RID that is returned. Once finished with your RID, you will want to free the RID using the RenderingDevice's `free_rid` method.
+- vertex_format_create(vertex_descriptions: RDVertexAttribute[]) -> int - Creates a new vertex format with the specified `vertex_descriptions`. Returns a unique vertex format ID corresponding to the newly created vertex format.
+
+**Enums:**
+**DeviceType:** DEVICE_TYPE_OTHER=0, DEVICE_TYPE_INTEGRATED_GPU=1, DEVICE_TYPE_DISCRETE_GPU=2, DEVICE_TYPE_VIRTUAL_GPU=3, DEVICE_TYPE_CPU=4, DEVICE_TYPE_MAX=5
+  - DEVICE_TYPE_OTHER: Rendering device type does not match any of the other enum values or is unknown.
+  - DEVICE_TYPE_INTEGRATED_GPU: Rendering device is an integrated GPU, which is typically *(but not always)* slower than dedicated GPUs (`DEVICE_TYPE_DISCRETE_GPU`). On Android and iOS, the rendering device type is always considered to be `DEVICE_TYPE_INTEGRATED_GPU`.
+  - DEVICE_TYPE_DISCRETE_GPU: Rendering device is a dedicated GPU, which is typically *(but not always)* faster than integrated GPUs (`DEVICE_TYPE_INTEGRATED_GPU`).
+  - DEVICE_TYPE_VIRTUAL_GPU: Rendering device is an emulated GPU in a virtual environment. This is typically much slower than the host GPU, which means the expected performance level on a dedicated GPU will be roughly equivalent to `DEVICE_TYPE_INTEGRATED_GPU`. Virtual machine GPU passthrough (such as VFIO) will not report the device type as `DEVICE_TYPE_VIRTUAL_GPU`. Instead, the host GPU's device type will be reported as if the GPU was not emulated.
+  - DEVICE_TYPE_CPU: Rendering device is provided by software emulation (such as Lavapipe or ). This is the slowest kind of rendering device available; it's typically much slower than `DEVICE_TYPE_INTEGRATED_GPU`.
+  - DEVICE_TYPE_MAX: Represents the size of the `DeviceType` enum.
+**DriverResource:** DRIVER_RESOURCE_LOGICAL_DEVICE=0, DRIVER_RESOURCE_PHYSICAL_DEVICE=1, DRIVER_RESOURCE_TOPMOST_OBJECT=2, DRIVER_RESOURCE_COMMAND_QUEUE=3, DRIVER_RESOURCE_QUEUE_FAMILY=4, DRIVER_RESOURCE_TEXTURE=5, DRIVER_RESOURCE_TEXTURE_VIEW=6, DRIVER_RESOURCE_TEXTURE_DATA_FORMAT=7, DRIVER_RESOURCE_SAMPLER=8, DRIVER_RESOURCE_UNIFORM_SET=9, ...
+  - DRIVER_RESOURCE_LOGICAL_DEVICE: Specific device object based on a physical device (`rid` parameter is ignored). - Vulkan: Vulkan device driver resource (`VkDevice`). - D3D12: D3D12 device driver resource (`ID3D12Device`). - Metal: Metal device driver resource (`MTLDevice`).
+  - DRIVER_RESOURCE_PHYSICAL_DEVICE: Physical device the specific logical device is based on (`rid` parameter is ignored). - Vulkan: `VkPhysicalDevice`. - D3D12: `IDXGIAdapter`.
+  - DRIVER_RESOURCE_TOPMOST_OBJECT: Top-most graphics API entry object (`rid` parameter is ignored). - Vulkan: `VkInstance`.
+  - DRIVER_RESOURCE_COMMAND_QUEUE: The main graphics-compute command queue (`rid` parameter is ignored). - Vulkan: `VkQueue`. - D3D12: `ID3D12CommandQueue`. - Metal: `MTLCommandQueue`.
+  - DRIVER_RESOURCE_QUEUE_FAMILY: The specific family the main queue belongs to (`rid` parameter is ignored). - Vulkan: The queue family index, a `uint32_t`.
+  - DRIVER_RESOURCE_TEXTURE: - Vulkan: `VkImage`. - D3D12: `ID3D12Resource`.
+  - DRIVER_RESOURCE_TEXTURE_VIEW: The view of an owned or shared texture. - Vulkan: `VkImageView`. - D3D12: `ID3D12Resource`.
+  - DRIVER_RESOURCE_TEXTURE_DATA_FORMAT: The native id of the data format of the texture. - Vulkan: `VkFormat`. - D3D12: `DXGI_FORMAT`.
+  - DRIVER_RESOURCE_SAMPLER: - Vulkan: `VkSampler`.
+  - DRIVER_RESOURCE_UNIFORM_SET: - Vulkan: `VkDescriptorSet`.
+  - DRIVER_RESOURCE_BUFFER: Buffer of any kind of (storage, vertex, etc.). - Vulkan: `VkBuffer`. - D3D12: `ID3D12Resource`.
+  - DRIVER_RESOURCE_COMPUTE_PIPELINE: - Vulkan: `VkPipeline`. - Metal: `MTLComputePipelineState`.
+  - DRIVER_RESOURCE_RENDER_PIPELINE: - Vulkan: `VkPipeline`. - Metal: `MTLRenderPipelineState`.
+**DataFormat:** DATA_FORMAT_R4G4_UNORM_PACK8=0, DATA_FORMAT_R4G4B4A4_UNORM_PACK16=1, DATA_FORMAT_B4G4R4A4_UNORM_PACK16=2, DATA_FORMAT_R5G6B5_UNORM_PACK16=3, DATA_FORMAT_B5G6R5_UNORM_PACK16=4, DATA_FORMAT_R5G5B5A1_UNORM_PACK16=5, DATA_FORMAT_B5G5R5A1_UNORM_PACK16=6, DATA_FORMAT_A1R5G5B5_UNORM_PACK16=7, DATA_FORMAT_R8_UNORM=8, DATA_FORMAT_R8_SNORM=9, ...
+  - DATA_FORMAT_R4G4_UNORM_PACK8: 4-bit-per-channel red/green channel data format, packed into 8 bits. Values are in the `[0.0, 1.0]` range. **Note:** More information on all data formats can be found on the section of the Vulkan specification, as well as the enum.
+  - DATA_FORMAT_R4G4B4A4_UNORM_PACK16: 4-bit-per-channel red/green/blue/alpha channel data format, packed into 16 bits. Values are in the `[0.0, 1.0]` range.
+  - DATA_FORMAT_B4G4R4A4_UNORM_PACK16: 4-bit-per-channel blue/green/red/alpha channel data format, packed into 16 bits. Values are in the `[0.0, 1.0]` range.
+  - DATA_FORMAT_R5G6B5_UNORM_PACK16: Red/green/blue channel data format with 5 bits of red, 6 bits of green and 5 bits of blue, packed into 16 bits. Values are in the `[0.0, 1.0]` range.
+  - DATA_FORMAT_B5G6R5_UNORM_PACK16: Blue/green/red channel data format with 5 bits of blue, 6 bits of green and 5 bits of red, packed into 16 bits. Values are in the `[0.0, 1.0]` range.
+  - DATA_FORMAT_R5G5B5A1_UNORM_PACK16: Red/green/blue/alpha channel data format with 5 bits of red, 6 bits of green, 5 bits of blue and 1 bit of alpha, packed into 16 bits. Values are in the `[0.0, 1.0]` range.
+  - DATA_FORMAT_B5G5R5A1_UNORM_PACK16: Blue/green/red/alpha channel data format with 5 bits of blue, 6 bits of green, 5 bits of red and 1 bit of alpha, packed into 16 bits. Values are in the `[0.0, 1.0]` range.
+  - DATA_FORMAT_A1R5G5B5_UNORM_PACK16: Alpha/red/green/blue channel data format with 1 bit of alpha, 5 bits of red, 6 bits of green and 5 bits of blue, packed into 16 bits. Values are in the `[0.0, 1.0]` range.
+  - DATA_FORMAT_R8_UNORM: 8-bit-per-channel unsigned floating-point red channel data format with normalized value. Values are in the `[0.0, 1.0]` range.
+  - DATA_FORMAT_R8_SNORM: 8-bit-per-channel signed floating-point red channel data format with normalized value. Values are in the `[-1.0, 1.0]` range.
+  - DATA_FORMAT_R8_USCALED: 8-bit-per-channel unsigned floating-point red channel data format with scaled value (value is converted from integer to float). Values are in the `[0.0, 255.0]` range.
+  - DATA_FORMAT_R8_SSCALED: 8-bit-per-channel signed floating-point red channel data format with scaled value (value is converted from integer to float). Values are in the `[-127.0, 127.0]` range.
+  - DATA_FORMAT_R8_UINT: 8-bit-per-channel unsigned integer red channel data format. Values are in the `[0, 255]` range.
+  - DATA_FORMAT_R8_SINT: 8-bit-per-channel signed integer red channel data format. Values are in the `[-127, 127]` range.
+  - DATA_FORMAT_R8_SRGB: 8-bit-per-channel unsigned floating-point red channel data format with normalized value and nonlinear sRGB encoding. Values are in the `[0.0, 1.0]` range.
+  - DATA_FORMAT_R8G8_UNORM: 8-bit-per-channel unsigned floating-point red/green channel data format with normalized value. Values are in the `[0.0, 1.0]` range.
+  - DATA_FORMAT_R8G8_SNORM: 8-bit-per-channel signed floating-point red/green channel data format with normalized value. Values are in the `[-1.0, 1.0]` range.
+  - DATA_FORMAT_R8G8_USCALED: 8-bit-per-channel unsigned floating-point red/green channel data format with scaled value (value is converted from integer to float). Values are in the `[0.0, 255.0]` range.
+  - DATA_FORMAT_R8G8_SSCALED: 8-bit-per-channel signed floating-point red/green channel data format with scaled value (value is converted from integer to float). Values are in the `[-127.0, 127.0]` range.
+  - DATA_FORMAT_R8G8_UINT: 8-bit-per-channel unsigned integer red/green channel data format. Values are in the `[0, 255]` range.
+  - DATA_FORMAT_R8G8_SINT: 8-bit-per-channel signed integer red/green channel data format. Values are in the `[-127, 127]` range.
+  - DATA_FORMAT_R8G8_SRGB: 8-bit-per-channel unsigned floating-point red/green channel data format with normalized value and nonlinear sRGB encoding. Values are in the `[0.0, 1.0]` range.
+  - DATA_FORMAT_R8G8B8_UNORM: 8-bit-per-channel unsigned floating-point red/green/blue channel data format with normalized value. Values are in the `[0.0, 1.0]` range.
+  - DATA_FORMAT_R8G8B8_SNORM: 8-bit-per-channel signed floating-point red/green/blue channel data format with normalized value. Values are in the `[-1.0, 1.0]` range.
+  - DATA_FORMAT_R8G8B8_USCALED: 8-bit-per-channel unsigned floating-point red/green/blue channel data format with scaled value (value is converted from integer to float). Values are in the `[0.0, 255.0]` range.
+  - DATA_FORMAT_R8G8B8_SSCALED: 8-bit-per-channel signed floating-point red/green/blue channel data format with scaled value (value is converted from integer to float). Values are in the `[-127.0, 127.0]` range.
+  - DATA_FORMAT_R8G8B8_UINT: 8-bit-per-channel unsigned integer red/green/blue channel data format. Values are in the `[0, 255]` range.
+  - DATA_FORMAT_R8G8B8_SINT: 8-bit-per-channel signed integer red/green/blue channel data format. Values are in the `[-127, 127]` range.
+  - DATA_FORMAT_R8G8B8_SRGB: 8-bit-per-channel unsigned floating-point red/green/blue channel data format with normalized value and nonlinear sRGB encoding. Values are in the `[0.0, 1.0]` range.
+  - DATA_FORMAT_B8G8R8_UNORM: 8-bit-per-channel unsigned floating-point blue/green/red channel data format with normalized value. Values are in the `[0.0, 1.0]` range.
+  - DATA_FORMAT_B8G8R8_SNORM: 8-bit-per-channel signed floating-point blue/green/red channel data format with normalized value. Values are in the `[-1.0, 1.0]` range.
+  - DATA_FORMAT_B8G8R8_USCALED: 8-bit-per-channel unsigned floating-point blue/green/red channel data format with scaled value (value is converted from integer to float). Values are in the `[0.0, 255.0]` range.
+  - DATA_FORMAT_B8G8R8_SSCALED: 8-bit-per-channel signed floating-point blue/green/red channel data format with scaled value (value is converted from integer to float). Values are in the `[-127.0, 127.0]` range.
+  - DATA_FORMAT_B8G8R8_UINT: 8-bit-per-channel unsigned integer blue/green/red channel data format. Values are in the `[0, 255]` range.
+  - DATA_FORMAT_B8G8R8_SINT: 8-bit-per-channel signed integer blue/green/red channel data format. Values are in the `[-127, 127]` range.
+  - DATA_FORMAT_B8G8R8_SRGB: 8-bit-per-channel unsigned floating-point blue/green/red data format with normalized value and nonlinear sRGB encoding. Values are in the `[0.0, 1.0]` range.
+  - DATA_FORMAT_R8G8B8A8_UNORM: 8-bit-per-channel unsigned floating-point red/green/blue/alpha channel data format with normalized value. Values are in the `[0.0, 1.0]` range.
+  - DATA_FORMAT_R8G8B8A8_SNORM: 8-bit-per-channel signed floating-point red/green/blue/alpha channel data format with normalized value. Values are in the `[-1.0, 1.0]` range.
+  - DATA_FORMAT_R8G8B8A8_USCALED: 8-bit-per-channel unsigned floating-point red/green/blue/alpha channel data format with scaled value (value is converted from integer to float). Values are in the `[0.0, 255.0]` range.
+  - DATA_FORMAT_R8G8B8A8_SSCALED: 8-bit-per-channel signed floating-point red/green/blue/alpha channel data format with scaled value (value is converted from integer to float). Values are in the `[-127.0, 127.0]` range.
+  - DATA_FORMAT_R8G8B8A8_UINT: 8-bit-per-channel unsigned integer red/green/blue/alpha channel data format. Values are in the `[0, 255]` range.
+  - DATA_FORMAT_R8G8B8A8_SINT: 8-bit-per-channel signed integer red/green/blue/alpha channel data format. Values are in the `[-127, 127]` range.
+  - DATA_FORMAT_R8G8B8A8_SRGB: 8-bit-per-channel unsigned floating-point red/green/blue/alpha channel data format with normalized value and nonlinear sRGB encoding. Values are in the `[0.0, 1.0]` range.
+  - DATA_FORMAT_B8G8R8A8_UNORM: 8-bit-per-channel unsigned floating-point blue/green/red/alpha channel data format with normalized value. Values are in the `[0.0, 1.0]` range.
+  - DATA_FORMAT_B8G8R8A8_SNORM: 8-bit-per-channel signed floating-point blue/green/red/alpha channel data format with normalized value. Values are in the `[-1.0, 1.0]` range.
+  - DATA_FORMAT_B8G8R8A8_USCALED: 8-bit-per-channel unsigned floating-point blue/green/red/alpha channel data format with scaled value (value is converted from integer to float). Values are in the `[0.0, 255.0]` range.
+  - DATA_FORMAT_B8G8R8A8_SSCALED: 8-bit-per-channel signed floating-point blue/green/red/alpha channel data format with scaled value (value is converted from integer to float). Values are in the `[-127.0, 127.0]` range.
+  - DATA_FORMAT_B8G8R8A8_UINT: 8-bit-per-channel unsigned integer blue/green/red/alpha channel data format. Values are in the `[0, 255]` range.
+  - DATA_FORMAT_B8G8R8A8_SINT: 8-bit-per-channel signed integer blue/green/red/alpha channel data format. Values are in the `[-127, 127]` range.
+  - DATA_FORMAT_B8G8R8A8_SRGB: 8-bit-per-channel unsigned floating-point blue/green/red/alpha channel data format with normalized value and nonlinear sRGB encoding. Values are in the `[0.0, 1.0]` range.
+  - DATA_FORMAT_A8B8G8R8_UNORM_PACK32: 8-bit-per-channel unsigned floating-point alpha/red/green/blue channel data format with normalized value, packed in 32 bits. Values are in the `[0.0, 1.0]` range.
+  - DATA_FORMAT_A8B8G8R8_SNORM_PACK32: 8-bit-per-channel signed floating-point alpha/red/green/blue channel data format with normalized value, packed in 32 bits. Values are in the `[-1.0, 1.0]` range.
+  - DATA_FORMAT_A8B8G8R8_USCALED_PACK32: 8-bit-per-channel unsigned floating-point alpha/red/green/blue channel data format with scaled value (value is converted from integer to float), packed in 32 bits. Values are in the `[0.0, 255.0]` range.
+  - DATA_FORMAT_A8B8G8R8_SSCALED_PACK32: 8-bit-per-channel signed floating-point alpha/red/green/blue channel data format with scaled value (value is converted from integer to float), packed in 32 bits. Values are in the `[-127.0, 127.0]` range.
+  - DATA_FORMAT_A8B8G8R8_UINT_PACK32: 8-bit-per-channel unsigned integer alpha/red/green/blue channel data format, packed in 32 bits. Values are in the `[0, 255]` range.
+  - DATA_FORMAT_A8B8G8R8_SINT_PACK32: 8-bit-per-channel signed integer alpha/red/green/blue channel data format, packed in 32 bits. Values are in the `[-127, 127]` range.
+  - DATA_FORMAT_A8B8G8R8_SRGB_PACK32: 8-bit-per-channel unsigned floating-point alpha/red/green/blue channel data format with normalized value and nonlinear sRGB encoding, packed in 32 bits. Values are in the `[0.0, 1.0]` range.
+  - DATA_FORMAT_A2R10G10B10_UNORM_PACK32: Unsigned floating-point alpha/red/green/blue channel data format with normalized value, packed in 32 bits. Format contains 2 bits of alpha, 10 bits of red, 10 bits of green and 10 bits of blue. Values are in the `[0.0, 1.0]` range.
+  - DATA_FORMAT_A2R10G10B10_SNORM_PACK32: Signed floating-point alpha/red/green/blue channel data format with normalized value, packed in 32 bits. Format contains 2 bits of alpha, 10 bits of red, 10 bits of green and 10 bits of blue. Values are in the `[-1.0, 1.0]` range.
+  - DATA_FORMAT_A2R10G10B10_USCALED_PACK32: Unsigned floating-point alpha/red/green/blue channel data format with normalized value, packed in 32 bits. Format contains 2 bits of alpha, 10 bits of red, 10 bits of green and 10 bits of blue. Values are in the `[0.0, 1023.0]` range for red/green/blue and `[0.0, 3.0]` for alpha.
+  - DATA_FORMAT_A2R10G10B10_SSCALED_PACK32: Signed floating-point alpha/red/green/blue channel data format with normalized value, packed in 32 bits. Format contains 2 bits of alpha, 10 bits of red, 10 bits of green and 10 bits of blue. Values are in the `[-511.0, 511.0]` range for red/green/blue and `[-1.0, 1.0]` for alpha.
+  - DATA_FORMAT_A2R10G10B10_UINT_PACK32: Unsigned integer alpha/red/green/blue channel data format with normalized value, packed in 32 bits. Format contains 2 bits of alpha, 10 bits of red, 10 bits of green and 10 bits of blue. Values are in the `[0, 1023]` range for red/green/blue and `[0, 3]` for alpha.
+  - DATA_FORMAT_A2R10G10B10_SINT_PACK32: Signed integer alpha/red/green/blue channel data format with normalized value, packed in 32 bits. Format contains 2 bits of alpha, 10 bits of red, 10 bits of green and 10 bits of blue. Values are in the `[-511, 511]` range for red/green/blue and `[-1, 1]` for alpha.
+  - DATA_FORMAT_A2B10G10R10_UNORM_PACK32: Unsigned floating-point alpha/blue/green/red channel data format with normalized value, packed in 32 bits. Format contains 2 bits of alpha, 10 bits of blue, 10 bits of green and 10 bits of red. Values are in the `[0.0, 1.0]` range.
+  - DATA_FORMAT_A2B10G10R10_SNORM_PACK32: Signed floating-point alpha/blue/green/red channel data format with normalized value, packed in 32 bits. Format contains 2 bits of alpha, 10 bits of blue, 10 bits of green and 10 bits of red. Values are in the `[-1.0, 1.0]` range.
+  - DATA_FORMAT_A2B10G10R10_USCALED_PACK32: Unsigned floating-point alpha/blue/green/red channel data format with normalized value, packed in 32 bits. Format contains 2 bits of alpha, 10 bits of blue, 10 bits of green and 10 bits of red. Values are in the `[0.0, 1023.0]` range for blue/green/red and `[0.0, 3.0]` for alpha.
+  - DATA_FORMAT_A2B10G10R10_SSCALED_PACK32: Signed floating-point alpha/blue/green/red channel data format with normalized value, packed in 32 bits. Format contains 2 bits of alpha, 10 bits of blue, 10 bits of green and 10 bits of red. Values are in the `[-511.0, 511.0]` range for blue/green/red and `[-1.0, 1.0]` for alpha.
+  - DATA_FORMAT_A2B10G10R10_UINT_PACK32: Unsigned integer alpha/blue/green/red channel data format with normalized value, packed in 32 bits. Format contains 2 bits of alpha, 10 bits of blue, 10 bits of green and 10 bits of red. Values are in the `[0, 1023]` range for blue/green/red and `[0, 3]` for alpha.
+  - DATA_FORMAT_A2B10G10R10_SINT_PACK32: Signed integer alpha/blue/green/red channel data format with normalized value, packed in 32 bits. Format contains 2 bits of alpha, 10 bits of blue, 10 bits of green and 10 bits of red. Values are in the `[-511, 511]` range for blue/green/red and `[-1, 1]` for alpha.
+  - DATA_FORMAT_R16_UNORM: 16-bit-per-channel unsigned floating-point red channel data format with normalized value. Values are in the `[0.0, 1.0]` range.
+  - DATA_FORMAT_R16_SNORM: 16-bit-per-channel signed floating-point red channel data format with normalized value. Values are in the `[-1.0, 1.0]` range.
+  - DATA_FORMAT_R16_USCALED: 16-bit-per-channel unsigned floating-point red channel data format with scaled value (value is converted from integer to float). Values are in the `[0.0, 65535.0]` range.
+  - DATA_FORMAT_R16_SSCALED: 16-bit-per-channel signed floating-point red channel data format with scaled value (value is converted from integer to float). Values are in the `[-32767.0, 32767.0]` range.
+  - DATA_FORMAT_R16_UINT: 16-bit-per-channel unsigned integer red channel data format. Values are in the `[0.0, 65535]` range.
+  - DATA_FORMAT_R16_SINT: 16-bit-per-channel signed integer red channel data format. Values are in the `[-32767, 32767]` range.
+  - DATA_FORMAT_R16_SFLOAT: 16-bit-per-channel signed floating-point red channel data format with the value stored as-is.
+  - DATA_FORMAT_R16G16_UNORM: 16-bit-per-channel unsigned floating-point red/green channel data format with normalized value. Values are in the `[0.0, 1.0]` range.
+  - DATA_FORMAT_R16G16_SNORM: 16-bit-per-channel signed floating-point red/green channel data format with normalized value. Values are in the `[-1.0, 1.0]` range.
+  - DATA_FORMAT_R16G16_USCALED: 16-bit-per-channel unsigned floating-point red/green channel data format with scaled value (value is converted from integer to float). Values are in the `[0.0, 65535.0]` range.
+  - DATA_FORMAT_R16G16_SSCALED: 16-bit-per-channel signed floating-point red/green channel data format with scaled value (value is converted from integer to float). Values are in the `[-32767.0, 32767.0]` range.
+  - DATA_FORMAT_R16G16_UINT: 16-bit-per-channel unsigned integer red/green channel data format. Values are in the `[0.0, 65535]` range.
+  - DATA_FORMAT_R16G16_SINT: 16-bit-per-channel signed integer red/green channel data format. Values are in the `[-32767, 32767]` range.
+  - DATA_FORMAT_R16G16_SFLOAT: 16-bit-per-channel signed floating-point red/green channel data format with the value stored as-is.
+  - DATA_FORMAT_R16G16B16_UNORM: 16-bit-per-channel unsigned floating-point red/green/blue channel data format with normalized value. Values are in the `[0.0, 1.0]` range.
+  - DATA_FORMAT_R16G16B16_SNORM: 16-bit-per-channel signed floating-point red/green/blue channel data format with normalized value. Values are in the `[-1.0, 1.0]` range.
+  - DATA_FORMAT_R16G16B16_USCALED: 16-bit-per-channel unsigned floating-point red/green/blue channel data format with scaled value (value is converted from integer to float). Values are in the `[0.0, 65535.0]` range.
+  - DATA_FORMAT_R16G16B16_SSCALED: 16-bit-per-channel signed floating-point red/green/blue channel data format with scaled value (value is converted from integer to float). Values are in the `[-32767.0, 32767.0]` range.
+  - DATA_FORMAT_R16G16B16_UINT: 16-bit-per-channel unsigned integer red/green/blue channel data format. Values are in the `[0.0, 65535]` range.
+  - DATA_FORMAT_R16G16B16_SINT: 16-bit-per-channel signed integer red/green/blue channel data format. Values are in the `[-32767, 32767]` range.
+  - DATA_FORMAT_R16G16B16_SFLOAT: 16-bit-per-channel signed floating-point red/green/blue channel data format with the value stored as-is.
+  - DATA_FORMAT_R16G16B16A16_UNORM: 16-bit-per-channel unsigned floating-point red/green/blue/alpha channel data format with normalized value. Values are in the `[0.0, 1.0]` range.
+  - DATA_FORMAT_R16G16B16A16_SNORM: 16-bit-per-channel signed floating-point red/green/blue/alpha channel data format with normalized value. Values are in the `[-1.0, 1.0]` range.
+  - DATA_FORMAT_R16G16B16A16_USCALED: 16-bit-per-channel unsigned floating-point red/green/blue/alpha channel data format with scaled value (value is converted from integer to float). Values are in the `[0.0, 65535.0]` range.
+  - DATA_FORMAT_R16G16B16A16_SSCALED: 16-bit-per-channel signed floating-point red/green/blue/alpha channel data format with scaled value (value is converted from integer to float). Values are in the `[-32767.0, 32767.0]` range.
+  - DATA_FORMAT_R16G16B16A16_UINT: 16-bit-per-channel unsigned integer red/green/blue/alpha channel data format. Values are in the `[0.0, 65535]` range.
+  - DATA_FORMAT_R16G16B16A16_SINT: 16-bit-per-channel signed integer red/green/blue/alpha channel data format. Values are in the `[-32767, 32767]` range.
+  - DATA_FORMAT_R16G16B16A16_SFLOAT: 16-bit-per-channel signed floating-point red/green/blue/alpha channel data format with the value stored as-is.
+  - DATA_FORMAT_R32_UINT: 32-bit-per-channel unsigned integer red channel data format. Values are in the `[0, 2^32 - 1]` range.
+  - DATA_FORMAT_R32_SINT: 32-bit-per-channel signed integer red channel data format. Values are in the `[2^31 + 1, 2^31 - 1]` range.
+  - DATA_FORMAT_R32_SFLOAT: 32-bit-per-channel signed floating-point red channel data format with the value stored as-is.
+  - DATA_FORMAT_R32G32_UINT: 32-bit-per-channel unsigned integer red/green channel data format. Values are in the `[0, 2^32 - 1]` range.
+  - DATA_FORMAT_R32G32_SINT: 32-bit-per-channel signed integer red/green channel data format. Values are in the `[2^31 + 1, 2^31 - 1]` range.
+  - DATA_FORMAT_R32G32_SFLOAT: 32-bit-per-channel signed floating-point red/green channel data format with the value stored as-is.
+  - DATA_FORMAT_R32G32B32_UINT: 32-bit-per-channel unsigned integer red/green/blue channel data format. Values are in the `[0, 2^32 - 1]` range.
+  - DATA_FORMAT_R32G32B32_SINT: 32-bit-per-channel signed integer red/green/blue channel data format. Values are in the `[2^31 + 1, 2^31 - 1]` range.
+  - DATA_FORMAT_R32G32B32_SFLOAT: 32-bit-per-channel signed floating-point red/green/blue channel data format with the value stored as-is.
+  - DATA_FORMAT_R32G32B32A32_UINT: 32-bit-per-channel unsigned integer red/green/blue/alpha channel data format. Values are in the `[0, 2^32 - 1]` range.
+  - DATA_FORMAT_R32G32B32A32_SINT: 32-bit-per-channel signed integer red/green/blue/alpha channel data format. Values are in the `[2^31 + 1, 2^31 - 1]` range.
+  - DATA_FORMAT_R32G32B32A32_SFLOAT: 32-bit-per-channel signed floating-point red/green/blue/alpha channel data format with the value stored as-is.
+  - DATA_FORMAT_R64_UINT: 64-bit-per-channel unsigned integer red channel data format. Values are in the `[0, 2^64 - 1]` range.
+  - DATA_FORMAT_R64_SINT: 64-bit-per-channel signed integer red channel data format. Values are in the `[2^63 + 1, 2^63 - 1]` range.
+  - DATA_FORMAT_R64_SFLOAT: 64-bit-per-channel signed floating-point red channel data format with the value stored as-is.
+  - DATA_FORMAT_R64G64_UINT: 64-bit-per-channel unsigned integer red/green channel data format. Values are in the `[0, 2^64 - 1]` range.
+  - DATA_FORMAT_R64G64_SINT: 64-bit-per-channel signed integer red/green channel data format. Values are in the `[2^63 + 1, 2^63 - 1]` range.
+  - DATA_FORMAT_R64G64_SFLOAT: 64-bit-per-channel signed floating-point red/green channel data format with the value stored as-is.
+  - DATA_FORMAT_R64G64B64_UINT: 64-bit-per-channel unsigned integer red/green/blue channel data format. Values are in the `[0, 2^64 - 1]` range.
+  - DATA_FORMAT_R64G64B64_SINT: 64-bit-per-channel signed integer red/green/blue channel data format. Values are in the `[2^63 + 1, 2^63 - 1]` range.
+  - DATA_FORMAT_R64G64B64_SFLOAT: 64-bit-per-channel signed floating-point red/green/blue channel data format with the value stored as-is.
+  - DATA_FORMAT_R64G64B64A64_UINT: 64-bit-per-channel unsigned integer red/green/blue/alpha channel data format. Values are in the `[0, 2^64 - 1]` range.
+  - DATA_FORMAT_R64G64B64A64_SINT: 64-bit-per-channel signed integer red/green/blue/alpha channel data format. Values are in the `[2^63 + 1, 2^63 - 1]` range.
+  - DATA_FORMAT_R64G64B64A64_SFLOAT: 64-bit-per-channel signed floating-point red/green/blue/alpha channel data format with the value stored as-is.
+  - DATA_FORMAT_B10G11R11_UFLOAT_PACK32: Unsigned floating-point blue/green/red data format with the value stored as-is, packed in 32 bits. The format's precision is 10 bits of blue channel, 11 bits of green channel and 11 bits of red channel.
+  - DATA_FORMAT_E5B9G9R9_UFLOAT_PACK32: Unsigned floating-point exposure/blue/green/red data format with the value stored as-is, packed in 32 bits. The format's precision is 5 bits of exposure, 9 bits of blue channel, 9 bits of green channel and 9 bits of red channel.
+  - DATA_FORMAT_D16_UNORM: 16-bit unsigned floating-point depth data format with normalized value. Values are in the `[0.0, 1.0]` range.
+  - DATA_FORMAT_X8_D24_UNORM_PACK32: 24-bit unsigned floating-point depth data format with normalized value, plus 8 unused bits, packed in 32 bits. Values for depth are in the `[0.0, 1.0]` range.
+  - DATA_FORMAT_D32_SFLOAT: 32-bit signed floating-point depth data format with the value stored as-is.
+  - DATA_FORMAT_S8_UINT: 8-bit unsigned integer stencil data format.
+  - DATA_FORMAT_D16_UNORM_S8_UINT: 16-bit unsigned floating-point depth data format with normalized value, plus 8 bits of stencil in unsigned integer format. Values for depth are in the `[0.0, 1.0]` range. Values for stencil are in the `[0, 255]` range.
+  - DATA_FORMAT_D24_UNORM_S8_UINT: 24-bit unsigned floating-point depth data format with normalized value, plus 8 bits of stencil in unsigned integer format. Values for depth are in the `[0.0, 1.0]` range. Values for stencil are in the `[0, 255]` range.
+  - DATA_FORMAT_D32_SFLOAT_S8_UINT: 32-bit signed floating-point depth data format with the value stored as-is, plus 8 bits of stencil in unsigned integer format. Values for stencil are in the `[0, 255]` range.
+  - DATA_FORMAT_BC1_RGB_UNORM_BLOCK: VRAM-compressed unsigned red/green/blue channel data format with normalized value. Values are in the `[0.0, 1.0]` range. The format's precision is 5 bits of red channel, 6 bits of green channel and 5 bits of blue channel. Using BC1 texture compression (also known as S3TC DXT1).
+  - DATA_FORMAT_BC1_RGB_SRGB_BLOCK: VRAM-compressed unsigned red/green/blue channel data format with normalized value and nonlinear sRGB encoding. Values are in the `[0.0, 1.0]` range. The format's precision is 5 bits of red channel, 6 bits of green channel, and 5 bits of blue channel. Using BC1 texture compression (also known as S3TC DXT1).
+  - DATA_FORMAT_BC1_RGBA_UNORM_BLOCK: VRAM-compressed unsigned red/green/blue/alpha channel data format with normalized value. Values are in the `[0.0, 1.0]` range. The format's precision is 5 bits of red channel, 6 bits of green channel, 5 bits of blue channel and 1 bit of alpha channel. Using BC1 texture compression (also known as S3TC DXT1).
+  - DATA_FORMAT_BC1_RGBA_SRGB_BLOCK: VRAM-compressed unsigned red/green/blue/alpha channel data format with normalized value and nonlinear sRGB encoding. Values are in the `[0.0, 1.0]` range. The format's precision is 5 bits of red channel, 6 bits of green channel, 5 bits of blue channel, and 1 bit of alpha channel. Using BC1 texture compression (also known as S3TC DXT1).
+  - DATA_FORMAT_BC2_UNORM_BLOCK: VRAM-compressed unsigned red/green/blue/alpha channel data format with normalized value. Values are in the `[0.0, 1.0]` range. The format's precision is 5 bits of red channel, 6 bits of green channel, 5 bits of blue channel and 4 bits of alpha channel. Using BC2 texture compression (also known as S3TC DXT3).
+  - DATA_FORMAT_BC2_SRGB_BLOCK: VRAM-compressed unsigned red/green/blue/alpha channel data format with normalized value and nonlinear sRGB encoding. Values are in the `[0.0, 1.0]` range. The format's precision is 5 bits of red channel, 6 bits of green channel, 5 bits of blue channel, and 4 bits of alpha channel. Using BC2 texture compression (also known as S3TC DXT3).
+  - DATA_FORMAT_BC3_UNORM_BLOCK: VRAM-compressed unsigned red/green/blue/alpha channel data format with normalized value. Values are in the `[0.0, 1.0]` range. The format's precision is 5 bits of red channel, 6 bits of green channel, 5 bits of blue channel and 8 bits of alpha channel. Using BC3 texture compression (also known as S3TC DXT5).
+  - DATA_FORMAT_BC3_SRGB_BLOCK: VRAM-compressed unsigned red/green/blue/alpha channel data format with normalized value and nonlinear sRGB encoding. Values are in the `[0.0, 1.0]` range. The format's precision is 5 bits of red channel, 6 bits of green channel, 5 bits of blue channel, and 8 bits of alpha channel. Using BC3 texture compression (also known as S3TC DXT5).
+  - DATA_FORMAT_BC4_UNORM_BLOCK: VRAM-compressed unsigned red channel data format with normalized value. Values are in the `[0.0, 1.0]` range. The format's precision is 8 bits of red channel. Using BC4 texture compression.
+  - DATA_FORMAT_BC4_SNORM_BLOCK: VRAM-compressed signed red channel data format with normalized value. Values are in the `[-1.0, 1.0]` range. The format's precision is 8 bits of red channel. Using BC4 texture compression.
+  - DATA_FORMAT_BC5_UNORM_BLOCK: VRAM-compressed unsigned red/green channel data format with normalized value. Values are in the `[0.0, 1.0]` range. The format's precision is 8 bits of red channel and 8 bits of green channel. Using BC5 texture compression (also known as S3TC RGTC).
+  - DATA_FORMAT_BC5_SNORM_BLOCK: VRAM-compressed signed red/green channel data format with normalized value. Values are in the `[-1.0, 1.0]` range. The format's precision is 8 bits of red channel and 8 bits of green channel. Using BC5 texture compression (also known as S3TC RGTC).
+  - DATA_FORMAT_BC6H_UFLOAT_BLOCK: VRAM-compressed unsigned red/green/blue channel data format with the floating-point value stored as-is. The format's precision is between 10 and 13 bits for the red/green/blue channels. Using BC6H texture compression (also known as BPTC HDR).
+  - DATA_FORMAT_BC6H_SFLOAT_BLOCK: VRAM-compressed signed red/green/blue channel data format with the floating-point value stored as-is. The format's precision is between 10 and 13 bits for the red/green/blue channels. Using BC6H texture compression (also known as BPTC HDR).
+  - DATA_FORMAT_BC7_UNORM_BLOCK: VRAM-compressed unsigned red/green/blue/alpha channel data format with normalized value. Values are in the `[0.0, 1.0]` range. The format's precision is between 4 and 7 bits for the red/green/blue channels and between 0 and 8 bits for the alpha channel. Also known as BPTC LDR.
+  - DATA_FORMAT_BC7_SRGB_BLOCK: VRAM-compressed unsigned red/green/blue/alpha channel data format with normalized value and nonlinear sRGB encoding. Values are in the `[0.0, 1.0]` range. The format's precision is between 4 and 7 bits for the red/green/blue channels and between 0 and 8 bits for the alpha channel. Also known as BPTC LDR.
+  - DATA_FORMAT_ETC2_R8G8B8_UNORM_BLOCK: VRAM-compressed unsigned red/green/blue channel data format with normalized value. Values are in the `[0.0, 1.0]` range. Using ETC2 texture compression.
+  - DATA_FORMAT_ETC2_R8G8B8_SRGB_BLOCK: VRAM-compressed unsigned red/green/blue channel data format with normalized value and nonlinear sRGB encoding. Values are in the `[0.0, 1.0]` range. Using ETC2 texture compression.
+  - DATA_FORMAT_ETC2_R8G8B8A1_UNORM_BLOCK: VRAM-compressed unsigned red/green/blue/alpha channel data format with normalized value. Values are in the `[0.0, 1.0]` range. Red/green/blue use 8 bit of precision each, with alpha using 1 bit of precision. Using ETC2 texture compression.
+  - DATA_FORMAT_ETC2_R8G8B8A1_SRGB_BLOCK: VRAM-compressed unsigned red/green/blue/alpha channel data format with normalized value and nonlinear sRGB encoding. Values are in the `[0.0, 1.0]` range. Red/green/blue use 8 bit of precision each, with alpha using 1 bit of precision. Using ETC2 texture compression.
+  - DATA_FORMAT_ETC2_R8G8B8A8_UNORM_BLOCK: VRAM-compressed unsigned red/green/blue/alpha channel data format with normalized value. Values are in the `[0.0, 1.0]` range. Red/green/blue use 8 bits of precision each, with alpha using 8 bits of precision. Using ETC2 texture compression.
+  - DATA_FORMAT_ETC2_R8G8B8A8_SRGB_BLOCK: VRAM-compressed unsigned red/green/blue/alpha channel data format with normalized value and nonlinear sRGB encoding. Values are in the `[0.0, 1.0]` range. Red/green/blue use 8 bits of precision each, with alpha using 8 bits of precision. Using ETC2 texture compression.
+  - DATA_FORMAT_EAC_R11_UNORM_BLOCK: 11-bit VRAM-compressed unsigned red channel data format with normalized value. Values are in the `[0.0, 1.0]` range. Using ETC2 texture compression.
+  - DATA_FORMAT_EAC_R11_SNORM_BLOCK: 11-bit VRAM-compressed signed red channel data format with normalized value. Values are in the `[-1.0, 1.0]` range. Using ETC2 texture compression.
+  - DATA_FORMAT_EAC_R11G11_UNORM_BLOCK: 11-bit VRAM-compressed unsigned red/green channel data format with normalized value. Values are in the `[0.0, 1.0]` range. Using ETC2 texture compression.
+  - DATA_FORMAT_EAC_R11G11_SNORM_BLOCK: 11-bit VRAM-compressed signed red/green channel data format with normalized value. Values are in the `[-1.0, 1.0]` range. Using ETC2 texture compression.
+  - DATA_FORMAT_ASTC_4x4_UNORM_BLOCK: VRAM-compressed unsigned floating-point data format with normalized value, packed in 4×4 blocks (highest quality). Values are in the `[0.0, 1.0]` range. Using ASTC compression.
+  - DATA_FORMAT_ASTC_4x4_SRGB_BLOCK: VRAM-compressed unsigned floating-point data format with normalized value and nonlinear sRGB encoding, packed in 4×4 blocks (highest quality). Values are in the `[0.0, 1.0]` range. Using ASTC compression.
+  - DATA_FORMAT_ASTC_5x4_UNORM_BLOCK: VRAM-compressed unsigned floating-point data format with normalized value, packed in 5×4 blocks. Values are in the `[0.0, 1.0]` range. Using ASTC compression.
+  - DATA_FORMAT_ASTC_5x4_SRGB_BLOCK: VRAM-compressed unsigned floating-point data format with normalized value and nonlinear sRGB encoding, packed in 5×4 blocks. Values are in the `[0.0, 1.0]` range. Using ASTC compression.
+  - DATA_FORMAT_ASTC_5x5_UNORM_BLOCK: VRAM-compressed unsigned floating-point data format with normalized value, packed in 5×5 blocks. Values are in the `[0.0, 1.0]` range. Using ASTC compression.
+  - DATA_FORMAT_ASTC_5x5_SRGB_BLOCK: VRAM-compressed unsigned floating-point data format with normalized value and nonlinear sRGB encoding, packed in 5×5 blocks. Values are in the `[0.0, 1.0]` range. Using ASTC compression.
+  - DATA_FORMAT_ASTC_6x5_UNORM_BLOCK: VRAM-compressed unsigned floating-point data format with normalized value, packed in 6×5 blocks. Values are in the `[0.0, 1.0]` range. Using ASTC compression.
+  - DATA_FORMAT_ASTC_6x5_SRGB_BLOCK: VRAM-compressed unsigned floating-point data format with normalized value and nonlinear sRGB encoding, packed in 6×5 blocks. Values are in the `[0.0, 1.0]` range. Using ASTC compression.
+  - DATA_FORMAT_ASTC_6x6_UNORM_BLOCK: VRAM-compressed unsigned floating-point data format with normalized value, packed in 6×6 blocks. Values are in the `[0.0, 1.0]` range. Using ASTC compression.
+  - DATA_FORMAT_ASTC_6x6_SRGB_BLOCK: VRAM-compressed unsigned floating-point data format with normalized value and nonlinear sRGB encoding, packed in 6×6 blocks. Values are in the `[0.0, 1.0]` range. Using ASTC compression.
+  - DATA_FORMAT_ASTC_8x5_UNORM_BLOCK: VRAM-compressed unsigned floating-point data format with normalized value, packed in 8×5 blocks. Values are in the `[0.0, 1.0]` range. Using ASTC compression.
+  - DATA_FORMAT_ASTC_8x5_SRGB_BLOCK: VRAM-compressed unsigned floating-point data format with normalized value and nonlinear sRGB encoding, packed in 8×5 blocks. Values are in the `[0.0, 1.0]` range. Using ASTC compression.
+  - DATA_FORMAT_ASTC_8x6_UNORM_BLOCK: VRAM-compressed unsigned floating-point data format with normalized value, packed in 8×6 blocks. Values are in the `[0.0, 1.0]` range. Using ASTC compression.
+  - DATA_FORMAT_ASTC_8x6_SRGB_BLOCK: VRAM-compressed unsigned floating-point data format with normalized value and nonlinear sRGB encoding, packed in 8×6 blocks. Values are in the `[0.0, 1.0]` range. Using ASTC compression.
+  - DATA_FORMAT_ASTC_8x8_UNORM_BLOCK: VRAM-compressed unsigned floating-point data format with normalized value, packed in 8×8 blocks. Values are in the `[0.0, 1.0]` range. Using ASTC compression.
+  - DATA_FORMAT_ASTC_8x8_SRGB_BLOCK: VRAM-compressed unsigned floating-point data format with normalized value and nonlinear sRGB encoding, packed in 8×8 blocks. Values are in the `[0.0, 1.0]` range. Using ASTC compression.
+  - DATA_FORMAT_ASTC_10x5_UNORM_BLOCK: VRAM-compressed unsigned floating-point data format with normalized value, packed in 10×5 blocks. Values are in the `[0.0, 1.0]` range. Using ASTC compression.
+  - DATA_FORMAT_ASTC_10x5_SRGB_BLOCK: VRAM-compressed unsigned floating-point data format with normalized value and nonlinear sRGB encoding, packed in 10×5 blocks. Values are in the `[0.0, 1.0]` range. Using ASTC compression.
+  - DATA_FORMAT_ASTC_10x6_UNORM_BLOCK: VRAM-compressed unsigned floating-point data format with normalized value, packed in 10×6 blocks. Values are in the `[0.0, 1.0]` range. Using ASTC compression.
+  - DATA_FORMAT_ASTC_10x6_SRGB_BLOCK: VRAM-compressed unsigned floating-point data format with normalized value and nonlinear sRGB encoding, packed in 10×6 blocks. Values are in the `[0.0, 1.0]` range. Using ASTC compression.
+  - DATA_FORMAT_ASTC_10x8_UNORM_BLOCK: VRAM-compressed unsigned floating-point data format with normalized value, packed in 10×8 blocks. Values are in the `[0.0, 1.0]` range. Using ASTC compression.
+  - DATA_FORMAT_ASTC_10x8_SRGB_BLOCK: VRAM-compressed unsigned floating-point data format with normalized value and nonlinear sRGB encoding, packed in 10×8 blocks. Values are in the `[0.0, 1.0]` range. Using ASTC compression.
+  - DATA_FORMAT_ASTC_10x10_UNORM_BLOCK: VRAM-compressed unsigned floating-point data format with normalized value, packed in 10×10 blocks. Values are in the `[0.0, 1.0]` range. Using ASTC compression.
+  - DATA_FORMAT_ASTC_10x10_SRGB_BLOCK: VRAM-compressed unsigned floating-point data format with normalized value and nonlinear sRGB encoding, packed in 10×10 blocks. Values are in the `[0.0, 1.0]` range. Using ASTC compression.
+  - DATA_FORMAT_ASTC_12x10_UNORM_BLOCK: VRAM-compressed unsigned floating-point data format with normalized value, packed in 12×10 blocks. Values are in the `[0.0, 1.0]` range. Using ASTC compression.
+  - DATA_FORMAT_ASTC_12x10_SRGB_BLOCK: VRAM-compressed unsigned floating-point data format with normalized value and nonlinear sRGB encoding, packed in 12×10 blocks. Values are in the `[0.0, 1.0]` range. Using ASTC compression.
+  - DATA_FORMAT_ASTC_12x12_UNORM_BLOCK: VRAM-compressed unsigned floating-point data format with normalized value, packed in 12 blocks (lowest quality). Values are in the `[0.0, 1.0]` range. Using ASTC compression.
+  - DATA_FORMAT_ASTC_12x12_SRGB_BLOCK: VRAM-compressed unsigned floating-point data format with normalized value and nonlinear sRGB encoding, packed in 12 blocks (lowest quality). Values are in the `[0.0, 1.0]` range. Using ASTC compression.
+  - DATA_FORMAT_G8B8G8R8_422_UNORM: 8-bit-per-channel unsigned floating-point green/blue/red channel data format with normalized value. Values are in the `[0.0, 1.0]` range. Blue and red channel data is stored at halved horizontal resolution (i.e. 2 horizontally adjacent pixels will share the same value for the blue/red channel).
+  - DATA_FORMAT_B8G8R8G8_422_UNORM: 8-bit-per-channel unsigned floating-point blue/green/red channel data format with normalized value. Values are in the `[0.0, 1.0]` range. Blue and red channel data is stored at halved horizontal resolution (i.e. 2 horizontally adjacent pixels will share the same value for the blue/red channel).
+  - DATA_FORMAT_G8_B8_R8_3PLANE_420_UNORM: 8-bit-per-channel unsigned floating-point green/blue/red channel data with normalized value, stored across 3 separate planes (green + blue + red). Values are in the `[0.0, 1.0]` range. Blue and red channel data is stored at halved horizontal and vertical resolution (i.e. 2×2 adjacent pixels will share the same value for the blue/red channel).
+  - DATA_FORMAT_G8_B8R8_2PLANE_420_UNORM: 8-bit-per-channel unsigned floating-point green/blue/red channel data with normalized value, stored across 2 separate planes (green + blue/red). Values are in the `[0.0, 1.0]` range. Blue and red channel data is stored at halved horizontal and vertical resolution (i.e. 2×2 adjacent pixels will share the same value for the blue/red channel).
+  - DATA_FORMAT_G8_B8_R8_3PLANE_422_UNORM: 8-bit-per-channel unsigned floating-point green/blue/red channel data with normalized value, stored across 2 separate planes (green + blue + red). Values are in the `[0.0, 1.0]` range. Blue and red channel data is stored at halved horizontal resolution (i.e. 2 horizontally adjacent pixels will share the same value for the blue/red channel).
+  - DATA_FORMAT_G8_B8R8_2PLANE_422_UNORM: 8-bit-per-channel unsigned floating-point green/blue/red channel data with normalized value, stored across 2 separate planes (green + blue/red). Values are in the `[0.0, 1.0]` range. Blue and red channel data is stored at halved horizontal resolution (i.e. 2 horizontally adjacent pixels will share the same value for the blue/red channel).
+  - DATA_FORMAT_G8_B8_R8_3PLANE_444_UNORM: 8-bit-per-channel unsigned floating-point green/blue/red channel data with normalized value, stored across 3 separate planes. Values are in the `[0.0, 1.0]` range.
+  - DATA_FORMAT_R10X6_UNORM_PACK16: 10-bit-per-channel unsigned floating-point red channel data with normalized value, plus 6 unused bits, packed in 16 bits. Values are in the `[0.0, 1.0]` range.
+  - DATA_FORMAT_R10X6G10X6_UNORM_2PACK16: 10-bit-per-channel unsigned floating-point red/green channel data with normalized value, plus 6 unused bits after each channel, packed in 2×16 bits. Values are in the `[0.0, 1.0]` range.
+  - DATA_FORMAT_R10X6G10X6B10X6A10X6_UNORM_4PACK16: 10-bit-per-channel unsigned floating-point red/green/blue/alpha channel data with normalized value, plus 6 unused bits after each channel, packed in 4×16 bits. Values are in the `[0.0, 1.0]` range.
+  - DATA_FORMAT_G10X6B10X6G10X6R10X6_422_UNORM_4PACK16: 10-bit-per-channel unsigned floating-point green/blue/green/red channel data with normalized value, plus 6 unused bits after each channel, packed in 4×16 bits. Values are in the `[0.0, 1.0]` range. Blue and red channel data is stored at halved horizontal resolution (i.e. 2 horizontally adjacent pixels will share the same value for the blue/red channel). The green channel is listed twice, but contains different values to allow it to be represented at full resolution.
+  - DATA_FORMAT_B10X6G10X6R10X6G10X6_422_UNORM_4PACK16: 10-bit-per-channel unsigned floating-point blue/green/red/green channel data with normalized value, plus 6 unused bits after each channel, packed in 4×16 bits. Values are in the `[0.0, 1.0]` range. Blue and red channel data is stored at halved horizontal resolution (i.e. 2 horizontally adjacent pixels will share the same value for the blue/red channel). The green channel is listed twice, but contains different values to allow it to be represented at full resolution.
+  - DATA_FORMAT_G10X6_B10X6_R10X6_3PLANE_420_UNORM_3PACK16: 10-bit-per-channel unsigned floating-point green/blue/red channel data with normalized value, plus 6 unused bits after each channel. Packed in 3×16 bits and stored across 2 separate planes (green + blue + red). Values are in the `[0.0, 1.0]` range. Blue and red channel data is stored at halved horizontal and vertical resolution (i.e. 2×2 adjacent pixels will share the same value for the blue/red channel).
+  - DATA_FORMAT_G10X6_B10X6R10X6_2PLANE_420_UNORM_3PACK16: 10-bit-per-channel unsigned floating-point green/blue/red channel data with normalized value, plus 6 unused bits after each channel. Packed in 3×16 bits and stored across 2 separate planes (green + blue/red). Values are in the `[0.0, 1.0]` range. Blue and red channel data is stored at halved horizontal and vertical resolution (i.e. 2×2 adjacent pixels will share the same value for the blue/red channel).
+  - DATA_FORMAT_G10X6_B10X6_R10X6_3PLANE_422_UNORM_3PACK16: 10-bit-per-channel unsigned floating-point green/blue/red channel data with normalized value, plus 6 unused bits after each channel. Packed in 3×16 bits and stored across 3 separate planes (green + blue + red). Values are in the `[0.0, 1.0]` range. Blue and red channel data is stored at halved horizontal resolution (i.e. 2 horizontally adjacent pixels will share the same value for the blue/red channel).
+  - DATA_FORMAT_G10X6_B10X6R10X6_2PLANE_422_UNORM_3PACK16: 10-bit-per-channel unsigned floating-point green/blue/red channel data with normalized value, plus 6 unused bits after each channel. Packed in 3×16 bits and stored across 3 separate planes (green + blue/red). Values are in the `[0.0, 1.0]` range. Blue and red channel data is stored at halved horizontal resolution (i.e. 2 horizontally adjacent pixels will share the same value for the blue/red channel).
+  - DATA_FORMAT_G10X6_B10X6_R10X6_3PLANE_444_UNORM_3PACK16: 10-bit-per-channel unsigned floating-point green/blue/red channel data with normalized value, plus 6 unused bits after each channel. Packed in 3×16 bits and stored across 3 separate planes (green + blue + red). Values are in the `[0.0, 1.0]` range.
+  - DATA_FORMAT_R12X4_UNORM_PACK16: 12-bit-per-channel unsigned floating-point red channel data with normalized value, plus 6 unused bits, packed in 16 bits. Values are in the `[0.0, 1.0]` range.
+  - DATA_FORMAT_R12X4G12X4_UNORM_2PACK16: 12-bit-per-channel unsigned floating-point red/green channel data with normalized value, plus 6 unused bits after each channel, packed in 2×16 bits. Values are in the `[0.0, 1.0]` range.
+  - DATA_FORMAT_R12X4G12X4B12X4A12X4_UNORM_4PACK16: 12-bit-per-channel unsigned floating-point red/green/blue/alpha channel data with normalized value, plus 6 unused bits after each channel, packed in 4×16 bits. Values are in the `[0.0, 1.0]` range.
+  - DATA_FORMAT_G12X4B12X4G12X4R12X4_422_UNORM_4PACK16: 12-bit-per-channel unsigned floating-point green/blue/green/red channel data with normalized value, plus 6 unused bits after each channel, packed in 4×16 bits. Values are in the `[0.0, 1.0]` range. Blue and red channel data is stored at halved horizontal resolution (i.e. 2 horizontally adjacent pixels will share the same value for the blue/red channel). The green channel is listed twice, but contains different values to allow it to be represented at full resolution.
+  - DATA_FORMAT_B12X4G12X4R12X4G12X4_422_UNORM_4PACK16: 12-bit-per-channel unsigned floating-point blue/green/red/green channel data with normalized value, plus 6 unused bits after each channel, packed in 4×16 bits. Values are in the `[0.0, 1.0]` range. Blue and red channel data is stored at halved horizontal resolution (i.e. 2 horizontally adjacent pixels will share the same value for the blue/red channel). The green channel is listed twice, but contains different values to allow it to be represented at full resolution.
+  - DATA_FORMAT_G12X4_B12X4_R12X4_3PLANE_420_UNORM_3PACK16: 12-bit-per-channel unsigned floating-point green/blue/red channel data with normalized value, plus 6 unused bits after each channel. Packed in 3×16 bits and stored across 2 separate planes (green + blue + red). Values are in the `[0.0, 1.0]` range. Blue and red channel data is stored at halved horizontal and vertical resolution (i.e. 2×2 adjacent pixels will share the same value for the blue/red channel).
+  - DATA_FORMAT_G12X4_B12X4R12X4_2PLANE_420_UNORM_3PACK16: 12-bit-per-channel unsigned floating-point green/blue/red channel data with normalized value, plus 6 unused bits after each channel. Packed in 3×16 bits and stored across 2 separate planes (green + blue/red). Values are in the `[0.0, 1.0]` range. Blue and red channel data is stored at halved horizontal and vertical resolution (i.e. 2×2 adjacent pixels will share the same value for the blue/red channel).
+  - DATA_FORMAT_G12X4_B12X4_R12X4_3PLANE_422_UNORM_3PACK16: 12-bit-per-channel unsigned floating-point green/blue/red channel data with normalized value, plus 6 unused bits after each channel. Packed in 3×16 bits and stored across 3 separate planes (green + blue + red). Values are in the `[0.0, 1.0]` range. Blue and red channel data is stored at halved horizontal resolution (i.e. 2 horizontally adjacent pixels will share the same value for the blue/red channel).
+  - DATA_FORMAT_G12X4_B12X4R12X4_2PLANE_422_UNORM_3PACK16: 12-bit-per-channel unsigned floating-point green/blue/red channel data with normalized value, plus 6 unused bits after each channel. Packed in 3×16 bits and stored across 3 separate planes (green + blue/red). Values are in the `[0.0, 1.0]` range. Blue and red channel data is stored at halved horizontal resolution (i.e. 2 horizontally adjacent pixels will share the same value for the blue/red channel).
+  - DATA_FORMAT_G12X4_B12X4_R12X4_3PLANE_444_UNORM_3PACK16: 12-bit-per-channel unsigned floating-point green/blue/red channel data with normalized value, plus 6 unused bits after each channel. Packed in 3×16 bits and stored across 3 separate planes (green + blue + red). Values are in the `[0.0, 1.0]` range.
+  - DATA_FORMAT_G16B16G16R16_422_UNORM: 16-bit-per-channel unsigned floating-point green/blue/red channel data format with normalized value. Values are in the `[0.0, 1.0]` range. Blue and red channel data is stored at halved horizontal resolution (i.e. 2 horizontally adjacent pixels will share the same value for the blue/red channel).
+  - DATA_FORMAT_B16G16R16G16_422_UNORM: 16-bit-per-channel unsigned floating-point blue/green/red channel data format with normalized value. Values are in the `[0.0, 1.0]` range. Blue and red channel data is stored at halved horizontal resolution (i.e. 2 horizontally adjacent pixels will share the same value for the blue/red channel).
+  - DATA_FORMAT_G16_B16_R16_3PLANE_420_UNORM: 16-bit-per-channel unsigned floating-point green/blue/red channel data with normalized value, plus 6 unused bits after each channel. Stored across 2 separate planes (green + blue + red). Values are in the `[0.0, 1.0]` range. Blue and red channel data is stored at halved horizontal and vertical resolution (i.e. 2×2 adjacent pixels will share the same value for the blue/red channel).
+  - DATA_FORMAT_G16_B16R16_2PLANE_420_UNORM: 16-bit-per-channel unsigned floating-point green/blue/red channel data with normalized value, plus 6 unused bits after each channel. Stored across 2 separate planes (green + blue/red). Values are in the `[0.0, 1.0]` range. Blue and red channel data is stored at halved horizontal and vertical resolution (i.e. 2×2 adjacent pixels will share the same value for the blue/red channel).
+  - DATA_FORMAT_G16_B16_R16_3PLANE_422_UNORM: 16-bit-per-channel unsigned floating-point green/blue/red channel data with normalized value, plus 6 unused bits after each channel. Stored across 3 separate planes (green + blue + red). Values are in the `[0.0, 1.0]` range. Blue and red channel data is stored at halved horizontal resolution (i.e. 2 horizontally adjacent pixels will share the same value for the blue/red channel).
+  - DATA_FORMAT_G16_B16R16_2PLANE_422_UNORM: 16-bit-per-channel unsigned floating-point green/blue/red channel data with normalized value, plus 6 unused bits after each channel. Stored across 3 separate planes (green + blue/red). Values are in the `[0.0, 1.0]` range. Blue and red channel data is stored at halved horizontal resolution (i.e. 2 horizontally adjacent pixels will share the same value for the blue/red channel).
+  - DATA_FORMAT_G16_B16_R16_3PLANE_444_UNORM: 16-bit-per-channel unsigned floating-point green/blue/red channel data with normalized value, plus 6 unused bits after each channel. Stored across 3 separate planes (green + blue + red). Values are in the `[0.0, 1.0]` range.
+  - DATA_FORMAT_MAX: Represents the size of the `DataFormat` enum.
+**BarrierMask:** BARRIER_MASK_VERTEX=1, BARRIER_MASK_FRAGMENT=8, BARRIER_MASK_COMPUTE=2, BARRIER_MASK_TRANSFER=4, BARRIER_MASK_RASTER=9, BARRIER_MASK_ALL_BARRIERS=32767, BARRIER_MASK_NO_BARRIER=32768
+  - BARRIER_MASK_VERTEX: Vertex shader barrier mask.
+  - BARRIER_MASK_FRAGMENT: Fragment shader barrier mask.
+  - BARRIER_MASK_COMPUTE: Compute barrier mask.
+  - BARRIER_MASK_TRANSFER: Transfer barrier mask.
+  - BARRIER_MASK_RASTER: Raster barrier mask (vertex and fragment). Equivalent to `BARRIER_MASK_VERTEX | BARRIER_MASK_FRAGMENT`.
+  - BARRIER_MASK_ALL_BARRIERS: Barrier mask for all types (vertex, fragment, compute, transfer).
+  - BARRIER_MASK_NO_BARRIER: No barrier for any type.
+**TextureType:** TEXTURE_TYPE_1D=0, TEXTURE_TYPE_2D=1, TEXTURE_TYPE_3D=2, TEXTURE_TYPE_CUBE=3, TEXTURE_TYPE_1D_ARRAY=4, TEXTURE_TYPE_2D_ARRAY=5, TEXTURE_TYPE_CUBE_ARRAY=6, TEXTURE_TYPE_MAX=7
+  - TEXTURE_TYPE_1D: 1-dimensional texture.
+  - TEXTURE_TYPE_2D: 2-dimensional texture.
+  - TEXTURE_TYPE_3D: 3-dimensional texture.
+  - TEXTURE_TYPE_CUBE: Cubemap texture.
+  - TEXTURE_TYPE_1D_ARRAY: Array of 1-dimensional textures.
+  - TEXTURE_TYPE_2D_ARRAY: Array of 2-dimensional textures.
+  - TEXTURE_TYPE_CUBE_ARRAY: Array of Cubemap textures.
+  - TEXTURE_TYPE_MAX: Represents the size of the `TextureType` enum.
+**TextureSamples:** TEXTURE_SAMPLES_1=0, TEXTURE_SAMPLES_2=1, TEXTURE_SAMPLES_4=2, TEXTURE_SAMPLES_8=3, TEXTURE_SAMPLES_16=4, TEXTURE_SAMPLES_32=5, TEXTURE_SAMPLES_64=6, TEXTURE_SAMPLES_MAX=7
+  - TEXTURE_SAMPLES_1: Perform 1 texture sample (this is the fastest but lowest-quality for antialiasing).
+  - TEXTURE_SAMPLES_2: Perform 2 texture samples.
+  - TEXTURE_SAMPLES_4: Perform 4 texture samples.
+  - TEXTURE_SAMPLES_8: Perform 8 texture samples. Not supported on mobile GPUs (including Apple Silicon).
+  - TEXTURE_SAMPLES_16: Perform 16 texture samples. Not supported on mobile GPUs and many desktop GPUs.
+  - TEXTURE_SAMPLES_32: Perform 32 texture samples. Not supported on most GPUs.
+  - TEXTURE_SAMPLES_64: Perform 64 texture samples (this is the slowest but highest-quality for antialiasing). Not supported on most GPUs.
+  - TEXTURE_SAMPLES_MAX: Represents the size of the `TextureSamples` enum.
+**TextureUsageBits:** TEXTURE_USAGE_SAMPLING_BIT=1, TEXTURE_USAGE_COLOR_ATTACHMENT_BIT=2, TEXTURE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT=4, TEXTURE_USAGE_DEPTH_RESOLVE_ATTACHMENT_BIT=4096, TEXTURE_USAGE_STORAGE_BIT=8, TEXTURE_USAGE_STORAGE_ATOMIC_BIT=16, TEXTURE_USAGE_CPU_READ_BIT=32, TEXTURE_USAGE_CAN_UPDATE_BIT=64, TEXTURE_USAGE_CAN_COPY_FROM_BIT=128, TEXTURE_USAGE_CAN_COPY_TO_BIT=256, ...
+  - TEXTURE_USAGE_SAMPLING_BIT: Texture can be sampled.
+  - TEXTURE_USAGE_COLOR_ATTACHMENT_BIT: Texture can be used as a color attachment in a framebuffer.
+  - TEXTURE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT: Texture can be used as a depth/stencil attachment in a framebuffer.
+  - TEXTURE_USAGE_DEPTH_RESOLVE_ATTACHMENT_BIT: Texture can be used as a depth/stencil resolve attachment in a framebuffer.
+  - TEXTURE_USAGE_STORAGE_BIT: Texture can be used as a .
+  - TEXTURE_USAGE_STORAGE_ATOMIC_BIT: Texture can be used as a with support for atomic operations.
+  - TEXTURE_USAGE_CPU_READ_BIT: Texture can be read back on the CPU using `texture_get_data` faster than without this bit, since it is always kept in the system memory.
+  - TEXTURE_USAGE_CAN_UPDATE_BIT: Texture can be updated using `texture_update`.
+  - TEXTURE_USAGE_CAN_COPY_FROM_BIT: Texture can be a source for `texture_copy`.
+  - TEXTURE_USAGE_CAN_COPY_TO_BIT: Texture can be a destination for `texture_copy`.
+  - TEXTURE_USAGE_INPUT_ATTACHMENT_BIT: Texture can be used as a in a framebuffer.
+**TextureSwizzle:** TEXTURE_SWIZZLE_IDENTITY=0, TEXTURE_SWIZZLE_ZERO=1, TEXTURE_SWIZZLE_ONE=2, TEXTURE_SWIZZLE_R=3, TEXTURE_SWIZZLE_G=4, TEXTURE_SWIZZLE_B=5, TEXTURE_SWIZZLE_A=6, TEXTURE_SWIZZLE_MAX=7
+  - TEXTURE_SWIZZLE_IDENTITY: Return the sampled value as-is.
+  - TEXTURE_SWIZZLE_ZERO: Always return `0.0` when sampling.
+  - TEXTURE_SWIZZLE_ONE: Always return `1.0` when sampling.
+  - TEXTURE_SWIZZLE_R: Sample the red color channel.
+  - TEXTURE_SWIZZLE_G: Sample the green color channel.
+  - TEXTURE_SWIZZLE_B: Sample the blue color channel.
+  - TEXTURE_SWIZZLE_A: Sample the alpha channel.
+  - TEXTURE_SWIZZLE_MAX: Represents the size of the `TextureSwizzle` enum.
+**TextureSliceType:** TEXTURE_SLICE_2D=0, TEXTURE_SLICE_CUBEMAP=1, TEXTURE_SLICE_3D=2
+  - TEXTURE_SLICE_2D: 2-dimensional texture slice.
+  - TEXTURE_SLICE_CUBEMAP: Cubemap texture slice.
+  - TEXTURE_SLICE_3D: 3-dimensional texture slice.
+**SamplerFilter:** SAMPLER_FILTER_NEAREST=0, SAMPLER_FILTER_LINEAR=1
+  - SAMPLER_FILTER_NEAREST: Nearest-neighbor sampler filtering. Sampling at higher resolutions than the source will result in a pixelated look.
+  - SAMPLER_FILTER_LINEAR: Bilinear sampler filtering. Sampling at higher resolutions than the source will result in a blurry look.
+**SamplerRepeatMode:** SAMPLER_REPEAT_MODE_REPEAT=0, SAMPLER_REPEAT_MODE_MIRRORED_REPEAT=1, SAMPLER_REPEAT_MODE_CLAMP_TO_EDGE=2, SAMPLER_REPEAT_MODE_CLAMP_TO_BORDER=3, SAMPLER_REPEAT_MODE_MIRROR_CLAMP_TO_EDGE=4, SAMPLER_REPEAT_MODE_MAX=5
+  - SAMPLER_REPEAT_MODE_REPEAT: Sample with repeating enabled.
+  - SAMPLER_REPEAT_MODE_MIRRORED_REPEAT: Sample with mirrored repeating enabled. When sampling outside the `[0.0, 1.0]` range, return a mirrored version of the sampler. This mirrored version is mirrored again if sampling further away, with the pattern repeating indefinitely.
+  - SAMPLER_REPEAT_MODE_CLAMP_TO_EDGE: Sample with repeating disabled. When sampling outside the `[0.0, 1.0]` range, return the color of the last pixel on the edge.
+  - SAMPLER_REPEAT_MODE_CLAMP_TO_BORDER: Sample with repeating disabled. When sampling outside the `[0.0, 1.0]` range, return the specified `RDSamplerState.border_color`.
+  - SAMPLER_REPEAT_MODE_MIRROR_CLAMP_TO_EDGE: Sample with mirrored repeating enabled, but only once. When sampling in the `[-1.0, 0.0]` range, return a mirrored version of the sampler. When sampling outside the `[-1.0, 1.0]` range, return the color of the last pixel on the edge.
+  - SAMPLER_REPEAT_MODE_MAX: Represents the size of the `SamplerRepeatMode` enum.
+**SamplerBorderColor:** SAMPLER_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK=0, SAMPLER_BORDER_COLOR_INT_TRANSPARENT_BLACK=1, SAMPLER_BORDER_COLOR_FLOAT_OPAQUE_BLACK=2, SAMPLER_BORDER_COLOR_INT_OPAQUE_BLACK=3, SAMPLER_BORDER_COLOR_FLOAT_OPAQUE_WHITE=4, SAMPLER_BORDER_COLOR_INT_OPAQUE_WHITE=5, SAMPLER_BORDER_COLOR_MAX=6
+  - SAMPLER_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK: Return a floating-point transparent black color when sampling outside the `[0.0, 1.0]` range. Only effective if the sampler repeat mode is `SAMPLER_REPEAT_MODE_CLAMP_TO_BORDER`.
+  - SAMPLER_BORDER_COLOR_INT_TRANSPARENT_BLACK: Return an integer transparent black color when sampling outside the `[0.0, 1.0]` range. Only effective if the sampler repeat mode is `SAMPLER_REPEAT_MODE_CLAMP_TO_BORDER`.
+  - SAMPLER_BORDER_COLOR_FLOAT_OPAQUE_BLACK: Return a floating-point opaque black color when sampling outside the `[0.0, 1.0]` range. Only effective if the sampler repeat mode is `SAMPLER_REPEAT_MODE_CLAMP_TO_BORDER`.
+  - SAMPLER_BORDER_COLOR_INT_OPAQUE_BLACK: Return an integer opaque black color when sampling outside the `[0.0, 1.0]` range. Only effective if the sampler repeat mode is `SAMPLER_REPEAT_MODE_CLAMP_TO_BORDER`.
+  - SAMPLER_BORDER_COLOR_FLOAT_OPAQUE_WHITE: Return a floating-point opaque white color when sampling outside the `[0.0, 1.0]` range. Only effective if the sampler repeat mode is `SAMPLER_REPEAT_MODE_CLAMP_TO_BORDER`.
+  - SAMPLER_BORDER_COLOR_INT_OPAQUE_WHITE: Return an integer opaque white color when sampling outside the `[0.0, 1.0]` range. Only effective if the sampler repeat mode is `SAMPLER_REPEAT_MODE_CLAMP_TO_BORDER`.
+  - SAMPLER_BORDER_COLOR_MAX: Represents the size of the `SamplerBorderColor` enum.
+**VertexFrequency:** VERTEX_FREQUENCY_VERTEX=0, VERTEX_FREQUENCY_INSTANCE=1
+  - VERTEX_FREQUENCY_VERTEX: Vertex attribute addressing is a function of the vertex. This is used to specify the rate at which vertex attributes are pulled from buffers.
+  - VERTEX_FREQUENCY_INSTANCE: Vertex attribute addressing is a function of the instance index. This is used to specify the rate at which vertex attributes are pulled from buffers.
+**IndexBufferFormat:** INDEX_BUFFER_FORMAT_UINT16=0, INDEX_BUFFER_FORMAT_UINT32=1
+  - INDEX_BUFFER_FORMAT_UINT16: Index buffer in 16-bit unsigned integer format. This limits the maximum index that can be specified to `65535`.
+  - INDEX_BUFFER_FORMAT_UINT32: Index buffer in 32-bit unsigned integer format. This limits the maximum index that can be specified to `4294967295`.
+**StorageBufferUsage:** STORAGE_BUFFER_USAGE_DISPATCH_INDIRECT=1
+**BufferCreationBits:** BUFFER_CREATION_DEVICE_ADDRESS_BIT=1, BUFFER_CREATION_AS_STORAGE_BIT=2, BUFFER_CREATION_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT=8
+  - BUFFER_CREATION_DEVICE_ADDRESS_BIT: Optionally, set this flag if you wish to use `buffer_get_device_address` functionality. You must first check the GPU supports it:
+  - BUFFER_CREATION_AS_STORAGE_BIT: Set this flag so that it is created as storage. This is useful if Compute Shaders need access (for reading or writing) to the buffer, e.g. skeletal animations are processed in Compute Shaders which need access to vertex buffers, to be later consumed by vertex shaders as part of the regular rasterization pipeline.
+  - BUFFER_CREATION_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT: Allows usage of this buffer as input data for an acceleration structure build operation. You must first check that the GPU supports it:
+**AccelerationStructureGeometryBits:** ACCELERATION_STRUCTURE_GEOMETRY_OPAQUE=1, ACCELERATION_STRUCTURE_GEOMETRY_NO_DUPLICATE_ANY_HIT_INVOCATION=2
+  - ACCELERATION_STRUCTURE_GEOMETRY_OPAQUE: An opaque geometry does not invoke the any hit shaders.
+  - ACCELERATION_STRUCTURE_GEOMETRY_NO_DUPLICATE_ANY_HIT_INVOCATION: This geometry only calls the any hit shader a single time for each primitive.
+**UniformType:** UNIFORM_TYPE_SAMPLER=0, UNIFORM_TYPE_SAMPLER_WITH_TEXTURE=1, UNIFORM_TYPE_TEXTURE=2, UNIFORM_TYPE_IMAGE=3, UNIFORM_TYPE_TEXTURE_BUFFER=4, UNIFORM_TYPE_SAMPLER_WITH_TEXTURE_BUFFER=5, UNIFORM_TYPE_IMAGE_BUFFER=6, UNIFORM_TYPE_UNIFORM_BUFFER=7, UNIFORM_TYPE_STORAGE_BUFFER=8, UNIFORM_TYPE_INPUT_ATTACHMENT=9, ...
+  - UNIFORM_TYPE_SAMPLER: Sampler uniform.
+  - UNIFORM_TYPE_SAMPLER_WITH_TEXTURE: Sampler uniform with a texture.
+  - UNIFORM_TYPE_TEXTURE: Texture uniform.
+  - UNIFORM_TYPE_IMAGE: Image uniform.
+  - UNIFORM_TYPE_TEXTURE_BUFFER: Texture buffer uniform.
+  - UNIFORM_TYPE_SAMPLER_WITH_TEXTURE_BUFFER: Sampler uniform with a texture buffer.
+  - UNIFORM_TYPE_IMAGE_BUFFER: Image buffer uniform.
+  - UNIFORM_TYPE_UNIFORM_BUFFER: Uniform buffer uniform.
+  - UNIFORM_TYPE_STORAGE_BUFFER: uniform.
+  - UNIFORM_TYPE_INPUT_ATTACHMENT: Input attachment uniform.
+  - UNIFORM_TYPE_UNIFORM_BUFFER_DYNAMIC: Same as UNIFORM_TYPE_UNIFORM_BUFFER but for buffers created with BUFFER_CREATION_DYNAMIC_PERSISTENT_BIT. **Note:** This flag is not available to GD users due to being too dangerous (i.e. wrong usage can result in visual glitches). It's exposed in case GD users receive a buffer created with such flag from Godot.
+  - UNIFORM_TYPE_STORAGE_BUFFER_DYNAMIC: Same as UNIFORM_TYPE_STORAGE_BUFFER but for buffers created with BUFFER_CREATION_DYNAMIC_PERSISTENT_BIT. **Note:** This flag is not available to GD users due to being too dangerous (i.e. wrong usage can result in visual glitches). It's exposed in case GD users receive a buffer created with such flag from Godot.
+  - UNIFORM_TYPE_ACCELERATION_STRUCTURE: Acceleration structure uniform.
+  - UNIFORM_TYPE_MAX: Represents the size of the `UniformType` enum.
+**RenderPrimitive:** RENDER_PRIMITIVE_POINTS=0, RENDER_PRIMITIVE_LINES=1, RENDER_PRIMITIVE_LINES_WITH_ADJACENCY=2, RENDER_PRIMITIVE_LINESTRIPS=3, RENDER_PRIMITIVE_LINESTRIPS_WITH_ADJACENCY=4, RENDER_PRIMITIVE_TRIANGLES=5, RENDER_PRIMITIVE_TRIANGLES_WITH_ADJACENCY=6, RENDER_PRIMITIVE_TRIANGLE_STRIPS=7, RENDER_PRIMITIVE_TRIANGLE_STRIPS_WITH_AJACENCY=8, RENDER_PRIMITIVE_TRIANGLE_STRIPS_WITH_RESTART_INDEX=9, ...
+  - RENDER_PRIMITIVE_POINTS: Point rendering primitive (with constant size, regardless of distance from camera).
+  - RENDER_PRIMITIVE_LINES: Line list rendering primitive. Lines are drawn separated from each other.
+  - RENDER_PRIMITIVE_LINES_WITH_ADJACENCY: **Note:** Adjacency is only useful with geometry shaders, which Godot does not expose.
+  - RENDER_PRIMITIVE_LINESTRIPS: Line strip rendering primitive. Lines drawn are connected to the previous vertex.
+  - RENDER_PRIMITIVE_LINESTRIPS_WITH_ADJACENCY: **Note:** Adjacency is only useful with geometry shaders, which Godot does not expose.
+  - RENDER_PRIMITIVE_TRIANGLES: Triangle list rendering primitive. Triangles are drawn separated from each other.
+  - RENDER_PRIMITIVE_TRIANGLES_WITH_ADJACENCY: **Note:** Adjacency is only useful with geometry shaders, which Godot does not expose.
+  - RENDER_PRIMITIVE_TRIANGLE_STRIPS: Triangle strip rendering primitive. Triangles drawn are connected to the previous triangle.
+  - RENDER_PRIMITIVE_TRIANGLE_STRIPS_WITH_AJACENCY: **Note:** Adjacency is only useful with geometry shaders, which Godot does not expose.
+  - RENDER_PRIMITIVE_TRIANGLE_STRIPS_WITH_RESTART_INDEX: Triangle strip rendering primitive with *primitive restart* enabled. Triangles drawn are connected to the previous triangle, but a primitive restart index can be specified before drawing to create a second triangle strip after the specified index. **Note:** Only compatible with indexed draws.
+  - RENDER_PRIMITIVE_TESSELATION_PATCH: Tessellation patch rendering primitive. Only useful with tessellation shaders, which can be used to deform these patches.
+  - RENDER_PRIMITIVE_MAX: Represents the size of the `RenderPrimitive` enum.
+**PolygonCullMode:** POLYGON_CULL_DISABLED=0, POLYGON_CULL_FRONT=1, POLYGON_CULL_BACK=2
+  - POLYGON_CULL_DISABLED: Do not use polygon front face or backface culling.
+  - POLYGON_CULL_FRONT: Use polygon frontface culling (faces pointing towards the camera are hidden).
+  - POLYGON_CULL_BACK: Use polygon backface culling (faces pointing away from the camera are hidden).
+**PolygonFrontFace:** POLYGON_FRONT_FACE_CLOCKWISE=0, POLYGON_FRONT_FACE_COUNTER_CLOCKWISE=1
+  - POLYGON_FRONT_FACE_CLOCKWISE: Clockwise winding order to determine which face of a polygon is its front face.
+  - POLYGON_FRONT_FACE_COUNTER_CLOCKWISE: Counter-clockwise winding order to determine which face of a polygon is its front face.
+**StencilOperation:** STENCIL_OP_KEEP=0, STENCIL_OP_ZERO=1, STENCIL_OP_REPLACE=2, STENCIL_OP_INCREMENT_AND_CLAMP=3, STENCIL_OP_DECREMENT_AND_CLAMP=4, STENCIL_OP_INVERT=5, STENCIL_OP_INCREMENT_AND_WRAP=6, STENCIL_OP_DECREMENT_AND_WRAP=7, STENCIL_OP_MAX=8
+  - STENCIL_OP_KEEP: Keep the current stencil value.
+  - STENCIL_OP_ZERO: Set the stencil value to `0`.
+  - STENCIL_OP_REPLACE: Replace the existing stencil value with the new one.
+  - STENCIL_OP_INCREMENT_AND_CLAMP: Increment the existing stencil value and clamp to the maximum representable unsigned value if reached. Stencil bits are considered as an unsigned integer.
+  - STENCIL_OP_DECREMENT_AND_CLAMP: Decrement the existing stencil value and clamp to the minimum value if reached. Stencil bits are considered as an unsigned integer.
+  - STENCIL_OP_INVERT: Bitwise-invert the existing stencil value.
+  - STENCIL_OP_INCREMENT_AND_WRAP: Increment the stencil value and wrap around to `0` if reaching the maximum representable unsigned. Stencil bits are considered as an unsigned integer.
+  - STENCIL_OP_DECREMENT_AND_WRAP: Decrement the stencil value and wrap around to the maximum representable unsigned if reaching the minimum. Stencil bits are considered as an unsigned integer.
+  - STENCIL_OP_MAX: Represents the size of the `StencilOperation` enum.
+**CompareOperator:** COMPARE_OP_NEVER=0, COMPARE_OP_LESS=1, COMPARE_OP_EQUAL=2, COMPARE_OP_LESS_OR_EQUAL=3, COMPARE_OP_GREATER=4, COMPARE_OP_NOT_EQUAL=5, COMPARE_OP_GREATER_OR_EQUAL=6, COMPARE_OP_ALWAYS=7, COMPARE_OP_MAX=8
+  - COMPARE_OP_NEVER: "Never" comparison (opposite of `COMPARE_OP_ALWAYS`).
+  - COMPARE_OP_LESS: "Less than" comparison.
+  - COMPARE_OP_EQUAL: "Equal" comparison.
+  - COMPARE_OP_LESS_OR_EQUAL: "Less than or equal" comparison.
+  - COMPARE_OP_GREATER: "Greater than" comparison.
+  - COMPARE_OP_NOT_EQUAL: "Not equal" comparison.
+  - COMPARE_OP_GREATER_OR_EQUAL: "Greater than or equal" comparison.
+  - COMPARE_OP_ALWAYS: "Always" comparison (opposite of `COMPARE_OP_NEVER`).
+  - COMPARE_OP_MAX: Represents the size of the `CompareOperator` enum.
+**LogicOperation:** LOGIC_OP_CLEAR=0, LOGIC_OP_AND=1, LOGIC_OP_AND_REVERSE=2, LOGIC_OP_COPY=3, LOGIC_OP_AND_INVERTED=4, LOGIC_OP_NO_OP=5, LOGIC_OP_XOR=6, LOGIC_OP_OR=7, LOGIC_OP_NOR=8, LOGIC_OP_EQUIVALENT=9, ...
+  - LOGIC_OP_CLEAR: Clear logic operation (result is always `0`). See also `LOGIC_OP_SET`.
+  - LOGIC_OP_AND: AND logic operation.
+  - LOGIC_OP_AND_REVERSE: AND logic operation with the *destination* operand being inverted. See also `LOGIC_OP_AND_INVERTED`.
+  - LOGIC_OP_COPY: Copy logic operation (keeps the *source* value as-is). See also `LOGIC_OP_COPY_INVERTED` and `LOGIC_OP_NO_OP`.
+  - LOGIC_OP_AND_INVERTED: AND logic operation with the *source* operand being inverted. See also `LOGIC_OP_AND_REVERSE`.
+  - LOGIC_OP_NO_OP: No-op logic operation (keeps the *destination* value as-is). See also `LOGIC_OP_COPY`.
+  - LOGIC_OP_XOR: Exclusive or (XOR) logic operation.
+  - LOGIC_OP_OR: OR logic operation.
+  - LOGIC_OP_NOR: Not-OR (NOR) logic operation.
+  - LOGIC_OP_EQUIVALENT: Not-XOR (XNOR) logic operation.
+  - LOGIC_OP_INVERT: Invert logic operation.
+  - LOGIC_OP_OR_REVERSE: OR logic operation with the *destination* operand being inverted. See also `LOGIC_OP_OR_REVERSE`.
+  - LOGIC_OP_COPY_INVERTED: NOT logic operation (inverts the value). See also `LOGIC_OP_COPY`.
+  - LOGIC_OP_OR_INVERTED: OR logic operation with the *source* operand being inverted. See also `LOGIC_OP_OR_REVERSE`.
+  - LOGIC_OP_NAND: Not-AND (NAND) logic operation.
+  - LOGIC_OP_SET: SET logic operation (result is always `1`). See also `LOGIC_OP_CLEAR`.
+  - LOGIC_OP_MAX: Represents the size of the `LogicOperation` enum.
+**BlendFactor:** BLEND_FACTOR_ZERO=0, BLEND_FACTOR_ONE=1, BLEND_FACTOR_SRC_COLOR=2, BLEND_FACTOR_ONE_MINUS_SRC_COLOR=3, BLEND_FACTOR_DST_COLOR=4, BLEND_FACTOR_ONE_MINUS_DST_COLOR=5, BLEND_FACTOR_SRC_ALPHA=6, BLEND_FACTOR_ONE_MINUS_SRC_ALPHA=7, BLEND_FACTOR_DST_ALPHA=8, BLEND_FACTOR_ONE_MINUS_DST_ALPHA=9, ...
+  - BLEND_FACTOR_ZERO: Constant `0.0` blend factor.
+  - BLEND_FACTOR_ONE: Constant `1.0` blend factor.
+  - BLEND_FACTOR_SRC_COLOR: Color blend factor is `source color`. Alpha blend factor is `source alpha`.
+  - BLEND_FACTOR_ONE_MINUS_SRC_COLOR: Color blend factor is `1.0 - source color`. Alpha blend factor is `1.0 - source alpha`.
+  - BLEND_FACTOR_DST_COLOR: Color blend factor is `destination color`. Alpha blend factor is `destination alpha`.
+  - BLEND_FACTOR_ONE_MINUS_DST_COLOR: Color blend factor is `1.0 - destination color`. Alpha blend factor is `1.0 - destination alpha`.
+  - BLEND_FACTOR_SRC_ALPHA: Color and alpha blend factor is `source alpha`.
+  - BLEND_FACTOR_ONE_MINUS_SRC_ALPHA: Color and alpha blend factor is `1.0 - source alpha`.
+  - BLEND_FACTOR_DST_ALPHA: Color and alpha blend factor is `destination alpha`.
+  - BLEND_FACTOR_ONE_MINUS_DST_ALPHA: Color and alpha blend factor is `1.0 - destination alpha`.
+  - BLEND_FACTOR_CONSTANT_COLOR: Color blend factor is `blend constant color`. Alpha blend factor is `blend constant alpha` (see `draw_list_set_blend_constants`).
+  - BLEND_FACTOR_ONE_MINUS_CONSTANT_COLOR: Color blend factor is `1.0 - blend constant color`. Alpha blend factor is `1.0 - blend constant alpha` (see `draw_list_set_blend_constants`).
+  - BLEND_FACTOR_CONSTANT_ALPHA: Color and alpha blend factor is `blend constant alpha` (see `draw_list_set_blend_constants`).
+  - BLEND_FACTOR_ONE_MINUS_CONSTANT_ALPHA: Color and alpha blend factor is `1.0 - blend constant alpha` (see `draw_list_set_blend_constants`).
+  - BLEND_FACTOR_SRC_ALPHA_SATURATE: Color blend factor is `min(source alpha, 1.0 - destination alpha)`. Alpha blend factor is `1.0`.
+  - BLEND_FACTOR_SRC1_COLOR: Color blend factor is `second source color`. Alpha blend factor is `second source alpha`. Only relevant for dual-source blending.
+  - BLEND_FACTOR_ONE_MINUS_SRC1_COLOR: Color blend factor is `1.0 - second source color`. Alpha blend factor is `1.0 - second source alpha`. Only relevant for dual-source blending.
+  - BLEND_FACTOR_SRC1_ALPHA: Color and alpha blend factor is `second source alpha`. Only relevant for dual-source blending.
+  - BLEND_FACTOR_ONE_MINUS_SRC1_ALPHA: Color and alpha blend factor is `1.0 - second source alpha`. Only relevant for dual-source blending.
+  - BLEND_FACTOR_MAX: Represents the size of the `BlendFactor` enum.
+**BlendOperation:** BLEND_OP_ADD=0, BLEND_OP_SUBTRACT=1, BLEND_OP_REVERSE_SUBTRACT=2, BLEND_OP_MINIMUM=3, BLEND_OP_MAXIMUM=4, BLEND_OP_MAX=5
+  - BLEND_OP_ADD: Additive blending operation (`source + destination`).
+  - BLEND_OP_SUBTRACT: Subtractive blending operation (`source - destination`).
+  - BLEND_OP_REVERSE_SUBTRACT: Reverse subtractive blending operation (`destination - source`).
+  - BLEND_OP_MINIMUM: Minimum blending operation (keep the lowest value of the two).
+  - BLEND_OP_MAXIMUM: Maximum blending operation (keep the highest value of the two).
+  - BLEND_OP_MAX: Represents the size of the `BlendOperation` enum.
+**PipelineDynamicStateFlags:** DYNAMIC_STATE_LINE_WIDTH=1, DYNAMIC_STATE_DEPTH_BIAS=2, DYNAMIC_STATE_BLEND_CONSTANTS=4, DYNAMIC_STATE_DEPTH_BOUNDS=8, DYNAMIC_STATE_STENCIL_COMPARE_MASK=16, DYNAMIC_STATE_STENCIL_WRITE_MASK=32, DYNAMIC_STATE_STENCIL_REFERENCE=64
+  - DYNAMIC_STATE_LINE_WIDTH: Allows dynamically changing the width of rendering lines.
+  - DYNAMIC_STATE_DEPTH_BIAS: Allows dynamically changing the depth bias.
+**InitialAction:** INITIAL_ACTION_LOAD=0, INITIAL_ACTION_CLEAR=1, INITIAL_ACTION_DISCARD=2, INITIAL_ACTION_MAX=3, INITIAL_ACTION_CLEAR_REGION=1, INITIAL_ACTION_CLEAR_REGION_CONTINUE=1, INITIAL_ACTION_KEEP=0, INITIAL_ACTION_DROP=2, INITIAL_ACTION_CONTINUE=0
+  - INITIAL_ACTION_LOAD: Load the previous contents of the framebuffer.
+  - INITIAL_ACTION_CLEAR: Clear the whole framebuffer or its specified region.
+  - INITIAL_ACTION_DISCARD: Ignore the previous contents of the framebuffer. This is the fastest option if you'll overwrite all of the pixels and don't need to read any of them.
+  - INITIAL_ACTION_MAX: Represents the size of the `InitialAction` enum.
+**FinalAction:** FINAL_ACTION_STORE=0, FINAL_ACTION_DISCARD=1, FINAL_ACTION_MAX=2, FINAL_ACTION_READ=0, FINAL_ACTION_CONTINUE=0
+  - FINAL_ACTION_STORE: Store the result of the draw list in the framebuffer. This is generally what you want to do.
+  - FINAL_ACTION_DISCARD: Discard the contents of the framebuffer. This is the fastest option if you don't need to use the results of the draw list.
+  - FINAL_ACTION_MAX: Represents the size of the `FinalAction` enum.
+**ShaderStage:** SHADER_STAGE_VERTEX=0, SHADER_STAGE_FRAGMENT=1, SHADER_STAGE_TESSELATION_CONTROL=2, SHADER_STAGE_TESSELATION_EVALUATION=3, SHADER_STAGE_COMPUTE=4, SHADER_STAGE_RAYGEN=5, SHADER_STAGE_ANY_HIT=6, SHADER_STAGE_CLOSEST_HIT=7, SHADER_STAGE_MISS=8, SHADER_STAGE_INTERSECTION=9, ...
+  - SHADER_STAGE_VERTEX: Vertex shader stage. This can be used to manipulate vertices from a shader (but not create new vertices).
+  - SHADER_STAGE_FRAGMENT: Fragment shader stage (called "pixel shader" in Direct3D). This can be used to manipulate pixels from a shader.
+  - SHADER_STAGE_TESSELATION_CONTROL: Tessellation control shader stage. This can be used to create additional geometry from a shader.
+  - SHADER_STAGE_TESSELATION_EVALUATION: Tessellation evaluation shader stage. This can be used to create additional geometry from a shader.
+  - SHADER_STAGE_COMPUTE: Compute shader stage. This can be used to run arbitrary computing tasks in a shader, performing them on the GPU instead of the CPU.
+  - SHADER_STAGE_RAYGEN: Ray generation shader stage. This can be used to generate primary rays.
+  - SHADER_STAGE_ANY_HIT: Any hit shader stage. Invoked when ray intersections are not opaque. This can be used to specify what happens when a ray hits any of the geometry in the scene.
+  - SHADER_STAGE_CLOSEST_HIT: Closest hit shader stage. This can be used to specify what happens when a ray hits the closest geometry in the scene.
+  - SHADER_STAGE_MISS: Miss shader stage. This can be used to specify what happens if a ray does not hit anything in the scene.
+  - SHADER_STAGE_INTERSECTION: Intersection shader stage. The intersection shader for triangles is built-in. This can be used to compute ray intersections with primitives that are not triangles.
+  - SHADER_STAGE_MAX: Represents the size of the `ShaderStage` enum.
+  - SHADER_STAGE_VERTEX_BIT: Vertex shader stage bit (see also `SHADER_STAGE_VERTEX`).
+  - SHADER_STAGE_FRAGMENT_BIT: Fragment shader stage bit (see also `SHADER_STAGE_FRAGMENT`).
+  - SHADER_STAGE_TESSELATION_CONTROL_BIT: Tessellation control shader stage bit (see also `SHADER_STAGE_TESSELATION_CONTROL`).
+  - SHADER_STAGE_TESSELATION_EVALUATION_BIT: Tessellation evaluation shader stage bit (see also `SHADER_STAGE_TESSELATION_EVALUATION`).
+  - SHADER_STAGE_COMPUTE_BIT: Compute shader stage bit (see also `SHADER_STAGE_COMPUTE`).
+  - SHADER_STAGE_RAYGEN_BIT: Ray generation shader stage bit (see also `SHADER_STAGE_RAYGEN`).
+  - SHADER_STAGE_ANY_HIT_BIT: Any hit shader stage bit (see also `SHADER_STAGE_ANY_HIT`).
+  - SHADER_STAGE_CLOSEST_HIT_BIT: Closest hit shader stage bit (see also `SHADER_STAGE_CLOSEST_HIT`).
+  - SHADER_STAGE_MISS_BIT: Miss shader stage bit (see also `SHADER_STAGE_MISS`).
+  - SHADER_STAGE_INTERSECTION_BIT: Intersection shader stage bit (see also `SHADER_STAGE_INTERSECTION`).
+**ShaderLanguage:** SHADER_LANGUAGE_GLSL=0, SHADER_LANGUAGE_HLSL=1
+  - SHADER_LANGUAGE_GLSL: Khronos' GLSL shading language (used natively by OpenGL and Vulkan). This is the language used for core Godot shaders.
+  - SHADER_LANGUAGE_HLSL: Microsoft's High-Level Shading Language (used natively by Direct3D, but can also be used in Vulkan).
+**PipelineSpecializationConstantType:** PIPELINE_SPECIALIZATION_CONSTANT_TYPE_BOOL=0, PIPELINE_SPECIALIZATION_CONSTANT_TYPE_INT=1, PIPELINE_SPECIALIZATION_CONSTANT_TYPE_FLOAT=2
+  - PIPELINE_SPECIALIZATION_CONSTANT_TYPE_BOOL: Boolean specialization constant.
+  - PIPELINE_SPECIALIZATION_CONSTANT_TYPE_INT: Integer specialization constant.
+  - PIPELINE_SPECIALIZATION_CONSTANT_TYPE_FLOAT: Floating-point specialization constant.
+**Features:** SUPPORTS_METALFX_SPATIAL=3, SUPPORTS_METALFX_TEMPORAL=4, SUPPORTS_BUFFER_DEVICE_ADDRESS=6, SUPPORTS_IMAGE_ATOMIC_32_BIT=7, SUPPORTS_RAY_QUERY=11, SUPPORTS_RAYTRACING_PIPELINE=12, SUPPORTS_HDR_OUTPUT=13
+  - SUPPORTS_METALFX_SPATIAL: Support for MetalFX spatial upscaling.
+  - SUPPORTS_METALFX_TEMPORAL: Support for MetalFX temporal upscaling.
+  - SUPPORTS_BUFFER_DEVICE_ADDRESS: Features support for buffer device address extension.
+  - SUPPORTS_IMAGE_ATOMIC_32_BIT: Support for 32-bit image atomic operations.
+  - SUPPORTS_RAY_QUERY: Support for ray query extension. **Note:** This is currently only supported when using Vulkan. This is not supported on macOS and iOS (even on hardware supporting raytracing) due to MoltenVK limitations.
+  - SUPPORTS_RAYTRACING_PIPELINE: Support for raytracing pipeline extension. **Note:** This is currently only supported when using Vulkan. This is not supported on macOS and iOS (even on hardware supporting raytracing) due to MoltenVK limitations.
+  - SUPPORTS_HDR_OUTPUT: Support for high dynamic range (HDR) output.
+**Limit:** LIMIT_MAX_BOUND_UNIFORM_SETS=0, LIMIT_MAX_FRAMEBUFFER_COLOR_ATTACHMENTS=1, LIMIT_MAX_TEXTURES_PER_UNIFORM_SET=2, LIMIT_MAX_SAMPLERS_PER_UNIFORM_SET=3, LIMIT_MAX_STORAGE_BUFFERS_PER_UNIFORM_SET=4, LIMIT_MAX_STORAGE_IMAGES_PER_UNIFORM_SET=5, LIMIT_MAX_UNIFORM_BUFFERS_PER_UNIFORM_SET=6, LIMIT_MAX_DRAW_INDEXED_INDEX=7, LIMIT_MAX_FRAMEBUFFER_HEIGHT=8, LIMIT_MAX_FRAMEBUFFER_WIDTH=9, ...
+  - LIMIT_MAX_BOUND_UNIFORM_SETS: Maximum number of uniform sets that can be bound at a given time.
+  - LIMIT_MAX_FRAMEBUFFER_COLOR_ATTACHMENTS: Maximum number of color framebuffer attachments that can be used at a given time.
+  - LIMIT_MAX_TEXTURES_PER_UNIFORM_SET: Maximum number of textures that can be used per uniform set.
+  - LIMIT_MAX_SAMPLERS_PER_UNIFORM_SET: Maximum number of samplers that can be used per uniform set.
+  - LIMIT_MAX_STORAGE_BUFFERS_PER_UNIFORM_SET: Maximum number of per uniform set.
+  - LIMIT_MAX_STORAGE_IMAGES_PER_UNIFORM_SET: Maximum number of storage images per uniform set.
+  - LIMIT_MAX_UNIFORM_BUFFERS_PER_UNIFORM_SET: Maximum number of uniform buffers per uniform set.
+  - LIMIT_MAX_DRAW_INDEXED_INDEX: Maximum index for an indexed draw command.
+  - LIMIT_MAX_FRAMEBUFFER_HEIGHT: Maximum height of a framebuffer (in pixels).
+  - LIMIT_MAX_FRAMEBUFFER_WIDTH: Maximum width of a framebuffer (in pixels).
+  - LIMIT_MAX_TEXTURE_ARRAY_LAYERS: Maximum number of texture array layers.
+  - LIMIT_MAX_TEXTURE_SIZE_1D: Maximum supported 1-dimensional texture size (in pixels on a single axis).
+  - LIMIT_MAX_TEXTURE_SIZE_2D: Maximum supported 2-dimensional texture size (in pixels on a single axis).
+  - LIMIT_MAX_TEXTURE_SIZE_3D: Maximum supported 3-dimensional texture size (in pixels on a single axis).
+  - LIMIT_MAX_TEXTURE_SIZE_CUBE: Maximum supported cubemap texture size (in pixels on a single axis of a single face).
+  - LIMIT_MAX_TEXTURES_PER_SHADER_STAGE: Maximum number of textures per shader stage.
+  - LIMIT_MAX_SAMPLERS_PER_SHADER_STAGE: Maximum number of samplers per shader stage.
+  - LIMIT_MAX_STORAGE_BUFFERS_PER_SHADER_STAGE: Maximum number of per shader stage.
+  - LIMIT_MAX_STORAGE_IMAGES_PER_SHADER_STAGE: Maximum number of storage images per shader stage.
+  - LIMIT_MAX_UNIFORM_BUFFERS_PER_SHADER_STAGE: Maximum number of uniform buffers per uniform set.
+  - LIMIT_MAX_PUSH_CONSTANT_SIZE: Maximum size of a push constant. A lot of devices are limited to 128 bytes, so try to avoid exceeding 128 bytes in push constants to ensure compatibility even if your GPU is reporting a higher value.
+  - LIMIT_MAX_UNIFORM_BUFFER_SIZE: Maximum size of a uniform buffer.
+  - LIMIT_MAX_VERTEX_INPUT_ATTRIBUTE_OFFSET: Maximum vertex input attribute offset.
+  - LIMIT_MAX_VERTEX_INPUT_ATTRIBUTES: Maximum number of vertex input attributes.
+  - LIMIT_MAX_VERTEX_INPUT_BINDINGS: Maximum number of vertex input bindings.
+  - LIMIT_MAX_VERTEX_INPUT_BINDING_STRIDE: Maximum vertex input binding stride.
+  - LIMIT_MIN_UNIFORM_BUFFER_OFFSET_ALIGNMENT: Minimum uniform buffer offset alignment.
+  - LIMIT_MAX_COMPUTE_SHARED_MEMORY_SIZE: Maximum shared memory size for compute shaders.
+  - LIMIT_MAX_COMPUTE_WORKGROUP_COUNT_X: Maximum number of workgroups for compute shaders on the X axis.
+  - LIMIT_MAX_COMPUTE_WORKGROUP_COUNT_Y: Maximum number of workgroups for compute shaders on the Y axis.
+  - LIMIT_MAX_COMPUTE_WORKGROUP_COUNT_Z: Maximum number of workgroups for compute shaders on the Z axis.
+  - LIMIT_MAX_COMPUTE_WORKGROUP_INVOCATIONS: Maximum number of workgroup invocations for compute shaders.
+  - LIMIT_MAX_COMPUTE_WORKGROUP_SIZE_X: Maximum workgroup size for compute shaders on the X axis.
+  - LIMIT_MAX_COMPUTE_WORKGROUP_SIZE_Y: Maximum workgroup size for compute shaders on the Y axis.
+  - LIMIT_MAX_COMPUTE_WORKGROUP_SIZE_Z: Maximum workgroup size for compute shaders on the Z axis.
+  - LIMIT_MAX_VIEWPORT_DIMENSIONS_X: Maximum viewport width (in pixels).
+  - LIMIT_MAX_VIEWPORT_DIMENSIONS_Y: Maximum viewport height (in pixels).
+  - LIMIT_METALFX_TEMPORAL_SCALER_MIN_SCALE: Returns the smallest value for `ProjectSettings.rendering/scaling_3d/scale` when using the MetalFX temporal upscaler. **Note:** The returned value is multiplied by a factor of `1000000` to preserve 6 digits of precision. It must be divided by `1000000.0` to convert the value to a floating point number.
+  - LIMIT_METALFX_TEMPORAL_SCALER_MAX_SCALE: Returns the largest value for `ProjectSettings.rendering/scaling_3d/scale` when using the MetalFX temporal upscaler. **Note:** The returned value is multiplied by a factor of `1000000` to preserve 6 digits of precision. It must be divided by `1000000.0` to convert the value to a floating point number.
+**MemoryType:** MEMORY_TEXTURES=0, MEMORY_BUFFERS=1, MEMORY_TOTAL=2
+  - MEMORY_TEXTURES: Memory taken by textures.
+  - MEMORY_BUFFERS: Memory taken by buffers.
+  - MEMORY_TOTAL: Total memory taken. This is greater than the sum of `MEMORY_TEXTURES` and `MEMORY_BUFFERS`, as it also includes miscellaneous memory usage.
+**Constants:** INVALID_ID=-1, INVALID_FORMAT_ID=-1
+  - INVALID_ID: Returned by functions that return an ID if a value is invalid.
+  - INVALID_FORMAT_ID: Returned by functions that return a format ID if a value is invalid.
+**BreadcrumbMarker:** NONE=0, REFLECTION_PROBES=65536, SKY_PASS=131072, LIGHTMAPPER_PASS=196608, SHADOW_PASS_DIRECTIONAL=262144, SHADOW_PASS_CUBE=327680, OPAQUE_PASS=393216, ALPHA_PASS=458752, TRANSPARENT_PASS=524288, POST_PROCESSING_PASS=589824, ...
+  - NONE: No breadcrumb marker will be added.
+  - REFLECTION_PROBES: During a GPU crash in dev or debug mode, Godot's error message will include `"REFLECTION_PROBES"` for added context as to when the crash occurred.
+  - SKY_PASS: During a GPU crash in dev or debug mode, Godot's error message will include `"SKY_PASS"` for added context as to when the crash occurred.
+  - LIGHTMAPPER_PASS: During a GPU crash in dev or debug mode, Godot's error message will include `"LIGHTMAPPER_PASS"` for added context as to when the crash occurred.
+  - SHADOW_PASS_DIRECTIONAL: During a GPU crash in dev or debug mode, Godot's error message will include `"SHADOW_PASS_DIRECTIONAL"` for added context as to when the crash occurred.
+  - SHADOW_PASS_CUBE: During a GPU crash in dev or debug mode, Godot's error message will include `"SHADOW_PASS_CUBE"` for added context as to when the crash occurred.
+  - OPAQUE_PASS: During a GPU crash in dev or debug mode, Godot's error message will include `"OPAQUE_PASS"` for added context as to when the crash occurred.
+  - ALPHA_PASS: During a GPU crash in dev or debug mode, Godot's error message will include `"ALPHA_PASS"` for added context as to when the crash occurred.
+  - TRANSPARENT_PASS: During a GPU crash in dev or debug mode, Godot's error message will include `"TRANSPARENT_PASS"` for added context as to when the crash occurred.
+  - POST_PROCESSING_PASS: During a GPU crash in dev or debug mode, Godot's error message will include `"POST_PROCESSING_PASS"` for added context as to when the crash occurred.
+  - BLIT_PASS: During a GPU crash in dev or debug mode, Godot's error message will include `"BLIT_PASS"` for added context as to when the crash occurred.
+  - UI_PASS: During a GPU crash in dev or debug mode, Godot's error message will include `"UI_PASS"` for added context as to when the crash occurred.
+  - DEBUG_PASS: During a GPU crash in dev or debug mode, Godot's error message will include `"DEBUG_PASS"` for added context as to when the crash occurred.
+**DrawFlags:** DRAW_DEFAULT_ALL=0, DRAW_CLEAR_COLOR_0=1, DRAW_CLEAR_COLOR_1=2, DRAW_CLEAR_COLOR_2=4, DRAW_CLEAR_COLOR_3=8, DRAW_CLEAR_COLOR_4=16, DRAW_CLEAR_COLOR_5=32, DRAW_CLEAR_COLOR_6=64, DRAW_CLEAR_COLOR_7=128, DRAW_CLEAR_COLOR_MASK=255, ...
+  - DRAW_DEFAULT_ALL: Do not clear or ignore any attachments.
+  - DRAW_CLEAR_COLOR_0: Clear the first color attachment.
+  - DRAW_CLEAR_COLOR_1: Clear the second color attachment.
+  - DRAW_CLEAR_COLOR_2: Clear the third color attachment.
+  - DRAW_CLEAR_COLOR_3: Clear the fourth color attachment.
+  - DRAW_CLEAR_COLOR_4: Clear the fifth color attachment.
+  - DRAW_CLEAR_COLOR_5: Clear the sixth color attachment.
+  - DRAW_CLEAR_COLOR_6: Clear the seventh color attachment.
+  - DRAW_CLEAR_COLOR_7: Clear the eighth color attachment.
+  - DRAW_CLEAR_COLOR_MASK: Mask for clearing all color attachments.
+  - DRAW_CLEAR_COLOR_ALL: Clear all color attachments.
+  - DRAW_IGNORE_COLOR_0: Ignore the previous contents of the first color attachment.
+  - DRAW_IGNORE_COLOR_1: Ignore the previous contents of the second color attachment.
+  - DRAW_IGNORE_COLOR_2: Ignore the previous contents of the third color attachment.
+  - DRAW_IGNORE_COLOR_3: Ignore the previous contents of the fourth color attachment.
+  - DRAW_IGNORE_COLOR_4: Ignore the previous contents of the fifth color attachment.
+  - DRAW_IGNORE_COLOR_5: Ignore the previous contents of the sixth color attachment.
+  - DRAW_IGNORE_COLOR_6: Ignore the previous contents of the seventh color attachment.
+  - DRAW_IGNORE_COLOR_7: Ignore the previous contents of the eighth color attachment.
+  - DRAW_IGNORE_COLOR_MASK: Mask for ignoring all the previous contents of the color attachments.
+  - DRAW_IGNORE_COLOR_ALL: Ignore the previous contents of all color attachments.
+  - DRAW_CLEAR_DEPTH: Clear the depth attachment.
+  - DRAW_IGNORE_DEPTH: Ignore the previous contents of the depth attachment.
+  - DRAW_CLEAR_STENCIL: Clear the stencil attachment.
+  - DRAW_IGNORE_STENCIL: Ignore the previous contents of the stencil attachment.
+  - DRAW_CLEAR_ALL: Clear all attachments.
+  - DRAW_IGNORE_ALL: Ignore the previous contents of all attachments.
+

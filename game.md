@@ -40,6 +40,16 @@ visual-qa/*.md         # Gemini vision QA reports
 
 The working directory is the project root. NEVER `cd` — use relative paths for all commands.
 
+## Resumability
+
+All pipeline state lives in files. After compaction or `/clear`, read these to resume:
+- `PLAN.md` — task statuses and the full task DAG
+- `STRUCTURE.md` — architecture, scene/script mappings, signal map
+- `MEMORY.md` — discoveries and workarounds from completed tasks
+- `ASSETS.md` — asset manifest with paths and art direction
+
+Always keep these files up to date as you work.
+
 ## Limitations
 
 - No audio support

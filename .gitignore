@@ -1,5 +1,6 @@
 .claude/
 .playwright-cli/
+.playwright
 **/__pycache__
 
 # Generated reference docs (recreated by ensure_doc_api.sh)

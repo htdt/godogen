@@ -1,0 +1,130 @@
+# Common Classes (128)
+
+- AABB — A 3D axis-aligned bounding box.
+- AnimatableBody2D <- StaticBody2D — A 2D physics body that can't be moved by external forces.
+- AnimatableBody3D <- StaticBody3D — A 3D physics body that can't be moved by external forces.
+- AnimatedSprite2D <- Node2D — Sprite node that contains multiple textures as frames to play for animation.
+- AnimatedSprite3D <- SpriteBase3D — 2D sprite node in 3D world, that can use multiple 2D textures for animation.
+- AnimationPlayer <- AnimationMixer — A node used for animation playback.
+- AnimationTree <- AnimationMixer — A node used for advanced animation transitions in an AnimationPlayer.
+- Area2D <- CollisionObject2D — A region of 2D space that detects other CollisionObject2Ds entering or exiting it.
+- Area3D <- CollisionObject3D — A region of 3D space that detects other CollisionObject3Ds entering or exiting it.
+- AudioStream <- Resource — Base class for audio streams.
+- AudioStreamPlayer <- Node — A node for audio playback.
+- AudioStreamPlayer2D <- Node2D — Plays positional sound in 2D space.
+- AudioStreamPlayer3D <- Node3D — Plays positional sound in 3D space.
+- Basis — A 3×3 matrix for representing 3D rotation and scale.
+- BoxMesh <- PrimitiveMesh — Generate an axis-aligned box PrimitiveMesh.
+- BoxShape3D <- Shape3D — A 3D box shape used for physics collision.
+- Button <- BaseButton — A themed button that can contain text and an icon.
+- CPUParticles2D <- Node2D — A CPU-based 2D particle emitter.
+- CPUParticles3D <- GeometryInstance3D — A CPU-based 3D particle emitter.
+- Callable — A built-in type representing a method or a standalone function.
+- Camera2D <- Node2D — Camera node for 2D scenes.
+- Camera3D <- Node3D — Camera node, displays from a point of view.
+- CanvasItem <- Node — Abstract base class for everything in 2D space.
+- CanvasItemMaterial <- Material — A material for CanvasItems.
+- CanvasLayer <- Node — A node used for independent rendering of objects within a 2D scene.
+- CapsuleMesh <- PrimitiveMesh — Class representing a capsule-shaped PrimitiveMesh.
+- CapsuleShape2D <- Shape2D — A 2D capsule shape used for physics collision.
+- CapsuleShape3D <- Shape3D — A 3D capsule shape used for physics collision.
+- CenterContainer <- Container — A container that keeps child controls in its center.
+- CharacterBody2D <- PhysicsBody2D — A 2D physics body specialized for characters moved by script.
+- CharacterBody3D <- PhysicsBody3D — A 3D physics body specialized for characters moved by script.
+- CheckBox <- Button — A button that represents a binary choice.
+- CircleShape2D <- Shape2D — A 2D circle shape used for physics collision.
+- CollisionPolygon2D <- Node2D — A node that provides a polygon shape to a CollisionObject2D parent.
+- CollisionPolygon3D <- Node3D — A node that provides a thickened polygon shape (a prism) to a CollisionObject3D parent.
+- CollisionShape2D <- Node2D — A node that provides a Shape2D to a CollisionObject2D parent.
+- CollisionShape3D <- Node3D — A node that provides a Shape3D to a CollisionObject3D parent.
+- Color — A color represented in RGBA format.
+- ColorRect <- Control — A control that displays a solid color rectangle.
+- Container <- Control — Base class for all GUI containers.
+- Control <- CanvasItem — Base class for all GUI controls.
+- ConvexPolygonShape2D <- Shape2D — A 2D convex polygon shape used for physics collision.
+- ConvexPolygonShape3D <- Shape3D — A 3D convex polyhedron shape used for physics collision.
+- Curve2D <- Resource — Describes a Bézier curve in 2D space.
+- Curve3D <- Resource — Describes a Bézier curve in 3D space.
+- CylinderMesh <- PrimitiveMesh — Class representing a cylindrical PrimitiveMesh.
+- DirectionalLight2D <- Light2D — Directional 2D light from a distance.
+- DirectionalLight3D <- Light3D — Directional light from a distance, as from the Sun.
+- Engine <- Object — Provides access to engine properties.
+- GPUParticles2D <- Node2D — A 2D particle emitter.
+- GPUParticles3D <- GeometryInstance3D — A 3D particle emitter.
+- GridContainer <- Container — A container that arranges its child controls in a grid layout.
+- HBoxContainer <- BoxContainer — A container that arranges its child controls horizontally.
+- HSlider <- Slider — A horizontal slider that goes from left (min) to right (max).
+- Input <- Object — A singleton for handling inputs.
+- InputEvent <- Resource — Abstract base class for input events.
+- Label <- Control — A control for displaying plain text.
+- Light2D <- Node2D — Casts light in a 2D environment.
+- Light3D <- VisualInstance3D — Provides a base class for different kinds of light nodes.
+- LineEdit <- Control — An input field for single-line text.
+- MarginContainer <- Container — A container that keeps a margin around its child controls.
+- Material <- Resource — Virtual base class for applying visual properties to an object, such as color and roughness.
+- Mesh <- Resource — A Resource that contains vertex array-based geometry.
+- MeshInstance2D <- Node2D — Node used for displaying a Mesh in 2D.
+- MeshInstance3D <- GeometryInstance3D — Node that instances meshes into a scenario.
+- MultiMeshInstance2D <- Node2D — Node that instances a MultiMesh in 2D.
+- MultiMeshInstance3D <- GeometryInstance3D — Node that instances a MultiMesh.
+- NavigationAgent2D <- Node — A 2D agent used to pathfind to a position while avoiding obstacles.
+- NavigationAgent3D <- Node — A 3D agent used to pathfind to a position while avoiding obstacles.
+- NavigationRegion2D <- Node2D — A traversable 2D region that NavigationAgent2Ds can use for pathfinding.
+- NavigationRegion3D <- Node3D — A traversable 3D region that NavigationAgent3Ds can use for pathfinding.
+- Node <- Object — Base class for all scene objects.
+- Node2D <- CanvasItem — A 2D game object, inherited by all 2D-related nodes.
+- Node3D <- Node — Base object in 3D space, inherited by all 3D nodes.
+- Object — Base class for all other classes in the engine.
+- OmniLight3D <- Light3D — Omnidirectional light, such as a light bulb or a candle.
+- PackedScene <- Resource — An abstraction of a serialized scene.
+- Panel <- Control — A GUI control that displays a StyleBox.
+- PanelContainer <- Container — A container that keeps its child controls within the area of a StyleBox.
+- Path2D <- Node2D — Contains a Curve2D path for PathFollow2D nodes to follow.
+- Path3D <- Node3D — Contains a Curve3D path for PathFollow3D nodes to follow.
+- PathFollow2D <- Node2D — Point sampler for a Path2D.
+- PathFollow3D <- Node3D — Point sampler for a Path3D.
+- Plane — A plane in Hessian normal form.
+- PlaneMesh <- PrimitiveMesh — Class representing a planar PrimitiveMesh.
+- PointLight2D <- Light2D — Positional 2D light source.
+- PrimitiveMesh <- Mesh — Base class for all primitive meshes.
+- ProgressBar <- Range — A control used for visual representation of a percentage.
+- Quaternion — A unit quaternion used for representing 3D rotations.
+- RayCast2D <- Node2D — A ray in 2D space, used to find the first collision object it intersects.
+- RayCast3D <- Node3D — A ray in 3D space, used to find the first collision object it intersects.
+- Rect2 — A 2D axis-aligned bounding box using floating-point coordinates.
+- RectangleShape2D <- Shape2D — A 2D rectangle shape used for physics collision.
+- RefCounted <- Object — Base class for reference-counted objects.
+- Resource <- RefCounted — Base class for serializable objects.
+- RigidBody2D <- PhysicsBody2D — A 2D physics body that is moved by a physics simulation.
+- RigidBody3D <- PhysicsBody3D — A 3D physics body that is moved by a physics simulation.
+- SceneTree <- MainLoop — Manages the game loop via a hierarchy of nodes.
+- ScrollContainer <- Container — A container used to provide scrollbars to a child control when needed.
+- ShaderMaterial <- Material — A material defined by a custom Shader program and the values of its shader parameters.
+- Shape2D <- Resource — Abstract base class for 2D shapes used for physics collision.
+- Shape3D <- Resource — Abstract base class for 3D shapes used for physics collision.
+- ShapeCast2D <- Node2D — A 2D shape that sweeps a region of space to detect CollisionObject2Ds.
+- ShapeCast3D <- Node3D — A 3D shape that sweeps a region of space to detect CollisionObject3Ds.
+- Signal — A built-in type representing a signal of an Object.
+- Slider <- Range — Abstract base class for sliders.
+- SphereMesh <- PrimitiveMesh — Class representing a spherical PrimitiveMesh.
+- SphereShape3D <- Shape3D — A 3D sphere shape used for physics collision.
+- SpotLight3D <- Light3D — A spotlight, such as a reflector spotlight or a lantern.
+- Sprite2D <- Node2D — General-purpose sprite node.
+- Sprite3D <- SpriteBase3D — 2D sprite node in a 3D world.
+- StandardMaterial3D <- BaseMaterial3D — A PBR (Physically Based Rendering) material to be used on 3D objects.
+- StaticBody2D <- PhysicsBody2D — A 2D physics body that can't be moved by external forces.
+- StaticBody3D <- PhysicsBody3D — A 3D physics body that can't be moved by external forces.
+- Texture2D <- Texture — Texture for 2D and 3D.
+- TextureButton <- BaseButton — Texture-based button.
+- TextureRect <- Control — A control that displays a texture.
+- TileMapLayer <- Node2D — Node for 2D tile-based maps.
+- TileSet <- Resource — Tile library for tilemaps.
+- Timer <- Node — A countdown timer.
+- Transform2D — A 2×3 matrix representing a 2D transformation.
+- Transform3D — A 3×4 matrix representing a 3D transformation.
+- Tween <- RefCounted — Lightweight object used for general-purpose animation via script, using Tweeners.
+- VBoxContainer <- BoxContainer — A container that arranges its child controls vertically.
+- VSlider <- Slider — A vertical slider that goes from bottom (min) to top (max).
+- Vector2 — A 2D vector using floating-point coordinates.
+- Vector3 — A 3D vector using floating-point coordinates.
+- Vector4 — A 4D vector using floating-point coordinates.
