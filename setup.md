@@ -3,11 +3,12 @@
 ## System Packages
 
 ```bash
-sudo apt-get install mesa-utils ffmpeg
+sudo apt-get install mesa-utils ffmpeg imagemagick
 ```
 
 - **mesa-utils** — provides `glxinfo` for GPU detection
-- **ffmpeg** — AVI→MP4 conversion
+- **ffmpeg** — AVI→MP4 conversion, video frame extraction
+- **imagemagick** — image resize, flip, crop for sprite pipelines
 
 No xvfb needed when a GPU is available.
 

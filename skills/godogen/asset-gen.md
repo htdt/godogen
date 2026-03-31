@@ -81,15 +81,15 @@ ffmpeg -i assets/video/knight_walk.mp4 -vsync 0 assets/video/knight_walk_frames/
 
 **Step 5: Loop trim (looping animations only)**
 
-For walk/run/idle cycles, find the frame most similar to frame 1 and trim there. Skip for one-shot animations (attack, death, jump).
+For walk/run/idle cycles, find the best loop point. Picks top similarity candidates, deduplicates nearby frames, then chooses the latest (longest clip). Uses 7-frame window to avoid half-cycle cuts, falls back to 1-frame, then whole clip. Skip for one-shot animations (attack, death, jump).
 
 ```bash
 python3 ${CLAUDE_SKILL_DIR}/tools/find_loop_frame.py assets/video/knight_walk_frames/
 ```
 
-Output: `{"loop_frame": 27, "similarity": 0.9997, "total_frames": 73}`
+Output: `{"loop_frame": 54, "similarity": 0.9983, "window": 7, "total_frames": 73}`
 
-Then delete frames after the loop point, or note the range for the next step.
+`window: 0` means no good loop point — use the whole clip. Then delete frames after the loop point, or note the range for the next step.
 
 **Step 6: Batch background removal** (see `rembg.md` for full guide)
 
@@ -236,6 +236,31 @@ Full workflow (ref → pose → video → frames → loop trim → rembg) is in 
 **Pose (per action):** `{action pose description}, side view, solid {bg_color} background.`
 
 **Video (per action):** `{action}, smooth animation. Solid {bg_color} background.`
+
+## Visual Pitfalls
+
+Image generators and vision validators have poor spatial understanding. These issues are invisible to the agent but degrade quality significantly. Verify carefully.
+
+### Direction and orientation
+
+Generators cannot reliably distinguish left vs right facing, or produce correct rotations. Prompting for "NE facing" vs "NW facing" often produces identical output.
+
+**Solution:** Generate one direction only (sprites are typically left-facing), flip horizontally for the opposite direction (`sprite.flip_h = true`). Use Gemini question mode to verify orientation when it matters — don't trust the generator got it right.
+
+### Video size consistency
+
+When mixing image-generated assets (1024px) with video-extracted frames (~720px), resize everything to the smallest source size. Downscale the 1024px images to match video frame resolution — upscaling is rarely needed. Do this before background removal.
+
+Use ImageMagick:
+```bash
+magick identify input.png                                      # check size
+magick input.png -resize 720x720 -filter Lanczos output.png   # resize
+magick input.png -flop output.png                              # horizontal flip
+```
+
+### Animation playback
+
+Video-extracted animations look choppy when played back at the wrong frame rate. Source videos are typically 24fps — set frame duration to `1.0/24 = 0.042s`. Don't reset the animation frame counter between movement tiles; let it run continuously across boundaries.
 
 ## Tips
 
