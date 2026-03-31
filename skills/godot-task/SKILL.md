@@ -75,6 +75,52 @@ On failure, also include:
 
 The caller (godogen orchestrator) will decide whether to adjust the task, re-scaffold, or accept the current state.
 
+## Debugging with Gemini
+
+When something looks wrong in screenshots but the cause isn't obvious, use `visual_qa.py --question` to get a second pair of eyes. This is especially useful for issues that are hard to detect from code alone.
+
+### Isolate and Capture
+
+Don't debug in a complex scene — isolate the problem:
+
+1. **Minimal repro scene** — write a throwaway `test/debug_{issue}.gd` that sets up only the relevant nodes (the animation, the physics body, the UI element). Strip everything else. Capture screenshots of just this.
+2. **Targeted frames** — for animation/motion issues, capture at `--fixed-fps 10` for 3-5 seconds and feed the full sequence to `--question`. Single frames miss timing bugs.
+3. **Before/after** — capture with the fix applied and without. Feed both sets to `--question "What changed between these two sets?"`.
+
+### Animation Failures
+
+Animations are the #1 source of silent failures — they "work" (no errors) but produce wrong results. The current pipeline is bad at detecting these because validation only checks for parse errors.
+
+Common animation issues to probe:
+- **Frozen pose** — capture 3-5s at 10 FPS, feed all frames: `--question "Does the character's pose change between frames, or is it the same pose throughout?"`
+- **Wrong animation** — same multi-frame capture: `--question "Describe how the character's limbs and body move across frames. Does it look like walking, idling, attacking, or something else?"`
+- **Animation not blending** — same: `--question "Are there any sudden pose jumps between consecutive frames, or do poses transition smoothly?"`
+- **AnimationPlayer vs AnimationTree conflicts** — both trying to control the same skeleton
+- **Animation on wrong node** — player set up correctly but targeting a different skeleton path
+- **Bone/track mismatches** — animation was made for a different model, tracks don't map
+
+When you suspect animation failure, always capture dynamic (multi-frame) and ask Gemini specifically about motion between frames.
+
+### Other Debug Scenarios
+
+- **"Is this node even visible?"** — capture and ask. Nodes can be hidden by z-order, wrong layer, zero alpha, off-camera, or wrong viewport.
+- **Physics not working** — capture a sequence and ask `"Do any objects move due to gravity or collision?"`. RigidBodies silently do nothing if collision shapes are missing.
+- **UI layout broken** — capture and ask `"Are any UI elements overlapping, cut off, or positioned outside the visible area?"`
+- **Shader/material issues** — ask `"Are any surfaces showing magenta, checkerboard, or default grey material?"`
+
+### Special Debug Scene Pattern
+
+```
+# In test/debug_{issue}.gd:
+# 1. Load only the relevant nodes
+# 2. Set up camera to frame the issue
+# 3. Add visible markers (colored boxes, labels) to confirm positions
+# 4. Run for enough frames to capture the behavior
+# Then capture and feed to --question
+```
+
+This is cheaper than re-running the full task scene and gives Gemini a cleaner signal.
+
 ## Commands
 
 ```bash

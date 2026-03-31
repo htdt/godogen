@@ -40,6 +40,30 @@ Pass the task's **Goal**, **Requirements**, and **Verify** from PLAN.md. The QA 
 1. **Quality verification (primary):** visual defects, bugs, implementation shortcuts — problems regardless of what the task asked for.
 2. **Goal verification (secondary):** does the output match what was requested?
 
+## Question Mode
+
+For debugging and investigation — ask any question about screenshots without needing a reference image. Use this to diagnose specific issues: animation failures, visual glitches, unexpected behavior.
+
+```bash
+# Single screenshot — static questions only
+python3 ${CLAUDE_SKILL_DIR}/scripts/visual_qa.py \
+  --question "Are any surfaces showing magenta or default grey material?" \
+  screenshots/{task}/frame0005.png
+
+# Frame sequence — for motion/animation analysis
+python3 ${CLAUDE_SKILL_DIR}/scripts/visual_qa.py \
+  --question "Does the enemy patrol path form a loop? Do they stop or reverse?" \
+  screenshots/{task}/frame0001.png screenshots/{task}/frame0010.png screenshots/{task}/frame0020.png
+
+# With additional context
+python3 ${CLAUDE_SKILL_DIR}/scripts/visual_qa.py \
+  --question "The door should open when player approaches. Does it?" \
+  --context "InteractionSystem triggers at 2m range, door uses AnimationPlayer" \
+  screenshots/{task}/frame*.png
+```
+
+Combine `--question` with `--context` for richer analysis. Output goes to stdout — read it directly, don't save to `visual-qa/`. That directory is for structured QA runs only.
+
 ## Common
 
 - Output: markdown report with verdict (`pass`/`fail`/`warning`), reference match, goal assessment, per-issue details
