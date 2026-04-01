@@ -55,11 +55,6 @@ func _physics_process(delta: float) -> void:
 
 ## Script Constraints
 
-- `extends` MUST match the node type this script attaches to
-- Use `@onready` for node refs, NOT `get_node()` in `_process()`
-- ONLY use input actions from plan's `inputs[]`, never invent action names. If none declared, use direct key checks.
-- Connect signals in `_ready()`, NOT in scene builders (scripts aren't instantiated at build-time)
 - **Sibling signal timing:** `_ready()` fires on children in order. If sibling A emits in its `_ready()`, sibling B hasn't connected yet. Fix: after connecting, check if the emitter already has data and call the handler manually.
-- Do NOT use `preload()` for scenes/resources that may not exist yet — use `load()`. Add spawned children to `get_parent()`, not `self`.
-- When "Available Nodes" section is provided, use ONLY the exact paths and types listed — do not guess or invent node names
-- **CRITICAL: NEVER use `:=` with polymorphic math functions** — `abs`, `sign`, `clamp`, `min`, `max`, `floor`, `ceil`, `round`, `lerp`, `smoothstep`, `move_toward`, `wrap`, `snappedf`, `randf_range`, `randi_range` return Variant (work on multiple types). Use explicit types: `var x: float = abs(y)` not `var x := abs(y)`
+- Do NOT use `preload()` for scenes/resources that may not exist yet — use `load()`.
+- **NEVER use `:=` with polymorphic math functions** — `abs`, `sign`, `clamp`, `min`, `max`, `floor`, `ceil`, `round`, `lerp`, `smoothstep`, `move_toward`, `wrap`, `snappedf`, `randf_range`, `randi_range` return Variant. Use explicit types: `var x: float = abs(y)` not `var x := abs(y)`

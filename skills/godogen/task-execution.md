@@ -11,7 +11,7 @@ Workflow, commands, and debugging reference for inline task execution.
 2. **Import assets** — run `timeout 60 godot --headless --import` to generate `.import` files for any new textures, GLBs, or resources. Without this, `load()` fails with "No loader found" errors. Re-run after modifying existing assets.
 3. **Generate scene(s)** — write GDScript scene builder, compile to produce `.tscn`
 4. **Generate script(s)** — write `.gd` files to `scripts/`
-5. **Pre-validate scripts** — catch compilation errors early before full project validation. For each newly written or modified `.gd` file, run `timeout 30 godot --headless --quit 2>&1` and filter the output for errors mentioning that file's path.
+5. **Pre-validate scripts** — catch compilation errors early before full project validation. For each newly written or modified `.gd` file, run `timeout 30 godot --headless --check-only -s <path_to_gd>` — exits 0 if valid, 1 with error details if broken.
 6. **Validate** — run `timeout 60 godot --headless --quit 2>&1` to parse-check all project scripts.
 7. **Fix errors** — if Godot reports errors, read output, fix files, re-run. Repeat until clean.
 8. **Generate test harness** — write `test/test_{task_id}.gd` implementing the task's **Verify** scenario.
@@ -43,17 +43,14 @@ timeout 60 godot --headless --import
 # Compile a scene builder (produces .tscn):
 timeout 60 godot --headless --script <path_to_gd_builder>
 
+# Pre-validate a single script (exits 0 if valid, 1 with errors):
+timeout 30 godot --headless --check-only -s <path_to_gd>
+
 # Validate all project scripts (parse check):
 timeout 60 godot --headless --quit 2>&1
 ```
 
-**Structured error recovery:** When a compilation error is caught:
-1. Parse the error — extract the file path, line number, and error type from Godot's output
-2. Look up the class — if the error mentions an unknown method or property, use `Skill(skill="godot-api")` with a targeted query (e.g. `"Node3D: what property controls visibility?"`) rather than requesting the full class API
-3. Check quirks — cross-reference against `quirks.md` for known patterns (`:=` with `instantiate()`, polymorphic math functions, Camera2D `current`, etc.)
-4. Fix and re-validate — edit the specific file, then re-run the pre-validation step on that file only before proceeding
-
-**Error handling:** Parse Godot's stderr/stdout for error lines. Common issues:
+**Common errors:**
 - `Parser Error` — syntax error in GDScript, fix the line indicated
 - `Invalid call` / `method not found` — wrong node type or API usage, look up the class via `Skill(skill="godot-api")`
 - `Cannot infer type` — `:=` used with `instantiate()` or polymorphic math functions, see type inference rules

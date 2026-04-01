@@ -114,12 +114,6 @@ After completing each task: update PLAN.md status, write discoveries to MEMORY.m
 If the context becomes polluted from debugging loops, manually compact with:
 `/compact "Discard failed debugging attempts."`
 
-## Mid-Pipeline Recovery
-
-- **Reset scenes/scripts** — regenerate project skeleton when a task has corrupted or outgrown the architecture.
-- **Rewrite the plan** — edit PLAN.md when a task reveals the approach is wrong or new requirements emerge.
-- **Generate or regenerate assets** — create new assets or fix broken ones mid-run.
-
 ## Visual QA
 
 Visual QA runs inline with each task. **Never ignore a fail verdict** — always act on it before marking a task done.

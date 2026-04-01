@@ -106,10 +106,6 @@ Produce `PLAN.md`:
 
 Two hard features that don't share runtime state should be separate tasks with no dependency between them. When one fails and needs regeneration, the other is unaffected. But don't apply this principle to routine features — the merge cost of splitting them outweighs the isolation benefit.
 
-### Verification Must Be Visual and Concrete
-
-The Verify field describes what the task's goal looks like when achieved — the expected visual outcome, not intermediate steps. It must be specific enough that a verifier seeing only screenshots can judge pass/fail. The task executor chooses camera angles, test actions, and frame timing.
-
 ## Common Game Structures
 
 Reference these by name in task goals — the task executor knows how to implement them:

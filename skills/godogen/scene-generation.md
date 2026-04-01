@@ -297,17 +297,11 @@ Parse `BUILT: N nodes` from the scene builder's stdout to get `{expected_count}`
 
 ## Scene Constraints
 
-- Use ONLY nodes and resources available in Godot — look up unfamiliar classes in `doc_api`
 - Do NOT use `@onready` or scene-time annotations (this runs at build-time)
 - Do NOT use `preload()` — use `load()` (preload fails in headless)
-- ATTACH all scripts listed in STRUCTURE.md using `node.set_script(load("path"))`
 - Do NOT connect signals at build-time — scripts aren't instantiated yet. Signal connections belong in runtime scripts' `_ready()` method
-- ALWAYS set `.name` on every node you create — script generator needs predictable names for `@onready` references
-- Save to the EXACT output path specified by the task
-- **MANDATORY `quit()`** — Script MUST call `quit()` at the end. Without it, Godot runs forever in headless mode.
-- **Units:** 1 unit = 1 meter (3D), pixels (2D)
-- **2D/3D consistency** — Use ONLY 2D nodes (Node2D, CharacterBody2D, Area2D, Camera2D) OR 3D nodes. Never mix dimensions in the same scene hierarchy.
 - **No spatial methods in `_initialize()`** — `look_at()`, `to_global()`, etc. fail because nodes aren't in the tree yet. Use `rotation_degrees` or compute transforms manually.
+- **2D/3D consistency** — never mix dimensions in the same scene hierarchy.
 
 ## Environment & Lighting (3D Scenes)
 
