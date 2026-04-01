@@ -4,6 +4,11 @@
 
 ```bash
 sudo apt-get install mesa-utils ffmpeg imagemagick
+
+# ImageMagick 7 (provides `magick` CLI — apt only has v6)
+wget https://imagemagick.org/archive/binaries/magick
+chmod +x magick
+sudo mv magick /usr/local/bin/
 ```
 
 - **mesa-utils** — provides `glxinfo` for GPU detection
@@ -126,7 +131,6 @@ Set in environment:
 
 - `XAI_API_KEY` — xAI Grok image generation
 - `TRIPO3D_API_KEY` — image-to-3D conversion (3D games only)
-- `GEMINI_API_KEY` — visual QA with Gemini Flash
 
 ## Verify
 

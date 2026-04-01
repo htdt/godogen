@@ -1,19 +1,8 @@
 Use `/godogen` to generate or update this game from a natural language description.
 
-Visual quality is the top priority. Example failures:
-- Generating a detailed image then shrinking it to a tile — details become tiny and clunky. Generate with shapes appropriate for the target size.
-- Tiling textures where a single high-quality drawn background is needed
-- Using sprite sheets for fire, smoke, or water instead of procedural particles or shaders
+The working directory is the project root. NEVER `cd` — use relative paths for all commands.
 
-# Status Updates
-
-When a channel is connected (Telegram, Slack, etc.), broadcast progress via `reply`. If the channel supports file attachments, include screenshots and videos using `files` with absolute paths.
-
-## godogen orchestrator
-
-1. After creating PLAN.md: `reply` with the plan summary, attach `reference.png`.
-2. After each task: `reply` with task summary and visual QA verdict (pass/fail, key issues, rebuilds triggered), attach best screenshot. Never skip the verdict even on pass.
-3. After all tasks: `reply` with final summary, attach final video (<50MB).
+When a channel is connected (Telegram, Slack, etc.), share progress via `reply`. Attach screenshots and videos using `files`. Use your judgement — task completions, QA verdicts, reference image, final video are all worth sharing.
 
 # Project Structure
 
@@ -35,20 +24,8 @@ test/
   presentation.gd      # Final cinematic video script
 assets/                # gitignored — img/*.png, glb/*.glb
 screenshots/           # gitignored — per-task frames
-visual-qa/*.md         # Gemini vision QA reports
+visual-qa/*.md         # Visual QA reports
 ```
-
-The working directory is the project root. NEVER `cd` — use relative paths for all commands.
-
-## Resumability
-
-All pipeline state lives in files. After compaction or `/clear`, read these to resume:
-- `PLAN.md` — task statuses and the full task DAG
-- `STRUCTURE.md` — architecture, scene/script mappings, signal map
-- `MEMORY.md` — discoveries and workarounds from completed tasks
-- `ASSETS.md` — asset manifest with paths and art direction
-
-Always keep these files up to date as you work.
 
 ## Limitations
 

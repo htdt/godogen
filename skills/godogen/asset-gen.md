@@ -245,7 +245,7 @@ Image generators and vision validators have poor spatial understanding. These is
 
 Generators cannot reliably distinguish left vs right facing, or produce correct rotations. Prompting for "NE facing" vs "NW facing" often produces identical output.
 
-**Solution:** Generate one direction only (sprites are typically left-facing), flip horizontally for the opposite direction (`sprite.flip_h = true`). Use Gemini question mode to verify orientation when it matters — don't trust the generator got it right.
+**Solution:** Generate one direction only (sprites are typically left-facing), flip horizontally for the opposite direction (`sprite.flip_h = true`). Use visual-qa question mode to verify orientation when it matters — don't trust the generator got it right.
 
 ### Video size consistency
 

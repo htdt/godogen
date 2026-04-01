@@ -21,7 +21,8 @@ The task executor is a highly capable LLM agent that thrives on broad context. I
 Features that fail unpredictably, require multiple iteration cycles, and produce ambiguous errors when mixed with other systems. This includes both algorithmic complexity and engine patterns that are notoriously brittle:
 
 - **Procedural generation** — terrain, levels, meshes, dungeon layouts
-- **Procedural animation** — runtime bone manipulation, inverse kinematics, ragdoll blending with animated states
+- **Procedural animation** — runtime bone manipulation, inverse kinematics, ragdoll blending with animated states. Same failure profile as sprite animations: motions jerk or snap, blend weights fight each other, limbs overshoot or lag behind movement direction. Isolate into its own task with thorough verification of smoothness and directional correctness under all movement states.
+- **Sprite/character animations** — multi-direction movement animations, attack/action sequences, state transitions between animated states. Animations almost always fail on first implementation: wrong frames play for movement direction (e.g., backward-walk animation playing while moving forward), transitions stutter or pop, timing feels off. Always isolate into a dedicated task with thorough visual verification of every direction and state transition, focusing on smoothness and logical correctness of which animation plays when.
 - **Complex vehicle physics** — wheel colliders, suspension, drifting, motorcycle balance
 - **Custom shaders** — water surfaces, portals, screen-space effects, dissolve/distortion
 - **Runtime geometry** — destructible environments, CSG operations, mesh deformation
@@ -34,7 +35,6 @@ Patterns that Godot handles well out of the box and that a strong LLM implements
 
 - **CharacterBody movement** — walking, jumping, gravity, slopes (Godot's `move_and_slide` handles this)
 - **Collision and triggers** — Area signals, damage on contact, pickups, zones
-- **AnimationPlayer / AnimationTree** — playing premade animations, blend trees, state transitions
 - **TileMap / GridMap levels** — tile-based or grid-based world building
 - **NavigationAgent** — basic pathfinding on static navmesh (dynamic obstacles make it hard — see above)
 - **UI with Control nodes** — HUD, menus, health bars, score display, pause screens
@@ -87,9 +87,10 @@ Produce `PLAN.md`:
 
 ### Examples of Correct Task Counts
 
-**Bomberman** (no algorithmic risk): 2 tasks total.
-1. Visual architecture — arena grid, walls, destructible blocks, player and enemy sprites, all correctly animated and scaled.
-2. Core game loop — movement, bomb placement and detonation, chain reactions, enemy AI, health, HUD, win/lose conditions.
+**Bomberman** (risk: character animations): 3 tasks total.
+1. Character animations — player and enemy sprites with correct directional movement, idle, and death animations. Verify every direction plays the right frames, transitions are smooth.
+2. Visual architecture + core loop — arena grid, walls, destructible blocks, movement, bomb placement and detonation, chain reactions, enemy AI, health, HUD, win/lose conditions.
+3. Presentation video.
 
 **3D flight game through procedural canyons** (algorithmic risk: procedural canyon geometry): 3 tasks.
 1. Procedural canyon generation — narrow passages with working collision geometry, verified navigable.

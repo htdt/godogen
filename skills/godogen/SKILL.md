@@ -28,7 +28,7 @@ Read each sub-file from `${CLAUDE_SKILL_DIR}/` when you reach its pipeline stage
 | `coordination.md` | Scene+script ordering | Both .tscn and .gd |
 | `test-harness.md` | Verification scripts | Before test harness |
 | `capture.md` | Screenshot/video | Before capture |
-| `visual-qa.md` | Gemini VQA | After capture |
+| `visual-qa.md` | Visual QA (forked skill) | After capture |
 | `android-build.md` | APK export | User requests Android |
 
 ## Pipeline
@@ -89,6 +89,16 @@ Examples:
 - Skill(skill="godot-api") "TileMapLayer: methods for setting/getting cells and their alternatives"
 - Skill(skill="godot-api") "full API for CharacterBody3D"
 - Skill(skill="godot-api") "which class handles 2D particle effects?"
+
+## Visual QA
+
+After capturing screenshots, verify with `Skill(skill="visual-qa")`. Runs in a forked context with Claude's native vision.
+
+- **Static:** `Skill(skill="visual-qa") "Check reference.png against screenshots/{task}/frame0003.png — Goal: ..., Verify: ..."`
+- **Dynamic:** `Skill(skill="visual-qa") "Check reference.png against frame1.png frame2.png ... — Goal: ..., Verify: ..."`
+- **Question:** `Skill(skill="visual-qa") "Are surfaces showing magenta? screenshots/{task}/frame*.png"`
+
+Save output to `visual-qa/{N}.md`. See `visual-qa.md` for full usage.
 
 ## Context Hygiene
 
