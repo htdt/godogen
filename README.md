@@ -12,7 +12,7 @@ You describe what you want. An AI pipeline designs the architecture, generates t
 - **Godot 4 output** — real projects with proper scene trees, scripts, and asset organization.
 - **Asset generation** — xAI Grok creates 2D art and textures; Tripo3D converts selected images to 3D models. Budget-aware: maximizes visual impact per cent spent.
 - **GDScript expertise** — custom-built language reference and lazy-loaded API docs for all 850+ Godot classes compensate for LLMs' thin training data on GDScript.
-- **Visual QA closes the loop** — captures actual screenshots from the running game and analyzes them with Gemini Flash vision. Catches z-fighting, missing textures, broken physics.
+- **Visual QA closes the loop** — captures actual screenshots from the running game and analyzes them with Claude vision. Catches z-fighting, missing textures, broken physics.
 - **Runs on commodity hardware** — any PC with Godot and Claude Code works.
 
 ## Getting started
@@ -23,7 +23,6 @@ You describe what you want. An AI pipeline designs the architecture, generates t
 - [Claude Code](https://docs.anthropic.com/en/docs/claude-code) installed
 - API keys as environment variables:
   - `XAI_API_KEY` — [xAI Grok](https://console.x.ai/home), used for image and video generation
-  - `GOOGLE_API_KEY` — [Gemini](https://aistudio.google.com/app/api-keys), used for visual QA
   - `TRIPO3D_API_KEY` — [Tripo3D](https://platform.tripo3d.ai/), used for image-to-3D model conversion (only needed for 3D games)
 - Python 3 with pip (asset tools install their own deps)
 - System packages: `mesa-utils`, `ffmpeg` (see [setup.md](setup.md) for full details including macOS)
@@ -34,8 +33,8 @@ You describe what you want. An AI pipeline designs the architecture, generates t
 This repo is the skill development source. To start making a game, run `publish.sh` to set up a new project folder with all skills installed:
 
 ```bash
-./publish.sh ~/my-game          # uses game.md as CLAUDE.md
-./publish.sh ~/my-game local.md # uses a custom CLAUDE.md instead
+./publish.sh ~/my-game
+./publish.sh --force ~/my-game  # clean existing target before publishing
 ```
 
 This creates the target directory with `.claude/skills/` and a `CLAUDE.md`, then initializes a git repo. Open Claude Code in that folder and tell it what game to make — the `/godogen` skill handles everything from there.

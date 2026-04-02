@@ -2,19 +2,29 @@
 # Publish godogen skills into a target project directory.
 # Creates .claude/skills/ and copies a CLAUDE.md.
 #
-# Usage: ./publish.sh <target_dir> [claude_md]
-#   claude_md  Path to CLAUDE.md to use (default: game.md)
+# Usage: ./publish.sh [--force] <target_dir>
+#   --force    Delete existing target contents before publishing
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "$0")" && pwd)"
 
+FORCE=0
+if [ "${1:-}" = "--force" ]; then
+    FORCE=1
+    shift
+fi
+
 if [ $# -lt 1 ]; then
-    echo "Usage: $0 <target_dir> [claude_md]"
+    echo "Usage: $0 [--force] <target_dir>"
     exit 1
 fi
 
 TARGET="$(cd "$1" 2>/dev/null && pwd || (mkdir -p "$1" && cd "$1" && pwd))"
-CLAUDE_MD="${2:-$REPO_ROOT/game.md}"
+
+if [ "$FORCE" -eq 1 ] && [ -d "$TARGET" ]; then
+    echo "Force: cleaning $TARGET"
+    rm -rf "${TARGET:?}"/*
+fi
 
 echo "Publishing to: $TARGET"
 
@@ -22,8 +32,8 @@ mkdir -p "$TARGET/.claude/skills"
 rsync -a --delete --exclude='doc_source/' --exclude='__pycache__/' \
     "$REPO_ROOT/skills/" "$TARGET/.claude/skills/"
 
-cp "$CLAUDE_MD" "$TARGET/CLAUDE.md"
-echo "Created CLAUDE.md (from $CLAUDE_MD)"
+cp "$REPO_ROOT/game.md" "$TARGET/CLAUDE.md"
+echo "Created CLAUDE.md"
 
 if [ ! -f "$TARGET/.gitignore" ]; then
     cat > "$TARGET/.gitignore" << 'GI_EOF'
