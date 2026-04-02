@@ -95,6 +95,17 @@ Common animation issues to probe:
 
 When you suspect animation failure, always capture dynamic (multi-frame) and ask specifically about motion between frames.
 
+### 3D Object Not Visible
+
+When a 3D object should be on-screen but isn't, run this checklist in order — each step isolates one failure mode:
+
+1. **Confirm the object exists** — add `print(node.name, " at ", node.global_position)` in `_ready()`. If it doesn't print, the node isn't in the tree.
+2. **Add a debug marker** — place a small emissive sphere (`emission_enabled = true`, bright color, 0.5m radius) at the object's position. If the sphere is visible, the object's mesh/material is the problem. If the sphere is also invisible, the camera is the problem.
+3. **Check camera direction** — print `camera.global_position` and `camera.global_transform.basis.z` (the camera looks along -Z). Use `camera.look_at(object.global_position)` to force the camera toward the object.
+4. **Check occlusion** — another object may be blocking the view. Temporarily hide large geometry (`terrain.visible = false`) to see if the target appears behind it.
+5. **Check scale** — `print(node.scale)` — a scale of `Vector3(0.001, 0.001, 0.001)` makes the object sub-pixel. Also check if the object is enormous and the camera is inside it.
+6. **Check material** — `StandardMaterial3D` with `transparency = ALPHA` and `albedo_color.a = 0` is invisible. Set `albedo_color = Color.RED` temporarily.
+
 ### Other Debug Scenarios
 
 - **"Is this node even visible?"** — capture and ask. Nodes can be hidden by z-order, wrong layer, zero alpha, off-camera, or wrong viewport.

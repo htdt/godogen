@@ -6,10 +6,10 @@ Generate PNG images (xAI Grok) and GLB 3D models (Tripo3D) from text prompts.
 
 | Model | Flag | Cost | Rate limit | Best for |
 |-------|------|------|------------|----------|
-| `grok-imagine-image` | `--model standard` | 2¢ | 300 req/min | Textures, sprites, 3D refs — high-volume |
-| `grok-imagine-image-pro` | `--model pro` | 7¢ | 30 req/min | Backgrounds, title screens, visual targets — quality matters |
+| `grok-imagine-image` | `--model standard` | 2¢ | 300 req/min | Textures, sprites, reference, 3D refs — high-volume |
+| `grok-imagine-image-pro` | `--model pro` | 7¢ | 30 req/min | Backgrounds, title screens — quality matters |
 
-Default is `standard`. Use `pro` when visual quality is the priority (backgrounds, hero images, reference.png).
+Default is `standard`. Use `pro` when visual quality is the priority (backgrounds, hero images).
 
 ## CLI Reference
 

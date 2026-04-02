@@ -233,7 +233,7 @@ func validate_packed_scene(packed: PackedScene, expected_count: int, scene_path:
 - Do NOT use `@onready` or scene-time annotations (this runs at build-time)
 - Do NOT use `preload()` — use `load()` (preload fails in headless)
 - Do NOT connect signals at build-time — scripts aren't instantiated yet. Signal connections belong in runtime scripts' `_ready()` method
-- **No spatial methods in `_initialize()`** — `look_at()`, `to_global()`, etc. fail because nodes aren't in the tree yet. Use `rotation_degrees` or compute transforms manually.
+- **No spatial methods in `_initialize()`** — `look_at()`, `to_global()`, etc. fail because nodes aren't in the tree yet. Use `rotation_degrees` or compute transforms manually. In runtime scripts (`_ready()`, `_process()`), **always use `look_at()` to orient cameras and objects toward targets** — it's the correct tool there. Manual rotation math is error-prone and unnecessary.
 - **2D/3D consistency** — never mix dimensions in the same scene hierarchy.
 
 ## Environment & Lighting (3D Scenes)
