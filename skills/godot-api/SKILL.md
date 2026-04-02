@@ -21,4 +21,6 @@ $ARGUMENTS
    - **Specific question** (e.g. "how to detect collisions") → return relevant methods/signals with descriptions
    - **Full API request** (e.g. "full API for CharacterBody3D") → return the entire class doc
 
+**GDScript syntax reference:** `${CLAUDE_SKILL_DIR}/gdscript.md` — language syntax, patterns, and recipes. Read when the caller asks about GDScript syntax, idioms, or common patterns (input handling, tweens, state machines, etc.).
+
 Bootstrap if doc_api is empty: `bash ${CLAUDE_SKILL_DIR}/tools/ensure_doc_api.sh`

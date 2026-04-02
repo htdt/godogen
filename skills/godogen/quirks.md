@@ -15,6 +15,20 @@
 - **Camera lerp from origin** — cameras using `lerp()` in `_physics_process()` will visibly swoop from (0,0,0) on the first frame. Use an `_initialized` flag to snap position on the first frame, then lerp on subsequent frames.
 - **Chase camera `current` re-assertion** — game cameras that set `current = true` in `_physics_process()` override the test harness camera every frame. Test harnesses must disable the game camera EVERY frame.
 - **`CharacterBody3D.MOTION_MODE_FLOATING`** — also needed for 3D non-platformer movement (vehicles on slopes, snowboards). GROUNDED mode's `floor_stop_on_slope` fights slope movement.
+- **Default collision mask misses non-default layers** — new bodies get `collision_mask = 1`. If terrain/walls use layer 2+, player falls through with no error. Always set mask to include all layers the body should collide with.
+- **Frame-rate dependent drag** — `speed *= (1 - drag)` per tick is exponential decay tied to tick rate. At 60Hz: `(1-0.04)^60 ≈ 8.5%` remaining/sec. At 120Hz: `(1-0.04)^120 ≈ 0.7%`. Use `speed *= exp(-rate * delta)` for frame-rate independent damping.
+
+- **BoxShape3D on trimesh** — snags on collision edges (Godot/Jolt bug). Use CapsuleShape3D for objects that slide across trimesh surfaces (vehicles, rolling objects).
+- **`reset_physics_interpolation()`** — call when teleporting or switching cameras to prevent visible interpolation glitch.
+- **MultiMeshInstance3D `Mesh.duplicate()`** — needed before freeing the source GLB instance, otherwise the mesh resource is garbage-collected.
+- **MultiMeshInstance3D `custom_aabb`** — must cover the entire visible area. Without it, the MultiMesh gets frustum-culled when the camera moves to edges.
+- **MultiMeshInstance3D materials** — has no `set_surface_override_material()`. Use `material_override` on the GeometryInstance3D, or keep materials from the source mesh.
+- **ProceduralSkyMaterial sun disc** — automatically uses DirectionalLight3D direction/color. Set `sky_mode = SKY_MODE_LIGHT_AND_SKY` on the sun light, `SKY_MODE_LIGHT_ONLY` on fill lights — otherwise multiple sun discs appear.
+- **2D collision shape sizing** — slightly smaller than tile (e.g., 48px in 64px grid) allows smooth cornering through 1-tile corridors. Without this, characters snag on corridor entrances.
+- **Smooth yaw tracking 360 spin** — `lerp()` on raw angles causes 360-degree spin-arounds. Wrap angle difference to [-PI, PI] before lerping: `var diff: float = fmod(target_yaw - current_yaw + 3.0 * PI, TAU) - PI`.
+
+- **Sibling signal timing in `_ready()`** — `_ready()` fires on children in tree order. If sibling A emits in its `_ready()`, sibling B hasn't connected yet. Fix: after connecting, check if the emitter already has data and call the handler manually.
+- **`preload()` vs `load()` during generation** — do NOT use `preload()` for scenes/resources that may not exist yet (e.g., scenes being generated in the same pipeline). Use `load()`.
 
 ## Type Inference Errors
 
@@ -32,6 +46,12 @@ var model := scene.instantiate()  # Error: Cannot infer type from Variant
 # CORRECT — type load() AND use = (not :=) for instantiate():
 var scene: PackedScene = load("res://assets/glb/car.glb")
 var model = scene.instantiate()  # Works: no type inference attempted
+
+# WRONG — := with polymorphic math functions (return Variant):
+var x := abs(speed)              # Error: Cannot infer type from Variant
+var y := clamp(val, 0.0, 1.0)   # Error: Same problem
+# Affected: abs, sign, clamp, min, max, floor, ceil, round, lerp,
+#   smoothstep, move_toward, wrap, snappedf, randf_range, randi_range
 
 # WRONG — := with array/dictionary element access (returns Variant):
 var pos := positions[i]          # Error: Cannot infer type from Variant

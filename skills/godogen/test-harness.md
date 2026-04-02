@@ -25,3 +25,7 @@ For tests needing player input, use a Timer to trigger actions:
     root.add_child(timer)
     timer.start()
 ```
+
+### Sustained movement (presentation scripts)
+
+Open-loop input (timed press/release sequences) doesn't work for 30-second videos — per-frame errors compound into visible drift, edge-sticking, and tightening carve spirals. Use closed-loop waypoint steering based on actual position each frame.
