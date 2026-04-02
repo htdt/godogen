@@ -102,6 +102,8 @@ If the context becomes polluted from debugging loops, manually compact with:
 
 ## Visual QA
 
+**Don't trust code — verify on screenshots.** The most common failure mode: code looks correct, you assume it works, and report "everything's fine." Then screenshots reveal broken placement, wrong scale, missing elements, clipped geometry — dozens of small details that go wrong in unexpected ways, especially with custom assets. Visual QA is your quality partner: use it actively after every task, not as a formality.
+
 Visual QA runs inline with each task. **Never ignore a fail verdict** — always act on it before marking a task done.
 
 **VQA reports are clear signal.** If a significant issue is reported, fix it. If you genuinely believe it's a false positive — report it to the user and let them decide. Never silently ignore a fail verdict.
