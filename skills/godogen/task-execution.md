@@ -1,33 +1,42 @@
 # Task Execution
 
-Workflow, commands, and debugging reference for inline task execution.
+Implementation workflow and debugging reference.
 
-## Workflow
+## Phases
 
-1. **Analyze the task** — read the task's **Targets** to determine what to generate:
-   - `scenes/*.tscn` targets → generate scene builder(s)
-   - `scripts/*.gd` targets → generate runtime script(s)
-   - Both → generate scenes FIRST, then scripts (scenes create nodes that scripts attach to)
-2. **Import assets** — run `timeout 60 godot --headless --import` to generate `.import` files for any new textures, GLBs, or resources. Without this, `load()` fails with "No loader found" errors. Re-run after modifying existing assets.
-3. **Generate scene(s)** — write GDScript scene builder, compile to produce `.tscn`
-4. **Generate script(s)** — write `.gd` files to `scripts/`
-5. **Pre-validate scripts** — catch compilation errors early before full project validation. For each newly written or modified `.gd` file, run `timeout 30 godot --headless --check-only -s <path_to_gd>` — exits 0 if valid, 1 with error details if broken.
-6. **Validate** — run `timeout 60 godot --headless --quit 2>&1` to parse-check all project scripts.
-7. **Fix errors** — if Godot reports errors, read output, fix files, re-run. Repeat until clean.
-8. **Generate test harness** — write `test/test_{task_id}.gd` implementing the task's **Verify** scenario.
-9. **Capture screenshots** — run test with `--write-movie` to produce PNGs
-10. **Verify visually** — read captured PNGs and check three things:
-    - **Task goal:** does the screenshot match the **Verify** description?
-    - **Visual consistency:** if `reference.png` exists, compare against it — color palette, scale proportions, camera angle, and visual density should be consistent.
-    - **Visual quality & logic:** look for obvious bugs — geometry clipping, objects floating, wrong assets, text overflow, UI elements overlapping or cut off.
-    Also check harness stdout for `ASSERT FAIL`.
-    If any check fails, identify the issue, fix scene/script/test, and repeat from step 3.
-11. **Visual QA** — run automated visual QA when applicable.
-12. **Store final evidence** — save screenshots in `screenshots/{task_folder}/` before moving on.
+### Risk tasks (if PLAN.md has any)
+
+Implement each risk feature in isolation before the main build:
+1. Set up minimal environment — only the nodes needed to exercise the risk
+2. Run the implementation loop until the risk task's **Verify** criteria pass
+3. Commit
+
+### Main build
+
+Implement everything in PLAN.md's **Main Build**:
+1. Generate scenes first, then scripts (scenes create nodes that scripts attach to)
+2. Run the implementation loop until **After main build** verification criteria pass
+3. Run **Final** verification including presentation video
+4. Commit
+
+## Implementation Loop
+
+1. **Import assets** — `timeout 60 godot --headless --import` (generates `.import` files for textures/GLBs — without this, `load()` fails). Re-run after modifying assets.
+2. **Generate scenes** — write scene builder scripts, compile to `.tscn`
+3. **Generate scripts** — write `.gd` files
+4. **Pre-validate** — `timeout 30 godot --headless --check-only -s <path>` for each new/modified `.gd`
+5. **Validate project** — `timeout 60 godot --headless --quit 2>&1`
+6. **Fix errors** — if validation fails, fix and re-validate
+7. **Capture** — write test harness, run with `--write-movie`, produce screenshots
+8. **Verify** — check captures against the current phase's verification criteria + reference.png consistency. Check stdout for `ASSERT FAIL`.
+9. **Visual QA** — run automated VQA when applicable
+10. If verification fails -> fix and repeat from step 2
+
+After each phase: update PLAN.md, write discoveries to MEMORY.md, git commit.
 
 ## Iteration Tracking
 
-Steps 3-11 form an **implement → screenshot → verify → VQA** loop.
+Steps 2-9 form an **implement -> screenshot -> verify -> VQA** loop.
 
 There is no fixed iteration limit — use judgment:
 - If there is progress — even in small, iterative steps — keep going. Screenshots and file updates are cheap.

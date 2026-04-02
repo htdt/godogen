@@ -19,7 +19,7 @@ Read each sub-file from `${CLAUDE_SKILL_DIR}/` when you reach its pipeline stage
 | `scaffold.md` | Architecture + skeleton | After decomposition |
 | `asset-planner.md` | Budget and plan assets | If budget provided |
 | `asset-gen.md` | Asset generation CLI ref | When generating assets |
-| `rembg.md` | Background removal | Before rembg operations |
+| `rembg.md` | Background removal | Only when an asset needs transparency removed |
 | `task-execution.md` | Task workflow + commands | Before first task |
 | `quirks.md` | Godot gotchas | Before writing code |
 | *(godot-api skill)* | GDScript syntax ref | When unsure about GDScript syntax |
@@ -39,21 +39,15 @@ User request
     |   +- If no: continue with fresh pipeline below
     |
     +- Generate visual target -> reference.png + ASSETS.md (art direction only)
-    +- Decompose into tasks -> PLAN.md
+    +- Analyze risks + define verification criteria -> PLAN.md
     +- Design architecture -> STRUCTURE.md + project.godot + stubs
     |
     +- If budget provided (and no asset tables in ASSETS.md):
     |   +- Plan and generate assets -> ASSETS.md + updated PLAN.md with asset assignments
     |
-    +- For every task in PLAN.md:
-    |   +- Set `**Status:** pending`
-    |   +- Fill `**Targets:**` with concrete project-relative files expected to change
-    |     (e.g. scenes/main.tscn, scripts/player_controller.gd, project.godot)
-    |     inferred from task text + scene/script mappings in STRUCTURE.md
+    +- Show user a concise plan summary (risk tasks if any, main build scope)
     |
-    +- Show user a concise plan summary (game name, numbered task list)
-    |
-    +- Execute tasks (see Running Tasks below)
+    +- Execute (see Execution below)
     |
     +- If user requested Android app:
     |   +- Read android-build.md, add ETC2/ASTC to project.godot, create export_presets.cfg, export APK
@@ -61,19 +55,12 @@ User request
     +- Summary of completed game
 ```
 
-PLAN.md task `**Status:**`: one of `pending`, `in_progress`, `done`, `done (partial)`, `skipped`.
+## Execution
 
-## Running Tasks
+Read `task-execution.md` before starting. Three phases:
 
-Read `task-execution.md` before starting the first task. Execute each task:
-
-1. Read the task block from PLAN.md
-2. Mark status -> in_progress
-3. Read target-specific sub-files (scene-generation, script-generation, etc.)
-4. Execute the implement -> validate -> capture -> VQA loop
-5. Mark completed in PLAN.md
-6. git add . && git commit
-7. Move to next ready task
+1. **Risk tasks** (if any) — implement each in isolation, verify, commit
+2. **Main build** — implement everything else, verify, present results (video for new games), commit
 
 ## Godot API Lookup
 
