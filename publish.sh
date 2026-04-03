@@ -23,7 +23,8 @@ TARGET="$(cd "$1" 2>/dev/null && pwd || (mkdir -p "$1" && cd "$1" && pwd))"
 
 if [ "$FORCE" -eq 1 ] && [ -d "$TARGET" ]; then
     echo "Force: cleaning $TARGET"
-    rm -rf "${TARGET:?}"/*
+    rm -rf "${TARGET:?}"
+    mkdir -p "$TARGET"
 fi
 
 echo "Publishing to: $TARGET"
