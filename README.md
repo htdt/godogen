@@ -10,7 +10,7 @@ You describe what you want. An AI pipeline designs the architecture, generates t
 
 - **Two Claude Code skills** orchestrate the entire pipeline — one plans, one executes. Each task runs in a fresh context to stay focused.
 - **Godot 4 output** — real projects with proper scene trees, scripts, and asset organization.
-- **Asset generation** — xAI Grok creates 2D art and textures; Tripo3D converts selected images to 3D models. Budget-aware: maximizes visual impact per cent spent.
+- **Asset generation** — Gemini and xAI Grok create 2D art and textures; Tripo3D converts selected images to 3D models. Budget-aware: maximizes visual impact per cent spent.
 - **GDScript expertise** — custom-built language reference and lazy-loaded API docs for all 850+ Godot classes compensate for LLMs' thin training data on GDScript.
 - **Visual QA closes the loop** — captures actual screenshots from the running game and analyzes them with Claude vision. Catches z-fighting, missing textures, broken physics.
 - **Runs on commodity hardware** — any PC with Godot and Claude Code works.
@@ -22,7 +22,8 @@ You describe what you want. An AI pipeline designs the architecture, generates t
 - [Godot 4](https://godotengine.org/download/) (headless or editor) on `PATH`
 - [Claude Code](https://docs.anthropic.com/en/docs/claude-code) installed
 - API keys as environment variables:
-  - `XAI_API_KEY` — [xAI Grok](https://console.x.ai/home), used for image and video generation
+  - `GOOGLE_API_KEY` — [Google AI Studio](https://aistudio.google.com/), used for Gemini image generation (references, characters, precise work)
+  - `XAI_API_KEY` — [xAI Grok](https://console.x.ai/home), used for image/video generation (textures, simple objects)
   - `TRIPO3D_API_KEY` — [Tripo3D](https://platform.tripo3d.ai/), used for image-to-3D model conversion (only needed for 3D games)
 - Python 3 with pip (asset tools install their own deps)
 - System packages: `mesa-utils`, `ffmpeg` (see [setup.md](setup.md) for full details including macOS)

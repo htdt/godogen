@@ -129,7 +129,8 @@ ls ~/.local/share/godot/export_templates/*/android_debug.apk
 
 Set in environment:
 
-- `XAI_API_KEY` — xAI Grok image generation
+- `GOOGLE_API_KEY` — Gemini image generation (references, characters, precise work)
+- `XAI_API_KEY` — xAI Grok image/video generation (textures, simple objects)
 - `TRIPO3D_API_KEY` — image-to-3D conversion (3D games only)
 
 ## Verify

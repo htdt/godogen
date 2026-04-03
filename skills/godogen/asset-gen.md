@@ -10,8 +10,8 @@ Generate PNG images (Gemini or xAI Grok) and GLB 3D models (Tripo3D) from text p
 | `grok-imagine-image` | `--model grok` | 2¢ | High-quality but imprecise — textures, simple objects, item kits |
 
 **When to use which:**
-- **Gemini** — reference images, character design, backgrounds, 3D model references, animated sprite refs, anything where the prompt must be followed precisely. Gemini costs more but reliably produces what you described.
-- **Grok** — textures, simple objects, item kits, props. Produces high-quality (even photographic) output but often defaults to common interpretations instead of following specific instructions. Great when exact prompt adherence doesn't matter.
+- **Gemini** — reference images, character design, 3D model references, animated sprite refs/poses, backgrounds with precise layout. Gemini costs more but reliably produces what you described.
+- **Grok** — textures, simple objects, item kits, props, simple scenic backgrounds (sky, clouds, abstract). Produces high-quality (even photographic) output but often defaults to common interpretations instead of following specific instructions. Great when exact prompt adherence doesn't matter.
 
 Default is `grok`. Switch to `gemini` when precision matters.
 
@@ -48,7 +48,7 @@ Typical combos:
 
 Read `${CLAUDE_SKILL_DIR}/rembg.md` for full guide: CLI, prompting strategy, troubleshooting, batch mode.
 
-### Generate animated sprite (7¢ ref + 2¢/pose + 5¢/sec video)
+### Generate animated sprite (7¢ ref + 7¢/pose + 5¢/sec video)
 
 Workflow: reference → pose frame → video → slice → loop trim → rembg.
 
@@ -63,12 +63,13 @@ python3 ${CLAUDE_SKILL_DIR}/tools/asset_gen.py image \
   --aspect-ratio 1:1 -o assets/img/knight_ref.png
 ```
 
-**Step 2: Pose frame (2¢ — Grok)**
+**Step 2: Pose frame (7¢ — Gemini)**
 
-Image-to-image edit: feed the reference, prompt only for the action/pose.
+Image-to-image edit: feed the reference, prompt only for the action/pose. Gemini is preferred here — the pose must match the prompt precisely since it anchors the video.
 
 ```bash
 python3 ${CLAUDE_SKILL_DIR}/tools/asset_gen.py image \
+  --model gemini \
   --prompt "walking to the right, mid-stride pose, side view, solid dark-green background" \
   --image assets/img/knight_ref.png \
   --aspect-ratio 1:1 -o assets/img/knight_walk_pose.png
@@ -118,7 +119,7 @@ python3 ${CLAUDE_SKILL_DIR}/tools/rembg_matting.py \
 
 **Step 7: Additional animations**
 
-Repeat from step 2 using the same reference image. Each new animation costs 2¢ (pose) + video duration × 5¢.
+Repeat from step 2 using the same reference image. Each new animation costs 7¢ (Gemini pose) + video duration × 5¢.
 
 ### Convert image to GLB (30-60 cents)
 
@@ -158,7 +159,7 @@ Progress goes to stderr.
 | GLB | ultra | 60 cents | Detailed textures + geometry (+10c +20c) |
 | Video | --duration N | 5¢ × N seconds | Pose frame as starting image |
 
-A full 3D asset (Gemini 1K image + GLB) costs 37 cents at medium quality. A texture (Grok) is 2 cents. A Gemini background (2K) is 10 cents. A 3-second animation costs 19 cents (7¢ Gemini ref + 2¢ Grok pose + 10¢ video); additional animations from the same ref cost 2¢ pose + video.
+A full 3D asset (Gemini 1K image + GLB) costs 37 cents at medium quality. A texture (Grok) is 2 cents. A background is 2¢ (Grok, simple) or 10¢ (Gemini 2K, precise layout). A 3-second animation costs 24 cents (7¢ Gemini ref + 7¢ Gemini pose + 10¢ video); additional animations from the same ref cost 7¢ pose + video.
 
 ## Image Resolution
 
@@ -180,14 +181,16 @@ Minimum generation resolution is 1K. A 1024px image downscaled to 64px or even 1
 
 For any asset needing transparency, read `${CLAUDE_SKILL_DIR}/rembg.md` first — covers BG color strategy, CLI, and troubleshooting.
 
-### Background / large scenic image (10c Gemini)
+### Background / large scenic image (2c Grok or 10c Gemini)
 
-Title screens, sky panoramas, parallax layers, environmental art. Best place for art direction language. Use Gemini — composition and prompt precision matter.
+Title screens, sky panoramas, parallax layers, environmental art. Best place for art direction language.
+
+Grok works well for simple scenic backgrounds (sky, clouds, abstract environments) — 2¢. Use Gemini when layout and composition must match the prompt precisely (specific object placement, layered parallax with exact structure) — 10¢.
 
 ```
 {description in the art style}. {composition instructions}.
 ```
-`image --model gemini --prompt "..." --size 2K --aspect-ratio 16:9 -o path.png`
+`image --prompt "..." --size 2K --aspect-ratio 16:9 -o path.png` (Grok default, add `--model gemini` for precise layout)
 
 No post-processing — use as-is.
 

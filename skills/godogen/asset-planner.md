@@ -33,15 +33,15 @@ The scaffold's Asset Hints describe what the architecture needs. The decomposer'
 Each asset costs:
 - Texture / simple sprite (Grok): 2 cents
 - Character / reference / 3D ref (Gemini 1K): 7 cents
-- HQ background / title screen (Gemini 2K): 10 cents
+- Background: 2 cents (Grok, simple scenic) or 10 cents (Gemini 2K, precise layout)
 - 3D model: 37 cents (7 cent Gemini image + 30 cent GLB at medium quality)
 
 Animated sprites cost more — budget carefully:
 - Reference image (Gemini 1K): 7 cents (once per character — all animations share it)
-- Root action (from ref): 2 cent Grok pose + 5 cents × duration
+- Root action (from ref): 7 cent Gemini pose + 5 cents × duration
 - Chained action (from predecessor's last frame): 5 cents × duration only
 - Example: knight with walk 3s, idle 2s (roots) + attack 2s (chained from walk)
-  = 7 (ref) + 17 (walk) + 12 (idle) + 10 (attack) = 46 cents
+  = 7 (ref) + 22 (walk) + 17 (idle) + 10 (attack) = 56 cents
 
 Prioritize by visual impact — what makes the game recognizable. Cut low-impact assets first if budget is tight. Reserve ~10% of budget for retries.
 
@@ -57,7 +57,7 @@ Craft each prompt for its specific goal. The art direction tells you the visual 
 
 #### Backend selection
 
-Use Gemini (`--model gemini`) where prompt precision matters — reference images, character design, backgrounds, 3D model references, animated sprite refs. Use Grok (default) for textures, simple objects, and item kits where exact prompt adherence is less critical.
+Use Gemini (`--model gemini`) where prompt precision matters — reference images, character design, 3D model references, animated sprite refs/poses, backgrounds with precise layout. Use Grok (default) for textures, simple objects, item kits, and simple scenic backgrounds (sky, clouds, abstract).
 
 #### Using image references for consistency
 
