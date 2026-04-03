@@ -42,6 +42,7 @@ if [ ! -f "$TARGET/.gitignore" ]; then
 CLAUDE.md
 assets
 screenshots
+.vqa.log
 .godot
 *.import
 GI_EOF

@@ -24,7 +24,7 @@ test/
   presentation.gd      # Final cinematic video script
 assets/                # gitignored — img/*.png, glb/*.glb
 screenshots/           # gitignored — per-task frames
-visual-qa/*.md         # Visual QA reports
+.vqa.log               # Visual QA debug log (gitignored)
 ```
 
 ## Limitations

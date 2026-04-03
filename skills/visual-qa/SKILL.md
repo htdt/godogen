@@ -2,7 +2,7 @@
 name: visual-qa
 description: |
   Visual quality assurance — analyze game screenshots for defects, compare against reference, check motion in frame sequences.
-  Use after capturing screenshots to verify task output. Also handles free-form visual questions.
+  Supports Gemini Flash (default), native Claude vision, or both with aggregated verdict.
 context: fork
 ---
 
@@ -10,9 +10,13 @@ context: fork
 
 $ARGUMENTS
 
-Read every image file referenced above using the Read tool, then analyze.
+CRITICAL: Your job is to find problems, not confirm things look fine. Do not rationalize, justify, or explain away what you see. If it looks wrong, report it.
 
-CRITICAL: Your job is to find problems, not confirm things look fine. Never look at code — only images. Do not rationalize, justify, or explain away what you see. If it looks wrong, report it.
+## Backend
+
+- **Default (Gemini):** Run the script below. All queries go to Gemini 3 Flash.
+- **`--native`** flag in arguments: Use Claude vision — read every image with the Read tool, analyze directly. Do NOT run the Gemini script.
+- **`--both`** flag in arguments: Run Gemini first, then do native analysis. Aggregate verdicts (details below).
 
 ## Mode Detection
 
@@ -20,6 +24,48 @@ From the arguments — freeform text with file paths:
 - Reference image mentioned + 1 screenshot → Static mode
 - Reference image + multiple frames → Dynamic mode — frames are 0.5s apart (2 FPS cadence)
 - No reference, just a question about screenshots → Question mode
+
+## Gemini Execution
+
+Parse the arguments to construct the command. The script is at `${CLAUDE_SKILL_DIR}/scripts/visual_qa.py`.
+
+```bash
+# Static
+python3 ${CLAUDE_SKILL_DIR}/scripts/visual_qa.py --log .vqa.log [--context "Goal: ... Requirements: ... Verify: ..."] reference.png screenshot.png
+
+# Dynamic
+python3 ${CLAUDE_SKILL_DIR}/scripts/visual_qa.py --log .vqa.log [--context "..."] reference.png frame1.png frame2.png ...
+
+# Question
+python3 ${CLAUDE_SKILL_DIR}/scripts/visual_qa.py --log .vqa.log --question "the question" screenshot.png [frame2.png ...]
+```
+
+Always pass `--log .vqa.log`. Print the script output as your response.
+
+## Native Execution
+
+Read every image file referenced in the arguments using the Read tool. Analyze using the criteria and output format below. Never look at code — only images.
+
+After producing output, append a debug log entry:
+
+```bash
+printf '%s\n' "$(cat <<'LOGEOF'
+{"ts":"$(date -u +%Y-%m-%dT%H:%M:%SZ)","mode":"MODE","model":"native","query":"QUERY","files":["FILE1","FILE2"],"output":"FIRST_LINE..."}
+LOGEOF
+)" >> .vqa.log
+```
+
+## Aggregated Mode (`--both`)
+
+1. Run Gemini script, capture output
+2. Read all images with Read tool, do native analysis using criteria below
+3. Produce combined verdict:
+   - Either says `fail` → `fail`
+   - Either says `warning` and neither `fail` → `warning`
+   - Both `pass` → `pass`
+4. Merge issue lists from both, deduplicate by location + description
+5. Label each issue source: `[gemini]`, `[native]`, or `[both]`
+6. Log both outputs to `.vqa.log`
 
 ## Analysis Criteria
 

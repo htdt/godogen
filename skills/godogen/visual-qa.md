@@ -1,6 +1,6 @@
 # Visual Quality Assurance
 
-Analyze game screenshots against the visual reference. Runs in a forked context via the `visual-qa` skill.
+Analyze game screenshots against the visual reference. Runs in a forked context via the `visual-qa` skill. Default backend is Gemini 3 Flash; pass `--native` for Claude vision or `--both` for aggregated verdict.
 
 ## Static Mode
 
@@ -36,6 +36,19 @@ Skill(skill="visual-qa") "Does the enemy patrol path form a loop? screenshots/{t
 Skill(skill="visual-qa") "The door should open when player approaches. Does it? InteractionSystem triggers at 2m, door uses AnimationPlayer. screenshots/{task}/frame*.png"
 ```
 
+## Backend Selection
+
+```
+# Gemini 3 Flash (default)
+Skill(skill="visual-qa") "Check reference.png against screenshots/{task}/frame0003.png — Goal: ..."
+
+# Claude vision
+Skill(skill="visual-qa") "--native Check reference.png against screenshots/{task}/frame0003.png — Goal: ..."
+
+# Both — aggregated verdict (stricter wins, issues merged)
+Skill(skill="visual-qa") "--both Check reference.png against screenshots/{task}/frame0003.png — Goal: ..."
+```
+
 ## Context
 
 Pass the task's **Goal**, **Requirements**, and **Verify** from PLAN.md as freeform text. The QA has two objectives:
@@ -46,6 +59,5 @@ Pass the task's **Goal**, **Requirements**, and **Verify** from PLAN.md as freef
 
 - Output: markdown report with verdict (`pass`/`fail`/`warning`), reference match, goal assessment, per-issue details
 - Severity: `major`/`minor` = must fix; `note` = cosmetic, can ship
-- Save skill output to `visual-qa/{N}.md` (sequential) — committed as test evidence
-- Question mode output goes to stdout — read directly, don't save to `visual-qa/`
-
+- Debug log appended to `.vqa.log` (JSONL: query, files, output)
+- Question mode output goes to stdout — read directly
