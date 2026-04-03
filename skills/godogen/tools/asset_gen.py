@@ -124,10 +124,19 @@ ALL_SIZES = ["512", "1K", "2K", "4K"]
 ALL_ASPECT_RATIOS = sorted(set(GEMINI_ASPECT_RATIOS + GROK_ASPECT_RATIOS))
 
 
+def _mime_for_image(path: Path) -> str:
+    """Detect image MIME type from file extension."""
+    return {
+        ".jpg": "image/jpeg", ".jpeg": "image/jpeg",
+        ".png": "image/png", ".webp": "image/webp",
+    }.get(path.suffix.lower(), "image/png")
+
+
 def _image_data_uri(image_path: Path) -> str:
     """Load image and return as base64 data URI."""
     b64 = base64.b64encode(image_path.read_bytes()).decode()
-    return f"data:image/png;base64,{b64}"
+    mime = _mime_for_image(image_path)
+    return f"data:{mime};base64,{b64}"
 
 
 def _generate_gemini(args, output: Path, cost: int):
@@ -145,7 +154,7 @@ def _generate_gemini(args, output: Path, cost: int):
         if not ref_path.exists():
             result_json(False, error=f"Reference image not found: {ref_path}")
             sys.exit(1)
-        contents.append(types.Part.from_bytes(data=ref_path.read_bytes(), mime_type="image/png"))
+        contents.append(types.Part.from_bytes(data=ref_path.read_bytes(), mime_type=_mime_for_image(ref_path)))
     contents.append(args.prompt)
 
     client = genai.Client()
