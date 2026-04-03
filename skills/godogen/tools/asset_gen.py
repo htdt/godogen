@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""Asset Generator CLI - creates images (xAI Grok) and GLBs (Tripo3D).
+"""Asset Generator CLI - creates images (Gemini / xAI Grok) and GLBs (Tripo3D).
 
 Subcommands:
-  image   Generate a PNG from a prompt (2¢ standard, 7¢ pro)
-  video   Generate MP4 video from prompt + reference image (5¢/sec)
+  image   Generate a PNG from a prompt (Gemini 5-15¢ or Grok 2¢)
+  video   Generate MP4 video from prompt + reference image (5¢/sec, Grok)
   glb     Convert a PNG to a GLB 3D model via Tripo3D (30-60¢)
 
 Output: JSON to stdout. Progress to stderr.
@@ -18,6 +18,8 @@ from pathlib import Path
 
 import requests
 import xai_sdk
+from google import genai
+from google.genai import types
 from PIL import Image
 
 from tripo3d import MODEL_V3, image_to_glb
@@ -100,15 +102,26 @@ def result_json(ok: bool, path: str | None = None, cost_cents: int = 0, error: s
     print(json.dumps(d))
 
 
-IMAGE_MODEL = "grok-imagine-image"          # 2¢
-IMAGE_MODEL_PRO = "grok-imagine-image-pro"  # 7¢
-IMAGE_MODELS = {"standard": IMAGE_MODEL, "pro": IMAGE_MODEL_PRO}
-IMAGE_COSTS = {"standard": 2, "pro": 7}
-IMAGE_SIZES = ["1K", "2K"]
-IMAGE_ASPECT_RATIOS = [
+# --- Image backends ---
+
+GEMINI_MODEL = "gemini-3.1-flash-image-preview"
+GEMINI_SIZES = ["512", "1K", "2K", "4K"]
+GEMINI_COSTS = {"512": 5, "1K": 7, "2K": 10, "4K": 15}
+GEMINI_ASPECT_RATIOS = [
+    "1:1", "1:4", "1:8", "2:3", "3:2", "3:4", "4:1", "4:3",
+    "4:5", "5:4", "8:1", "9:16", "16:9", "21:9",
+]
+
+GROK_MODEL = "grok-imagine-image"  # 2¢ flat
+GROK_COST = 2
+GROK_SIZES = ["1K", "2K"]
+GROK_ASPECT_RATIOS = [
     "1:1", "16:9", "9:16", "4:3", "3:4", "3:2", "2:3",
     "2:1", "1:2", "19.5:9", "9:19.5", "20:9", "9:20", "auto",
 ]
+
+ALL_SIZES = ["512", "1K", "2K", "4K"]
+ALL_ASPECT_RATIOS = sorted(set(GEMINI_ASPECT_RATIOS + GROK_ASPECT_RATIOS))
 
 
 def _image_data_uri(image_path: Path) -> str:
@@ -117,19 +130,51 @@ def _image_data_uri(image_path: Path) -> str:
     return f"data:image/png;base64,{b64}"
 
 
-def cmd_image(args):
-    tier = args.model
-    cost = IMAGE_COSTS[tier]
-    check_budget(cost)
-    output = Path(args.output)
-    output.parent.mkdir(parents=True, exist_ok=True)
+def _generate_gemini(args, output: Path, cost: int):
+    config = types.GenerateContentConfig(
+        response_modalities=["IMAGE"],
+        image_config=types.ImageConfig(
+            image_size=args.size,
+            aspect_ratio=args.aspect_ratio,
+        ),
+    )
 
-    model = IMAGE_MODELS[tier]
-    label = f"{tier} {args.size} {args.aspect_ratio}"
+    contents = []
     if args.image:
-        label += " (image-to-image)"
-    print(f"Generating image ({label})...", file=sys.stderr)
+        ref_path = Path(args.image)
+        if not ref_path.exists():
+            result_json(False, error=f"Reference image not found: {ref_path}")
+            sys.exit(1)
+        contents.append(types.Part.from_bytes(data=ref_path.read_bytes(), mime_type="image/png"))
+    contents.append(args.prompt)
 
+    client = genai.Client()
+    response = client.models.generate_content(
+        model=GEMINI_MODEL,
+        contents=contents,
+        config=config,
+    )
+
+    if response.parts is None:
+        reason = "unknown"
+        if response.candidates and response.candidates[0].finish_reason:
+            reason = response.candidates[0].finish_reason
+        result_json(False, error=f"Generation blocked (reason: {reason})")
+        sys.exit(1)
+
+    for part in response.parts:
+        if part.inline_data is not None:
+            output.write_bytes(part.inline_data.data)
+            print(f"Saved: {output}", file=sys.stderr)
+            record_spend(cost, "gemini")
+            result_json(True, path=str(output), cost_cents=cost)
+            return
+
+    result_json(False, error="No image returned")
+    sys.exit(1)
+
+
+def _generate_grok(args, output: Path, cost: int):
     image_url = None
     if args.image:
         ref_path = Path(args.image)
@@ -142,7 +187,7 @@ def cmd_image(args):
         client = xai_sdk.Client()
         resp = client.image.sample(
             prompt=args.prompt,
-            model=model,
+            model=GROK_MODEL,
             image_url=image_url,
             aspect_ratio=args.aspect_ratio,
             resolution=args.size.lower(),
@@ -157,6 +202,36 @@ def cmd_image(args):
     print(f"Saved: {output}", file=sys.stderr)
     record_spend(cost, "xai")
     result_json(True, path=str(output), cost_cents=cost)
+
+
+def cmd_image(args):
+    backend = args.model
+    size = args.size
+
+    if backend == "gemini":
+        if size not in GEMINI_SIZES:
+            result_json(False, error=f"Gemini does not support size {size}. Use: {', '.join(GEMINI_SIZES)}")
+            sys.exit(1)
+        cost = GEMINI_COSTS[size]
+    else:
+        if size not in GROK_SIZES:
+            result_json(False, error=f"Grok does not support size {size}. Use: {', '.join(GROK_SIZES)}")
+            sys.exit(1)
+        cost = GROK_COST
+
+    check_budget(cost)
+    output = Path(args.output)
+    output.parent.mkdir(parents=True, exist_ok=True)
+
+    label = f"{backend} {size} {args.aspect_ratio}"
+    if args.image:
+        label += " (image-to-image)"
+    print(f"Generating image ({label})...", file=sys.stderr)
+
+    if backend == "gemini":
+        _generate_gemini(args, output, cost)
+    else:
+        _generate_grok(args, output, cost)
 
 
 def cmd_video(args):
@@ -242,16 +317,16 @@ def cmd_set_budget(args):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Asset Generator — images (xAI Grok) and GLBs (Tripo3D)")
+    parser = argparse.ArgumentParser(description="Asset Generator — images (Gemini / xAI Grok) and GLBs (Tripo3D)")
     sub = parser.add_subparsers(dest="command", required=True)
 
-    p_img = sub.add_parser("image", help="Generate a PNG image (2¢ standard, 7¢ pro)")
+    p_img = sub.add_parser("image", help="Generate a PNG image (Gemini 5-15¢ or Grok 2¢)")
     p_img.add_argument("--prompt", required=True, help="Full image generation prompt")
-    p_img.add_argument("--model", choices=list(IMAGE_MODELS.keys()), default="standard",
-                       help="Model tier: standard (2¢, fast) or pro (7¢, higher quality). Default: standard.")
-    p_img.add_argument("--size", choices=IMAGE_SIZES, default="1K",
-                       help="Resolution: 1K or 2K. Default: 1K.")
-    p_img.add_argument("--aspect-ratio", choices=IMAGE_ASPECT_RATIOS, default="1:1",
+    p_img.add_argument("--model", choices=["gemini", "grok"], default="grok",
+                       help="Backend: grok (2¢, fast, simple images) or gemini (5-15¢, precise prompt following). Default: grok.")
+    p_img.add_argument("--size", choices=ALL_SIZES, default="1K",
+                       help="Resolution. Grok: 1K, 2K. Gemini: 512, 1K, 2K, 4K. Default: 1K.")
+    p_img.add_argument("--aspect-ratio", choices=ALL_ASPECT_RATIOS, default="1:1",
                        help="Aspect ratio. Default: 1:1")
     p_img.add_argument("--image", default=None, help="Reference image for image-to-image edit")
     p_img.add_argument("-o", "--output", required=True, help="Output PNG path")

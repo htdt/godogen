@@ -23,7 +23,7 @@ Read `reference.png` — understand the visual composition: what objects are vis
 Read `STRUCTURE.md` (especially **Asset Hints**) and `PLAN.md` (especially **Assets needed** per task). Cross-reference both with the reference image to build the complete asset list:
 - **3D models**: characters, vehicles, key props, buildings — anything that needs geometry
 - **Textures**: ground surfaces, walls, UI backgrounds — flat materials that tile
-- **Backgrounds**: sky panoramas, parallax layers, title screens, large scenic images — use `--model pro --size 2K` and an appropriate `--aspect-ratio`
+- **Backgrounds**: sky panoramas, parallax layers, title screens, large scenic images — use `--model gemini --size 2K` and an appropriate `--aspect-ratio`
 - **Animated sprites**: characters or objects with multiple actions (walk, attack, idle) — plan the motion graph before generating
 
 The scaffold's Asset Hints describe what the architecture needs. The decomposer's Assets needed fields describe what each task needs. Reconcile both — they may overlap or one may mention assets the other missed.
@@ -31,16 +31,17 @@ The scaffold's Asset Hints describe what the architecture needs. The decomposer'
 ### 2. Prioritize and budget
 
 Each asset costs:
-- Texture / sprite / 3D ref: 2 cents (standard model)
-- HQ background / title screen: 7 cents (pro model with `--size 2K`)
-- 3D model: 32 cents (2 cent image + 30 cent GLB at medium quality)
+- Texture / simple sprite (Grok): 2 cents
+- Character / reference / 3D ref (Gemini 1K): 7 cents
+- HQ background / title screen (Gemini 2K): 10 cents
+- 3D model: 37 cents (7 cent Gemini image + 30 cent GLB at medium quality)
 
 Animated sprites cost more — budget carefully:
-- Reference image: 2 cents (once per character — all animations share it)
-- Root action (from ref): 2 cent pose + 5 cents × duration
+- Reference image (Gemini 1K): 7 cents (once per character — all animations share it)
+- Root action (from ref): 2 cent Grok pose + 5 cents × duration
 - Chained action (from predecessor's last frame): 5 cents × duration only
 - Example: knight with walk 3s, idle 2s (roots) + attack 2s (chained from walk)
-  = 2 (ref) + 17 (walk) + 12 (idle) + 10 (attack) = 41 cents
+  = 7 (ref) + 17 (walk) + 12 (idle) + 10 (attack) = 46 cents
 
 Prioritize by visual impact — what makes the game recognizable. Cut low-impact assets first if budget is tight. Reserve ~10% of budget for retries.
 
@@ -53,6 +54,10 @@ Read the **Art direction** from `ASSETS.md` (written by visual-target). Use it a
 - **Sprites** may need some style cues but adapted to the subject
 
 Craft each prompt for its specific goal. The art direction tells you the visual identity; translate it appropriately per asset type.
+
+#### Backend selection
+
+Use Gemini (`--model gemini`) where prompt precision matters — reference images, character design, backgrounds, 3D model references, animated sprite refs. Use Grok (default) for textures, simple objects, and item kits where exact prompt adherence is less critical.
 
 #### Using image references for consistency
 
@@ -76,7 +81,7 @@ To prevent cost overruns, a JSON log is automatically maintained that tracks the
 #### Common Mistakes
 
 - **Detailed image shrunk to a tile** — minimum generation resolution is 1K. A 1024px image downscaled to 64px looks muddy. For small sprites: avoid tiny display sizes (128px+ preferred), generate a kit image with multiple objects sharing one 1K image and crop, or prompt for bold simple forms (thick outlines, flat colors, exaggerated proportions).
-- **Tiling texture for a unique background** — don't tile a small repeating texture where the game needs a single scenic background. Use `--model pro` instead.
+- **Tiling texture for a unique background** — don't tile a small repeating texture where the game needs a single scenic background. Use `--model gemini --size 2K` instead.
 - **Image where procedural drawing works** — pure geometric primitives (solid-color rectangles for health bars, single-color circle for a ball, straight divider lines) should be drawn in code. But anything with texture, detail, or artistic style — characters, backgrounds, terrain, objects, icons — should use generated assets even if you *could* approximate it with code. Procedural vector art almost always looks worse than a generated image.
 - **Stretching one texture over a large area** — a small texture stretched across a big surface looks blurry. Use a tileable texture or generate at higher resolution.
 
