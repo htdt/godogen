@@ -298,5 +298,5 @@ The task executor follows this order mechanically. Do not rely on the executor t
 
 - Implementation details or behavior descriptions
 - Task ordering
-- Lighting, environment, tonemapping, post-processing — API docs aren't loaded yet, and scene-generation handles this later with full docs available
+- Lighting, environment, tonemapping, post-processing
 - Any logic beyond empty method stubs — real scripts are written in a later stage
