@@ -1,7 +1,8 @@
 .claude/
 .playwright-cli/
+.playwright
 **/__pycache__
 
 # Generated reference docs (recreated by ensure_doc_api.sh)
-skills/godot-task/doc_source/
-skills/godot-task/doc_api/
+skills/godot-api/doc_source/
+skills/godot-api/doc_api/

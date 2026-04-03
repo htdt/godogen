@@ -9,7 +9,8 @@ Source code lives at the repo root:
 
 ## Skills
 
-- godogen — orchestrator + scaffold + decomposer + asset planning + asset generation + visual target (main thread)
-- godot-task — task execution + GDScript docs + screenshot capture + visual QA (context: fork)
+- godogen — orchestrator + inline task execution + all pipeline stages (main thread, 1M context)
+- godot-api — Godot class API lookup (context: fork, sonnet, Explore agent)
+- visual-qa — visual quality assurance via Claude vision (context: fork)
 
 When writing skills: don't give obvious guidance. The agent is a highly capable LLM — handholding only pollutes the context.

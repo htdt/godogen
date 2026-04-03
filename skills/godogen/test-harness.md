@@ -1,8 +1,6 @@
 # Test Harness & Visual Verification
 
-Write `test/test_{task_id}.gd` (e.g., `test/test_T3.gd`) — a SceneTree script that loads the scene under test and **thoroughly verifies the task's goal**. Do NOT call `quit()` — the movie writer handles exit.
-
-**Verify what the task actually asks for.** Read the Verify description and think about what would convince you — a skeptic, not the author — that the task is done. A decoration task needs multiple camera angles to check placement and scale. A movement task needs the camera to follow the action over time. A UI task needs the full interface visible. Match the test to the goal.
+Write `test/test_{task_id}.gd` (e.g., `test/test_T3.gd`) — a SceneTree script that loads the scene under test and verifies the task's goal. Do NOT call `quit()` — the movie writer handles exit.
 
 ## SceneTree Script Contract
 
@@ -27,3 +25,7 @@ For tests needing player input, use a Timer to trigger actions:
     root.add_child(timer)
     timer.start()
 ```
+
+### Sustained movement (presentation scripts)
+
+Open-loop input (timed press/release sequences) doesn't work for 30-second videos — per-frame errors compound into visible drift, edge-sticking, and tightening carve spirals. Use closed-loop waypoint steering based on actual position each frame.

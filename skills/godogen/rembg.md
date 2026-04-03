@@ -1,10 +1,9 @@
 # Background Removal
 
-Read this before any background removal. Covers CLI, prompting strategy, troubleshooting, and batch mode.
+Background removal CLI, prompting strategy, troubleshooting, and batch mode. Read when you're about to generate or process an asset that needs transparency.
 
-## When to remove background
-
-Any asset that needs transparency: characters, props, icons, UI elements, animated sprite frames. NOT textures, backgrounds, or 3D model references (Tripo3D needs the solid white bg).
+Applies to: characters, props, icons, UI elements, animated sprite frames.
+Does NOT apply to: textures, backgrounds, 3D model references (Tripo3D needs the solid white bg).
 
 **CRITICAL: Never prompt for "transparent background" — the generator draws a checkerboard. Always use a solid color background, then remove it.**
 

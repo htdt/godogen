@@ -25,6 +25,12 @@ fi
 PYTHONPATH="$TOOLS_DIR" python3 "$TOOLS_DIR/godot_api_converter.py" \
     -i "$DOC_SOURCE/godot/doc/classes" \
     --split-dir "$DOC_API" \
-    --class-desc first
+    --class-desc full \
+    --method-desc full \
+    --property-desc full \
+    --signal-desc full \
+    --constant-desc full \
+    --include-virtual \
+    --full-signals
 
 echo "doc_api ready at $DOC_API"

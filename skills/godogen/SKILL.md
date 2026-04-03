@@ -12,15 +12,22 @@ Generate and update Godot games from natural language.
 
 Read each sub-file from `${CLAUDE_SKILL_DIR}/` when you reach its pipeline stage.
 
-| File | Purpose |
-|------|---------|
-| `visual-target.md` | Generate reference image anchoring art direction |
-| `decomposer.md` | Decompose game into a development plan (`PLAN.md`) |
-| `scaffold.md` | Design architecture and produce compilable Godot skeleton |
-| `asset-planner.md` | Decide what assets the game needs within a budget |
-| `asset-gen.md` | Generate PNGs (xAI Grok) and GLBs (Tripo3D) from prompts |
-| `rembg.md` | Background removal guide — read before any rembg operation |
-| `android-build.md` | Android APK export — read when user requests an Android build |
+| File | Purpose | When to read |
+|------|---------|--------------|
+| `visual-target.md` | Generate reference image | Pipeline start |
+| `decomposer.md` | Decompose into task DAG | After visual target |
+| `scaffold.md` | Architecture + skeleton | After decomposition |
+| `asset-planner.md` | Budget and plan assets | If budget provided |
+| `asset-gen.md` | Asset generation CLI ref | When generating assets |
+| `rembg.md` | Background removal | Only when an asset needs transparency removed |
+| `task-execution.md` | Task workflow + commands | Before first task |
+| `quirks.md` | Godot gotchas | Before writing code |
+| *(godot-api skill)* | GDScript syntax ref | When unsure about GDScript syntax |
+| `scene-generation.md` | Scene builders | Targets include .tscn |
+| `test-harness.md` | Verification scripts | Before test harness |
+| `capture.md` | Screenshot/video | Before capture |
+| `visual-qa.md` | Visual QA (forked skill) | After capture |
+| `android-build.md` | APK export | User requests Android |
 
 ## Pipeline
 
@@ -32,27 +39,15 @@ User request
     |   +- If no: continue with fresh pipeline below
     |
     +- Generate visual target -> reference.png + ASSETS.md (art direction only)
-    +- Decompose into tasks -> PLAN.md
+    +- Analyze risks + define verification criteria -> PLAN.md
     +- Design architecture -> STRUCTURE.md + project.godot + stubs
     |
     +- If budget provided (and no asset tables in ASSETS.md):
     |   +- Plan and generate assets -> ASSETS.md + updated PLAN.md with asset assignments
     |
-    +- For every task in PLAN.md:
-    |   +- Set `**Status:** pending`
-    |   +- Fill `**Targets:**` with concrete project-relative files expected to change
-    |     (e.g. scenes/main.tscn, scripts/player_controller.gd, project.godot)
-    |     inferred from task text + scene/script mappings in STRUCTURE.md
+    +- Show user a concise plan summary (risk tasks if any, main build scope)
     |
-    +- Show user a concise plan summary (game name, numbered task list)
-    |
-    +- Find next ready task (pending, deps all done)
-    +- While a ready task exists:
-    |   +- Update PLAN.md: mark task status -> in_progress
-    |   +- Skill(skill="godot-task") with task block
-    |   +- Mark task completed in PLAN.md OR replan based on the outcome, summarize to user
-    |   +- git add . && git commit -m "Task N done"
-    |   +- Find next ready task
+    +- Execute (see Execution below)
     |
     +- If user requested Android app:
     |   +- Read android-build.md, add ETC2/ASTC to project.godot, create export_presets.cfg, export APK
@@ -60,42 +55,62 @@ User request
     +- Summary of completed game
 ```
 
-PLAN.md task `**Status:**`: one of `pending`, `in_progress`, `done`, `done (partial)`, `skipped`.
+## Execution
 
-## Running Tasks
+Read `task-execution.md` before starting. Three phases:
 
-Each task runs via `Skill(skill="godot-task")` which auto-forks into a sub-agent with clean context. Pass the full task block from PLAN.md as the skill argument:
+1. **Risk tasks** (if any) — implement each in isolation, verify, commit
+2. **Main build** — implement everything else, verify, present results (video for new games), commit
 
-```
-Skill(skill="godot-task") with argument:
-  ## N. {Task Name}
-  - **Status:** in_progress
-  - **Targets:** scenes/main.tscn, scripts/player_controller.gd
-  - **Goal:** ...
-  - **Requirements:** ...
-  - **Verify:** ...
-```
+## Godot API Lookup
 
-## Mid-Pipeline Recovery
+When you need to look up a Godot class API (methods, properties, signals), use `Skill(skill="godot-api")` with your query. This runs in a separate context to avoid loading large API docs into the main pipeline.
 
-- **Reset scenes/scripts** — regenerate project skeleton when a task has corrupted or outgrown the architecture.
-- **Rewrite the plan** — edit PLAN.md when a task reveals the approach is wrong or new requirements emerge.
-- **Generate or regenerate assets** — create new assets or fix broken ones mid-run.
+Be specific about what you need — the docs are comprehensive and full returns are large:
+- **Targeted query** — ask for specific methods/signals to get a concise answer: `"CharacterBody3D: what method applies velocity and slides along collisions?"`
+- **Full API** — only request when you need to survey the entire class: `"full API for AnimationPlayer"`
+
+Examples:
+- Skill(skill="godot-api") "TileMapLayer: methods for setting/getting cells and their alternatives"
+- Skill(skill="godot-api") "full API for CharacterBody3D"
+- Skill(skill="godot-api") "which class handles 2D particle effects?"
+- Skill(skill="godot-api") "GDScript: tween parallel syntax and callbacks"
 
 ## Visual QA
 
-Visual QA runs inside godot-task — each task handles its own VQA cycle. The task agent reports a VQA report path alongside screenshots. **Never ignore a fail verdict** — always act on it before marking a task done.
+After capturing screenshots, verify with `Skill(skill="visual-qa")`. Runs in a forked context with Claude's native vision.
+
+- **Static:** `Skill(skill="visual-qa") "Check reference.png against screenshots/{task}/frame0003.png — Goal: ..., Verify: ..."`
+- **Dynamic:** `Skill(skill="visual-qa") "Check reference.png against frame1.png frame2.png ... — Goal: ..., Verify: ..."`
+- **Question:** `Skill(skill="visual-qa") "Are surfaces showing magenta? screenshots/{task}/frame*.png"`
+
+Save output to `visual-qa/{N}.md`. See `visual-qa.md` for full usage.
+
+## Context Hygiene
+
+Keep important state in files so the pipeline can resume even after compaction or clear:
+
+- **PLAN.md** — task statuses, always up to date before moving on
+- **STRUCTURE.md** — architecture reference, update if scaffolding changes
+- **MEMORY.md** — discoveries, quirks, workarounds, what worked/failed
+- **ASSETS.md** — asset manifest with paths and generation details
+
+After completing each task: update PLAN.md status, write discoveries to MEMORY.md, git commit. This ensures the pipeline can resume from any point by reading these files.
+
+If the context becomes polluted from debugging loops, manually compact with:
+`/compact "Discard failed debugging attempts."`
+
+## Visual QA
+
+**Don't trust code — verify on screenshots.** The most common failure mode: code looks correct, you assume it works, and report "everything's fine." Then screenshots reveal broken placement, wrong scale, missing elements, clipped geometry — dozens of small details that go wrong in unexpected ways, especially with custom assets. Visual QA is your quality partner: use it actively after every task, not as a formality.
+
+Visual QA runs inline with each task. **Never ignore a fail verdict** — always act on it before marking a task done.
+
+**VQA reports are clear signal.** If a significant issue is reported, fix it. If you genuinely believe it's a false positive — report it to the user and let them decide. Never silently ignore a fail verdict.
 
 - **pass/warning** — move on.
-- **fail** — godot-task already attempted up to 3 fix cycles. Read its failure report (includes VQA issues and root cause hypothesis) and decide:
+- **fail** — fix the issue. If you've already attempted up to 3 fix cycles, decide:
   - **Replan** — reset architecture, rewrite plan, and/or regenerate assets if the root cause is upstream.
   - **Escalate** — surface the issue to the user if you can't determine the right fix.
 
 The final task in PLAN.md is a presentation video — a script that showcases gameplay in a ~30-second cinematic MP4.
-
-## Debugging
-
-If a task reports failure or you suspect integration issues:
-- Read `MEMORY.md` — task execution logs discoveries and workarounds
-- Read screenshots in `screenshots/{task_folder}/`
-- Run `timeout 30 godot --headless --quit 2>&1` to check cross-project compilation

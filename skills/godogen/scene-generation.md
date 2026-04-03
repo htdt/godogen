@@ -228,86 +228,13 @@ func validate_packed_scene(packed: PackedScene, expected_count: int, scene_path:
     return true
 ```
 
-## Post-Save Verification
-
-After running a scene builder, verify the saved `.tscn` by writing and running a verification script. The builder's stdout includes `BUILT: N nodes` — use this expected count.
-
-Write `scenes/verify_scene.gd` into the project:
-
-```gdscript
-extends SceneTree
-
-func _initialize() -> void:
-    var args := OS.get_cmdline_user_args()
-    if args.size() < 2:
-        push_error("Usage: verify_scene.gd -- <scene_path> <expected_nodes>")
-        quit(1)
-        return
-
-    var scene_path: String = args[0]
-    var expected_nodes: int = int(args[1])
-
-    var packed = load(scene_path)
-    if packed == null:
-        print("VERIFY FAIL: could not load %s" % scene_path)
-        quit(1)
-        return
-
-    var instance = packed.instantiate()
-    if instance == null:
-        print("VERIFY FAIL: could not instantiate %s" % scene_path)
-        quit(1)
-        return
-
-    var actual_nodes := _count_nodes(instance)
-    instance.free()
-
-    # Check file size for GLB inlining
-    var file := FileAccess.open(ProjectSettings.globalize_path(scene_path), FileAccess.READ)
-    var file_size_mb := 0.0
-    if file:
-        file_size_mb = file.get_length() / 1048576.0
-        file.close()
-
-    var size_threshold := 5.0  # MB — adjust to 1.0 for 2D scenes
-    if file_size_mb > size_threshold:
-        print("VERIFY WARN: %s is %.1f MB — possible GLB inlining" % [scene_path, file_size_mb])
-
-    if actual_nodes < expected_nodes:
-        print("VERIFY FAIL: expected %d nodes, got %d in %s" % [expected_nodes, actual_nodes, scene_path])
-        quit(1)
-        return
-
-    print("VERIFY PASS: %d nodes in %s (%.1f MB)" % [actual_nodes, scene_path, file_size_mb])
-    quit(0)
-
-func _count_nodes(node: Node) -> int:
-    var total := 1
-    for child in node.get_children():
-        total += _count_nodes(child)
-    return total
-```
-
-Run after each scene builder:
-```bash
-timeout 30 godot --headless --script scenes/verify_scene.gd -- res://scenes/{name}.tscn {expected_count}
-```
-
-Parse `BUILT: N nodes` from the scene builder's stdout to get `{expected_count}`.
-
 ## Scene Constraints
 
-- Use ONLY nodes and resources available in Godot — look up unfamiliar classes in `doc_api`
 - Do NOT use `@onready` or scene-time annotations (this runs at build-time)
 - Do NOT use `preload()` — use `load()` (preload fails in headless)
-- ATTACH all scripts listed in STRUCTURE.md using `node.set_script(load("path"))`
 - Do NOT connect signals at build-time — scripts aren't instantiated yet. Signal connections belong in runtime scripts' `_ready()` method
-- ALWAYS set `.name` on every node you create — script generator needs predictable names for `@onready` references
-- Save to the EXACT output path specified by the task
-- **MANDATORY `quit()`** — Script MUST call `quit()` at the end. Without it, Godot runs forever in headless mode.
-- **Units:** 1 unit = 1 meter (3D), pixels (2D)
-- **2D/3D consistency** — Use ONLY 2D nodes (Node2D, CharacterBody2D, Area2D, Camera2D) OR 3D nodes. Never mix dimensions in the same scene hierarchy.
-- **No spatial methods in `_initialize()`** — `look_at()`, `to_global()`, etc. fail because nodes aren't in the tree yet. Use `rotation_degrees` or compute transforms manually.
+- **No spatial methods in `_initialize()`** — `look_at()`, `to_global()`, etc. fail because nodes aren't in the tree yet. Use `rotation_degrees` or compute transforms manually. In runtime scripts (`_ready()`, `_process()`), **always use `look_at()` to orient cameras and objects toward targets** — it's the correct tool there. Manual rotation math is error-prone and unnecessary.
+- **2D/3D consistency** — never mix dimensions in the same scene hierarchy.
 
 ## Environment & Lighting (3D Scenes)
 

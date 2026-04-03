@@ -3,11 +3,17 @@
 ## System Packages
 
 ```bash
-sudo apt-get install mesa-utils ffmpeg
+sudo apt-get install mesa-utils ffmpeg imagemagick
+
+# ImageMagick 7 (provides `magick` CLI — apt only has v6)
+wget https://imagemagick.org/archive/binaries/magick
+chmod +x magick
+sudo mv magick /usr/local/bin/
 ```
 
 - **mesa-utils** — provides `glxinfo` for GPU detection
-- **ffmpeg** — AVI→MP4 conversion
+- **ffmpeg** — AVI→MP4 conversion, video frame extraction
+- **imagemagick** — image resize, flip, crop for sprite pipelines
 
 No xvfb needed when a GPU is available.
 
@@ -123,9 +129,9 @@ ls ~/.local/share/godot/export_templates/*/android_debug.apk
 
 Set in environment:
 
-- `XAI_API_KEY` — xAI Grok image generation
+- `GOOGLE_API_KEY` — Gemini image generation (references, characters, precise work)
+- `XAI_API_KEY` — xAI Grok image/video generation (textures, simple objects)
 - `TRIPO3D_API_KEY` — image-to-3D conversion (3D games only)
-- `GEMINI_API_KEY` — visual QA with Gemini Flash
 
 ## Verify
 

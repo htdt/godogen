@@ -8,11 +8,11 @@ You describe what you want. An AI pipeline designs the architecture, generates t
 
 ## How it works
 
-- **Two Claude Code skills** orchestrate the entire pipeline — one plans, one executes. Each task runs in a fresh context to stay focused.
+- **Three Claude Code skills** — one orchestrator runs the full pipeline in a single 1M-token context window (planning, building, debugging), while two forked support skills handle Godot API lookup and visual QA without polluting the main context.
 - **Godot 4 output** — real projects with proper scene trees, scripts, and asset organization.
-- **Asset generation** — xAI Grok creates 2D art and textures; Tripo3D converts selected images to 3D models. Budget-aware: maximizes visual impact per cent spent.
+- **Asset generation** — Gemini creates precise references and characters; xAI Grok handles textures and simple objects; Tripo3D converts images to 3D models. Animated sprites use Grok video generation with loop detection. Budget-aware: maximizes visual impact per cent spent.
 - **GDScript expertise** — custom-built language reference and lazy-loaded API docs for all 850+ Godot classes compensate for LLMs' thin training data on GDScript.
-- **Visual QA closes the loop** — captures actual screenshots from the running game and analyzes them with Gemini Flash vision. Catches z-fighting, missing textures, broken physics.
+- **Visual QA closes the loop** — captures actual screenshots from the running game and analyzes them with Gemini Flash and Claude vision. Includes question mode for free-form visual debugging. Catches z-fighting, missing textures, broken physics.
 - **Runs on commodity hardware** — any PC with Godot and Claude Code works.
 
 ## Getting started
@@ -22,8 +22,8 @@ You describe what you want. An AI pipeline designs the architecture, generates t
 - [Godot 4](https://godotengine.org/download/) (headless or editor) on `PATH`
 - [Claude Code](https://docs.anthropic.com/en/docs/claude-code) installed
 - API keys as environment variables:
-  - `XAI_API_KEY` — [xAI Grok](https://console.x.ai/home), used for image and video generation
-  - `GOOGLE_API_KEY` — [Gemini](https://aistudio.google.com/app/api-keys), used for visual QA
+  - `GOOGLE_API_KEY` — [Google AI Studio](https://aistudio.google.com/), used for Gemini image generation (references, characters, precise work)
+  - `XAI_API_KEY` — [xAI Grok](https://console.x.ai/home), used for image/video generation (textures, simple objects)
   - `TRIPO3D_API_KEY` — [Tripo3D](https://platform.tripo3d.ai/), used for image-to-3D model conversion (only needed for 3D games)
 - Python 3 with pip (asset tools install their own deps)
 - System packages: `mesa-utils`, `ffmpeg` (see [setup.md](setup.md) for full details including macOS)
@@ -34,8 +34,8 @@ You describe what you want. An AI pipeline designs the architecture, generates t
 This repo is the skill development source. To start making a game, run `publish.sh` to set up a new project folder with all skills installed:
 
 ```bash
-./publish.sh ~/my-game          # uses game.md as CLAUDE.md
-./publish.sh ~/my-game local.md # uses a custom CLAUDE.md instead
+./publish.sh ~/my-game
+./publish.sh --force ~/my-game  # clean existing target before publishing
 ```
 
 This creates the target directory with `.claude/skills/` and a `CLAUDE.md`, then initializes a git repo. Open Claude Code in that folder and tell it what game to make — the `/godogen` skill handles everything from there.
@@ -55,5 +55,26 @@ The skills were tested across different setups. Claude Code with Opus 4.6 delive
 - Explore C# as GDScript alternative
 - Publish a full game end-to-end as a public demo
 - Explore Bevy Engine as Godot alternative
+
+## Changelog
+
+**2026-04-03 — Single-context architecture** (current)
+- Merged task executor into godogen — full pipeline runs in one 1M-token context window
+- Added godot-api skill (forked, Sonnet) for Godot class API lookup
+- Added visual-qa skill (forked) with Gemini Flash, Claude vision, and question mode
+- Risk-first decomposition replaces task DAG
+- Android debug APK export
+
+**2026-03-25 — xAI Grok video**
+- Added xAI Grok video generation for animated sprites (ref → pose → video → frames → loop trim)
+- Background removal rewritten with BiRefNet multi-signal matting
+- macOS support, native channel status updates
+
+**2026-03-09 — Initial release**
+- Two-skill architecture: godogen orchestrator + godot-task executor (forked)
+- Gemini image generation, Tripo3D for 3D models
+- Visual QA via Gemini Flash
+- Screenshot and video capture, presentation video
+- GDScript reference system with lazy two-tier API lookup
 
 Follow progress: [@alex_erm](https://x.com/alex_erm)
