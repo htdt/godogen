@@ -22,7 +22,7 @@ Read each sub-file from `${CLAUDE_SKILL_DIR}/` when you reach its pipeline stage
 | `rembg.md` | Background removal | Only when an asset needs transparency removed |
 | `task-execution.md` | Task workflow + commands | Before first task |
 | `quirks.md` | Godot gotchas | Before writing code |
-| *(godot-api skill)* | GDScript syntax ref | When unsure about GDScript syntax |
+| *(godot-api skill)* | C# Godot syntax ref | When unsure about C# Godot syntax |
 | `scene-generation.md` | Scene builders | Targets include .tscn |
 | `test-harness.md` | Verification scripts | Before test harness |
 | `capture.md` | Screenshot/video | Before capture |
@@ -74,7 +74,7 @@ Examples:
 - Skill(skill="godot-api") "TileMapLayer: methods for setting/getting cells and their alternatives"
 - Skill(skill="godot-api") "full API for CharacterBody3D"
 - Skill(skill="godot-api") "which class handles 2D particle effects?"
-- Skill(skill="godot-api") "GDScript: tween parallel syntax and callbacks"
+- Skill(skill="godot-api") "C#: tween parallel syntax and callbacks"
 
 ## Visual QA
 

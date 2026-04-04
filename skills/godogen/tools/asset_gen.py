@@ -155,7 +155,9 @@ def _generate_gemini(args, output: Path, cost: int):
 
     for part in response.parts:
         if part.inline_data is not None:
-            output.write_bytes(part.inline_data.data)
+            # Re-encode as real PNG (Gemini may return JPEG data)
+            img = Image.open(io.BytesIO(part.inline_data.data))
+            img.save(output, format="PNG")
             print(f"Saved: {output}", file=sys.stderr)
             record_spend(cost, "gemini")
             result_json(True, path=str(output), cost_cents=cost)

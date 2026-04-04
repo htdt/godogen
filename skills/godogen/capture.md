@@ -49,13 +49,16 @@ When `GPU_AVAILABLE` is true (macOS Metal or Linux with NVIDIA), Godot uses hard
 Screenshots go in `screenshots/` (gitignored). Each task gets a subfolder.
 
 ```bash
+# Build C# before capture
+timeout 60 dotnet build
+
 MOVIE=screenshots/{task_folder}
 rm -rf "$MOVIE" && mkdir -p "$MOVIE"
 touch screenshots/.gdignore
 $TIMEOUT_CMD 30 run_godot \
     --write-movie "$MOVIE"/frame.png \
     --fixed-fps 10 --quit-after {N} \
-    --script test/test_task.gd
+    --script test/TestTask.cs
 ```
 
 Where `{task_folder}` is derived from the task name/number (e.g., `task_01_terrain`). Use lowercase with underscores.
@@ -80,7 +83,7 @@ if $GPU_AVAILABLE; then
     $TIMEOUT_CMD 60 run_godot \
         --write-movie "$VIDEO"/output.avi \
         --fixed-fps 30 --quit-after 900 \
-        --script test/presentation.gd
+        --script test/Presentation.cs
     # Convert AVI (MJPEG) to MP4 (H.264)
     ffmpeg -i "$VIDEO"/output.avi \
         -c:v libx264 -pix_fmt yuv420p -crf 28 -preset slow \

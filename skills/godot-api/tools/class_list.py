@@ -623,3 +623,23 @@ KEY_CODES = {
     "Mouse1": 1,
     "Mouse2": 2,
 }
+
+# C# Key enum names for input mapping in Godot .NET
+KEY_ENUM_CS = {
+    "W": "Key.W",
+    "A": "Key.A",
+    "S": "Key.S",
+    "D": "Key.D",
+    "Up": "Key.Up",
+    "Down": "Key.Down",
+    "Left": "Key.Left",
+    "Right": "Key.Right",
+    "Space": "Key.Space",
+    "Enter": "Key.Enter",
+    "Escape": "Key.Escape",
+    "Shift": "Key.Shift",
+    "Ctrl": "Key.Ctrl",
+    "Alt": "Key.Alt",
+    "Mouse1": "MouseButton.Left",
+    "Mouse2": "MouseButton.Right",
+}

@@ -55,6 +55,60 @@ class ConversionConfig:
     no_virtual: bool = True  # Skip virtual/override methods
     compact_format: bool = True  # Use inline props, short headers, no separators
     simple_signals: bool = True  # Omit params for parameterless signals
+    lang: str = "gdscript"  # "gdscript" or "csharp"
+
+
+# GDScript type → C# type mappings
+_CS_TYPE_MAP = {
+    "String": "string",
+    "StringName": "StringName",
+    "bool": "bool",
+    "int": "int",
+    "float": "float",
+    "Array": "Godot.Collections.Array",
+    "Dictionary": "Godot.Collections.Dictionary",
+    "Variant": "Variant",
+    "void": "void",
+    "NodePath": "NodePath",
+    "RID": "Rid",
+    "AABB": "Aabb",
+    "Nil": "void",
+    "PackedByteArray": "byte[]",
+    "PackedInt32Array": "int[]",
+    "PackedInt64Array": "long[]",
+    "PackedFloat32Array": "float[]",
+    "PackedFloat64Array": "double[]",
+    "PackedStringArray": "string[]",
+    "PackedVector2Array": "Vector2[]",
+    "PackedVector3Array": "Vector3[]",
+    "PackedVector4Array": "Vector4[]",
+    "PackedColorArray": "Color[]",
+}
+
+
+def _snake_to_pascal(name: str) -> str:
+    """Convert snake_case to PascalCase."""
+    if not name:
+        return name
+    # Handle already-PascalCase names
+    if "_" not in name and name[0].isupper():
+        return name
+    return "".join(word.capitalize() for word in name.split("_"))
+
+
+def _snake_to_camel(name: str) -> str:
+    """Convert snake_case to camelCase."""
+    pascal = _snake_to_pascal(name)
+    if not pascal:
+        return pascal
+    return pascal[0].lower() + pascal[1:]
+
+
+def _map_type_cs(gd_type: str) -> str:
+    """Map a GDScript type name to C# equivalent."""
+    if not gd_type:
+        return gd_type
+    return _CS_TYPE_MAP.get(gd_type, gd_type)
 
 
 def convert_bbcode(text: str) -> str:
@@ -108,13 +162,19 @@ def get_description(text: str | None, mode: DescriptionMode) -> str:
         return convert_bbcode(text)
 
 
-def format_param(param_elem) -> str:
-    """Format a parameter element as 'name: Type'."""
+def format_param(param_elem, lang: str = "gdscript") -> str:
+    """Format a parameter element as 'name: Type' (GDScript) or 'Type name' (C#)."""
     name = param_elem.get("name", "")
     ptype = param_elem.get("type", "")
     default = param_elem.get("default")
 
-    result = f"{name}: {ptype}"
+    if lang == "csharp":
+        ptype = _map_type_cs(ptype)
+        name = _snake_to_camel(name)
+        result = f"{ptype} {name}"
+    else:
+        result = f"{name}: {ptype}"
+
     if default is not None:
         result += f" = {default}"
 
@@ -195,6 +255,7 @@ def parse_class(xml_path: Path, config: ConversionConfig) -> str | None:
         lines.append("")
 
     # Properties/Members
+    is_cs = config.lang == "csharp"
     members = root.find("members")
     if members is not None and len(members):
         if config.compact_format:
@@ -204,6 +265,10 @@ def parse_class(xml_path: Path, config: ConversionConfig) -> str | None:
                 mtype = m.get("type", "")
                 default = m.get("default", "")
                 enum = m.get("enum")
+
+                if is_cs:
+                    mname = _snake_to_pascal(mname)
+                    mtype = _map_type_cs(mtype)
 
                 if enum:
                     mtype = f"{mtype} ({enum})"
@@ -223,6 +288,10 @@ def parse_class(xml_path: Path, config: ConversionConfig) -> str | None:
                 mtype = m.get("type", "")
                 default = m.get("default", "")
                 enum = m.get("enum")
+
+                if is_cs:
+                    mname = _snake_to_pascal(mname)
+                    mtype = _map_type_cs(mtype)
 
                 if enum:
                     mtype = f"{mtype} ({enum})"
@@ -256,18 +325,22 @@ def parse_class(xml_path: Path, config: ConversionConfig) -> str | None:
 
             # Get return type
             ret = m.find("return")
-            ret_type = ret.get("type") if ret is not None else "void"
+            ret_type = (ret.get("type") or "void") if ret is not None else "void"
 
             # Get parameters
             params = []
             for p in m.findall("param"):
-                params.append(format_param(p))
+                params.append(format_param(p, config.lang))
 
             # Get description
             desc_elem = m.find("description")
             desc = get_description(
                 desc_elem.text if desc_elem is not None else None, config.method_descriptions
             )
+
+            if is_cs:
+                mname = _snake_to_pascal(mname)
+                ret_type = _map_type_cs(ret_type or "void")
 
             virtual_marker = "" if config.compact_format else ("🔷 " if is_virtual else "")
             ret_str = f" -> {ret_type}" if ret_type and ret_type != "void" else ""
@@ -295,13 +368,20 @@ def parse_class(xml_path: Path, config: ConversionConfig) -> str | None:
 
         for s in signals:
             sname = s.get("name", "")
+            if is_cs:
+                sname = _snake_to_pascal(sname)
 
             # Get parameters
             params = []
             for p in s.findall("param"):
                 pname = p.get("name", "")
                 ptype = p.get("type", "")
-                params.append(f"{pname}: {ptype}")
+                if is_cs:
+                    ptype = _map_type_cs(ptype)
+                    pname = _snake_to_camel(pname)
+                    params.append(f"{ptype} {pname}")
+                else:
+                    params.append(f"{pname}: {ptype}")
 
             # Get description
             desc_elem = s.find("description")
@@ -423,6 +503,7 @@ def convert_directory_split(
             no_virtual=config.no_virtual,
             compact_format=config.compact_format,
             simple_signals=config.simple_signals,
+            lang=config.lang,
         )
         result = parse_class(xml_file, detail_config)
         if result is None:
@@ -605,6 +686,12 @@ def main():
         action="store_true",
         help="Show empty parentheses for parameterless signals",
     )
+    parser.add_argument(
+        "--lang",
+        choices=["gdscript", "csharp"],
+        default="gdscript",
+        help="Output language: gdscript (snake_case) or csharp (PascalCase + C# types) (default: gdscript)",
+    )
 
     args = parser.parse_args()
 
@@ -622,6 +709,7 @@ def main():
         no_virtual=not args.include_virtual,
         compact_format=not args.verbose,
         simple_signals=not args.full_signals,
+        lang=args.lang,
     )
 
     # Determine class filter

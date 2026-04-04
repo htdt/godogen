@@ -9,19 +9,20 @@ When a channel is connected (Telegram, Slack, etc.), share progress via `reply`.
 Game projects follow this layout once `/godogen` runs:
 
 ```
-project.godot          # Godot config: viewport, input maps, autoloads
+project.godot          # Godot config: viewport, input maps, autoloads, [dotnet]
+{ProjectName}.csproj   # .NET project file
 reference.png          # Visual target — art direction reference image
 STRUCTURE.md           # Architecture reference: scenes, scripts, signals
 PLAN.md                # Game plan — risk tasks, main build, verification criteria
 ASSETS.md              # Asset manifest with art direction and paths
 MEMORY.md              # Accumulated discoveries from task execution
 scenes/
-  build_*.gd           # Headless scene builders (produce .tscn)
+  Build*.cs            # Headless scene builders (produce .tscn)
   *.tscn               # Compiled scenes
-scripts/*.gd           # Runtime scripts
+scripts/*.cs           # Runtime C# scripts
 test/
-  test_task.gd         # Per-task visual test harness (overwritten each task)
-  presentation.gd      # Final cinematic video script
+  TestTask.cs          # Per-task visual test harness (overwritten each task)
+  Presentation.cs      # Final cinematic video script
 assets/                # gitignored — img/*.png, glb/*.glb
 screenshots/           # gitignored — per-task frames
 .vqa.log               # Visual QA debug log (gitignored)

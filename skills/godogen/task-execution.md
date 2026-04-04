@@ -21,12 +21,12 @@ Implement everything in PLAN.md's **Main Build**:
 
 ## Implementation Loop
 
-1. **Import assets** — `timeout 60 godot --headless --import` (generates `.import` files for textures/GLBs — without this, `load()` fails). Re-run after modifying assets.
-2. **Generate scenes** — write scene builder scripts, compile to `.tscn`
-3. **Generate scripts** — write `.gd` files
-4. **Pre-validate** — `timeout 30 godot --headless --check-only -s <path>` for each new/modified `.gd`
+1. **Import assets** — `timeout 60 godot --headless --import` (generates `.import` files for textures/GLBs — without this, `GD.Load()` returns null). Re-run after modifying assets.
+2. **Generate scenes** — write scene builder C# files, compile, run to produce `.tscn`
+3. **Generate scripts** — write `.cs` files
+4. **Build .NET project** — `timeout 60 dotnet build 2>&1`. Must succeed before running Godot.
 5. **Validate project** — `timeout 60 godot --headless --quit 2>&1`
-6. **Fix errors** — if validation fails, fix and re-validate
+6. **Fix errors** — if build/validation fails, fix and re-validate
 7. **Capture** — write test harness, run with `--write-movie`, produce screenshots
 8. **Verify** — check captures against the current phase's verification criteria + reference.png consistency. Check stdout for `ASSERT FAIL`.
 9. **Visual QA** — run automated VQA when applicable
@@ -49,21 +49,25 @@ There is no fixed iteration limit — use judgment:
 # Import new/modified assets (MUST run before scene builders):
 timeout 60 godot --headless --import
 
-# Compile a scene builder (produces .tscn):
-timeout 60 godot --headless --script <path_to_gd_builder>
+# Build all C# (MUST succeed before running Godot with --script):
+timeout 60 dotnet build
 
-# Pre-validate a single script (exits 0 if valid, 1 with errors):
-timeout 30 godot --headless --check-only -s <path_to_gd>
+# Run a scene builder (produces .tscn):
+timeout 60 godot --headless --script scenes/BuildXxx.cs
 
-# Validate all project scripts (parse check):
+# Validate all project scripts + scenes:
 timeout 60 godot --headless --quit 2>&1
 ```
 
 **Common errors:**
-- `Parser Error` — syntax error in GDScript, fix the line indicated
-- `Invalid call` / `method not found` — wrong node type or API usage, look up the class via `Skill(skill="godot-api")`
-- `Cannot infer type` — `:=` used with `instantiate()` or polymorphic math functions, see type inference rules
-- Script hangs — missing `quit()` call in scene builder; kill the process and add `quit()`
+- `CS0246: The type or namespace name '...' could not be found` — missing `using` directive or typo in type name
+- `CS0103: The name '...' does not exist` — variable/method not declared or wrong scope
+- `CS0260: Missing partial modifier on declaration of type` — all Godot classes must be `partial`
+- `CS1061: '...' does not contain a definition for '...'` — wrong API name (check PascalCase), wrong base class, or missing cast
+- `CS0029: Cannot implicitly convert type` — explicit cast needed (common with `Instantiate()` returning `Node`)
+- Script hangs — missing `Quit()` call in scene builder; kill the process and add `Quit()`
+- `GD.Load()` returns null — assets not imported, run `godot --headless --import` first
+- Signal not firing — delegate name doesn't end in `EventHandler`, or class not `partial`
 
 ## Project Memory
 
@@ -77,13 +81,13 @@ When something looks wrong in screenshots but the cause isn't obvious, use `Skil
 
 Don't debug in a complex scene — isolate the problem:
 
-1. **Minimal repro scene** — write a throwaway `test/debug_{issue}.gd` that sets up only the relevant nodes (the animation, the physics body). Strip everything else. Capture screenshots of just this.
+1. **Minimal repro scene** — write a throwaway `test/DebugIssue.cs` that sets up only the relevant nodes (the animation, the physics body). Strip everything else. Capture screenshots of just this.
 2. **Targeted frames** — for animation/motion issues, capture at `--fixed-fps 10` for 3-5 seconds and feed the full sequence. Single frames cannot show timing bugs.
 3. **Before/after** — capture with the fix applied and without. Ask "What changed between these two sets?".
 
 ### Animation Failures
 
-Animations are the #1 source of silent failures — they "work" (no errors) but produce wrong results. The current pipeline is bad at detecting these because validation only checks for parse errors.
+Animations are the #1 source of silent failures — they "work" (no errors) but produce wrong results. The current pipeline is bad at detecting these because validation only checks for compile errors.
 
 Common animation issues to probe:
 - **Frozen pose** — capture 3-5s at 10 FPS, feed all frames: "Does the character's pose change between frames, or is it the same pose throughout?"
@@ -99,12 +103,12 @@ When you suspect animation failure, always capture dynamic (multi-frame) and ask
 
 When a 3D object should be on-screen but isn't, run this checklist in order — each step isolates one failure mode:
 
-1. **Confirm the object exists** — add `print(node.name, " at ", node.global_position)` in `_ready()`. If it doesn't print, the node isn't in the tree.
-2. **Add a debug marker** — place a small emissive sphere (`emission_enabled = true`, bright color, 0.5m radius) at the object's position. If the sphere is visible, the object's mesh/material is the problem. If the sphere is also invisible, the camera is the problem.
-3. **Check camera direction** — print `camera.global_position` and `camera.global_transform.basis.z` (the camera looks along -Z). Use `camera.look_at(object.global_position)` to force the camera toward the object.
-4. **Check occlusion** — another object may be blocking the view. Temporarily hide large geometry (`terrain.visible = false`) to see if the target appears behind it.
-5. **Check scale** — `print(node.scale)` — a scale of `Vector3(0.001, 0.001, 0.001)` makes the object sub-pixel. Also check if the object is enormous and the camera is inside it.
-6. **Check material** — `StandardMaterial3D` with `transparency = ALPHA` and `albedo_color.a = 0` is invisible. Set `albedo_color = Color.RED` temporarily.
+1. **Confirm the object exists** — add `GD.Print($"{node.Name} at {node.GlobalPosition}")` in `_Ready()`. If it doesn't print, the node isn't in the tree.
+2. **Add a debug marker** — place a small emissive sphere (`EmissionEnabled = true`, bright color, 0.5m radius) at the object's position. If the sphere is visible, the object's mesh/material is the problem. If the sphere is also invisible, the camera is the problem.
+3. **Check camera direction** — print `camera.GlobalPosition` and `camera.GlobalTransform.Basis.Z` (the camera looks along -Z). Use `camera.LookAt(obj.GlobalPosition)` to force the camera toward the object.
+4. **Check occlusion** — another object may be blocking the view. Temporarily hide large geometry (`terrain.Visible = false`) to see if the target appears behind it.
+5. **Check scale** — `GD.Print(node.Scale)` — a scale of `new Vector3(0.001f, 0.001f, 0.001f)` makes the object sub-pixel. Also check if the object is enormous and the camera is inside it.
+6. **Check material** — `StandardMaterial3D` with `Transparency = BaseMaterial3D.TransparencyEnum.Alpha` and `AlbedoColor.A = 0` is invisible. Set `AlbedoColor = Colors.Red` temporarily.
 
 ### Other Debug Scenarios
 
@@ -115,7 +119,7 @@ When a 3D object should be on-screen but isn't, run this checklist in order — 
 
 ### Special Debug Scene Pattern
 
-In test/debug_{issue}.gd:
+In `test/DebugIssue.cs`:
 1. Load only the relevant nodes
 2. Set up camera to frame the issue
 3. Add visible markers (colored boxes, labels) to confirm positions
