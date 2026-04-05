@@ -5,7 +5,7 @@ We develop agents and skills here. They are then used in another folder for Godo
 Source code lives at the repo root:
 - `skills/` — skill definitions (`SKILL.md`) and their tool scripts
 - `game.md` — CLAUDE.md template for game folders
-- `publish.sh` — create ready-to-develop game folder
+- `publish.py` — create ready-to-develop game folder
 
 ## Skills
 

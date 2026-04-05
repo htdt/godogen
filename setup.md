@@ -28,6 +28,19 @@ brew install coreutils ffmpeg
 - Godot 4 must be on `PATH` (symlink from `Godot.app/Contents/MacOS/Godot` or install via Homebrew)
 - macOS uses Metal natively — no xvfb or Vulkan setup needed.
 
+## Windows 11
+
+```powershell
+winget install ffmpeg
+winget install ImageMagick.ImageMagick
+```
+
+- Python 3.10+ must be installed and on `PATH`.
+- **ffmpeg** — AVI→MP4 conversion
+- Godot 4 must be on `PATH`. You can download it from the Godot Engine website or install via `winget install GodotEngine.Godot`.
+- Windows 11 uses native rendering — no xvfb or Vulkan setup needed.
+- Using Git Bash or MSYS2 is recommended if you wish to run typical shell commands, but Python scripts work natively in PowerShell or Command Prompt.
+
 ## Python
 
 Requires Python 3.10+.
