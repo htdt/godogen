@@ -25,9 +25,9 @@ You describe what you want. An AI pipeline designs the architecture, generates t
   - `GOOGLE_API_KEY` — [Google AI Studio](https://aistudio.google.com/), used for Gemini image generation (references, characters, precise work)
   - `XAI_API_KEY` — [xAI Grok](https://console.x.ai/home), used for image/video generation (textures, simple objects)
   - `TRIPO3D_API_KEY` — [Tripo3D](https://platform.tripo3d.ai/), used for image-to-3D model conversion (only needed for 3D games)
-- Python 3 with pip (asset tools install their own deps)
-- System packages: `mesa-utils`, `ffmpeg` (see [setup.md](setup.md) for full details including macOS and Windows)
-- Tested on Ubuntu, Debian, macOS, and Windows 11.
+- Python 3.10+ with pip
+- System packages: `ffmpeg` and `ImageMagick` (via `winget` on Windows). Fully supported for native execution via PowerShell or Command Prompt. The project uses cross-platform Python scripts rather than platform-specific Bash scripts, so WSL2, Git Bash, or MSYS2 are not required. See [setup.md](setup.md) for full details including Linux and macOS.
+- Tested on Windows 11, macOS, Ubuntu, and Debian.
 
 ### Create a game project
 
