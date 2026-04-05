@@ -326,7 +326,7 @@ ProcessMode = ProcessModeEnum.Pausable;   // default
 
 ```csharp
 // Constants
-Mathf.Pi, Mathf.Tau, Mathf.Inf, float.NaN
+Mathf.Pi, Mathf.Tau, Mathf.Inf, Mathf.NaN
 
 // Basic
 Mathf.Abs(x), Mathf.Sign(x), Mathf.Floor(x), Mathf.Ceil(x), Mathf.Round(x)
@@ -352,8 +352,8 @@ Mathf.Sqrt(x), Mathf.Pow(b, exp), Mathf.Exp(x), Mathf.Log(x)
 // Random
 GD.Randf()                               // 0.0 to 1.0
 GD.Randi()                               // random uint
-GD.RandRange(from, to)                   // float in range
-GD.RandRange(from, to)                   // cast to int if needed: (int)GD.RandRange(0, 10)
+GD.RandRange(0.0, 1.0)                   // double in range (double overload)
+GD.RandRange(0, 10)                      // int in range (int overload)
 ```
 
 ## Input
