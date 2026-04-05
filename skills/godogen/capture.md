@@ -1,12 +1,12 @@
 # Godot Capture
 
-Screenshot and video capture for Godot projects. Supports macOS (Metal) and Linux (X11/xvfb + optional GPU).
+Screenshot and video capture for Godot projects. GPU gives hardware rendering (shadows, SSR, SSAO, glow); without GPU, screenshots still work via software Vulkan (lavapipe) but video capture is skipped.
 
 The Godot project is the working directory. All paths below are relative to it.
 
 ## Setup (run once per session)
 
-Detects platform, timeout command, GPU availability, and defines a `run_godot` wrapper that handles all platform differences. Capture commands below use `run_godot` directly.
+Detects platform, timeout command, GPU availability, and defines a `run_godot` wrapper.
 
 ```bash
 PLATFORM=$(uname -s)
@@ -21,28 +21,29 @@ else
     TIMEOUT_CMD="timeout_fallback"
 fi
 
-# Platform-specific Godot launcher
 GPU_AVAILABLE=false
 if [[ "$PLATFORM" == "Darwin" ]]; then
     GPU_AVAILABLE=true
     run_godot() { godot --rendering-method forward_plus "$@" 2>&1; }
 else
-    # Linux — probe for GPU display
-    for sock in /tmp/.X11-unix/X*; do
-        d=":${sock##*/X}"
-        if DISPLAY=$d $TIMEOUT_CMD 2 glxinfo 2>/dev/null | grep -qi nvidia; then
-            GPU_AVAILABLE=true
-            eval "run_godot() { DISPLAY=$d godot --rendering-method forward_plus \"\$@\" 2>&1; }"
-            break
-        fi
-    done
-    if ! $GPU_AVAILABLE; then
-        run_godot() { xvfb-run -a -s '-screen 0 1280x720x24' godot --rendering-driver vulkan "$@" 2>&1; }
+    # Linux — try NVIDIA Vulkan ICD (no X server required)
+    NVIDIA_ICD=/usr/share/vulkan/icd.d/nvidia_icd.json
+    if [[ -f "$NVIDIA_ICD" ]] && VK_ICD_FILENAMES=$NVIDIA_ICD vulkaninfo --summary 2>&1 | grep -q "NVIDIA"; then
+        GPU_AVAILABLE=true
+        run_godot() {
+            VK_ICD_FILENAMES=$NVIDIA_ICD \
+            godot --rendering-method forward_plus "$@" 2>&1
+        }
+    else
+        echo "WARNING: No NVIDIA GPU detected — using software rendering (lavapipe)"
+        echo "Screenshots will work but video capture will be skipped"
+        run_godot() {
+            xvfb-run -a -s '-screen 0 1280x720x24' \
+            godot --rendering-driver vulkan "$@" 2>&1
+        }
     fi
 fi
 ```
-
-When `GPU_AVAILABLE` is true (macOS Metal or Linux with NVIDIA), Godot uses hardware rendering with `--rendering-method forward_plus` — real shadows, SSR, SSAO, glow, volumetric fog. Without a GPU, `xvfb-run` uses lavapipe (software rasterizer).
 
 ## Screenshot Capture
 
@@ -73,10 +74,12 @@ Where `{task_folder}` is derived from the task name/number (e.g., `task_01_terra
 
 ## Video Capture
 
-Video capture requires hardware rendering (macOS Metal or Linux with GPU). Software rendering is too slow for video — skip and report to the caller if `GPU_AVAILABLE` is false.
+Video capture requires a GPU. Software rendering is too slow — skip and report if `GPU_AVAILABLE` is false.
 
 ```bash
-if $GPU_AVAILABLE; then
+if ! $GPU_AVAILABLE; then
+    echo "No GPU available — skipping video capture"
+else
     VIDEO=screenshots/presentation
     rm -rf "$VIDEO" && mkdir -p "$VIDEO"
     touch screenshots/.gdignore
@@ -90,8 +93,6 @@ if $GPU_AVAILABLE; then
         -vf "scale='min(1280,iw)':-2" \
         -movflags +faststart \
         "$VIDEO"/gameplay.mp4 2>&1
-else
-    echo "No GPU available — skipping video capture"
 fi
 ```
 

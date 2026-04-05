@@ -43,7 +43,7 @@ export PATH="$DOTNET_ROOT:$PATH"
 ## System Packages
 
 ```bash
-sudo apt-get install mesa-utils ffmpeg imagemagick
+sudo apt-get install vulkan-tools xvfb ffmpeg imagemagick
 
 # ImageMagick 7 (provides `magick` CLI — apt only has v6)
 wget https://imagemagick.org/archive/binaries/magick
@@ -51,11 +51,12 @@ chmod +x magick
 sudo mv magick /usr/local/bin/
 ```
 
-- **mesa-utils** — provides `glxinfo` for GPU detection
+- **vulkan-tools** — provides `vulkaninfo` for GPU validation
+- **xvfb** — virtual framebuffer for software rendering (no-GPU fallback)
 - **ffmpeg** — AVI→MP4 conversion, video frame extraction
 - **imagemagick** — image resize, flip, crop for sprite pipelines
 
-No xvfb needed when a GPU is available.
+With an NVIDIA GPU, Godot uses Vulkan directly — no X server needed. Without a GPU, xvfb + lavapipe handles screenshots (video capture is skipped).
 
 ## macOS
 
@@ -210,11 +211,9 @@ nvidia-smi                       # GPU available
 python3 -c "import rembg; print('rembg ok')"
 ```
 
-GPU detection needs X11 sockets in `/tmp/.X11-unix/`. Confirm with:
+Verify NVIDIA Vulkan (required for capture):
 
 ```bash
-for sock in /tmp/.X11-unix/X*; do
-  d=":${sock##*/X}"
-  DISPLAY=$d glxinfo 2>/dev/null | grep -i "opengl renderer" && echo "GPU on $d"
-done
+VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/nvidia_icd.json vulkaninfo --summary 2>&1 | grep "deviceName"
+# Should show: deviceName = NVIDIA GeForce RTX ...
 ```
