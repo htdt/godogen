@@ -29,6 +29,21 @@ You describe what you want. An AI pipeline designs the architecture, generates t
 - System packages: `ffmpeg` and `ImageMagick` (via `winget` on Windows). Fully supported for native execution via PowerShell or Command Prompt. The project uses cross-platform Python scripts rather than platform-specific Bash scripts, so WSL2, Git Bash, or MSYS2 are not required. See [setup.md](setup.md) for full details including Linux and macOS.
 - Tested on Windows 11, macOS, Ubuntu, and Debian.
 
+### Windows Setup
+
+1. Install system packages via winget:
+   ```powershell
+   winget install ffmpeg
+   winget install ImageMagick.ImageMagick
+   winget install GodotEngine.Godot
+   ```
+2. Install Python dependencies (requires Python 3.10+):
+   ```powershell
+   pip install -r skills/godogen/tools/requirements.txt
+   ```
+3. Set your API keys as environment variables (`GOOGLE_API_KEY`, `XAI_API_KEY`, `TRIPO3D_API_KEY`).
+4. You are ready to go. No WSL2, Git Bash, or MSYS2 required.
+
 ### Create a game project
 
 This repo is the skill development source. To start making a game, run `publish.py` to set up a new project folder with all skills installed:
