@@ -14,64 +14,42 @@ Implement each risk feature in isolation before the main build:
 ### Main build
 
 Implement everything in PLAN.md's **Main Build**:
-1. Generate scenes first, then scripts (scenes create nodes that scripts attach to)
+1. Generate scenes first, then scripts
 2. Run the implementation loop until **After main build** verification criteria pass
 3. Run **Final** verification including presentation video
 4. Commit
 
 ## Implementation Loop
 
-1. **Import assets** — `timeout 60 godot --headless --import` (generates `.import` files for textures/GLBs — without this, `GD.Load()` returns null). Re-run after modifying assets.
+1. **Import assets** — `timeout 60 godot --headless --import`. Re-run after modifying assets.
 2. **Generate scenes** — write scene builder C# files, compile, run to produce `.tscn`
 3. **Generate scripts** — write `.cs` files
-4. **Build .NET project** — `timeout 60 dotnet build 2>&1`. Must succeed before running Godot.
-5. **Validate project** — `timeout 60 godot --headless --quit 2>&1`
-6. **Fix errors** — if build/validation fails, fix and re-validate
-7. **Capture** — write test harness, run with `--write-movie`, produce screenshots
-8. **Verify** — check captures against the current phase's verification criteria + reference.png consistency. Check stdout for `ASSERT FAIL`.
-9. **Visual QA** — run automated VQA when applicable
-10. If verification fails -> fix and repeat from step 2
+4. **Build** — `timeout 60 dotnet build 2>&1`
+5. **Validate** — `timeout 60 godot --headless --quit 2>&1`
+6. **Capture** — write test harness, run with `--write-movie`, produce screenshots
+7. **Verify** — check captures against the current phase's verification criteria + reference.png consistency. Check stdout for `ASSERT FAIL`.
+8. **Visual QA** — run automated VQA when applicable
+9. If verification fails -> fix and repeat from step 2
 
 After each phase: update PLAN.md, write discoveries to MEMORY.md, git commit.
 
 ## Iteration Tracking
 
-Steps 2-9 form an **implement -> screenshot -> verify -> VQA** loop.
+Steps 2-8 form an **implement -> screenshot -> verify -> VQA** loop.
 
 There is no fixed iteration limit — use judgment:
-- If there is progress — even in small, iterative steps — keep going. Screenshots and file updates are cheap.
-- If you recognize a **fundamental limitation** (wrong architecture, missing engine feature, broken assumption), stop early — even after 2-5 iterations. More loops won't help.
+- If there is progress, keep going. Screenshots and file updates are cheap.
+- If you recognize a **fundamental limitation** (wrong architecture, missing engine feature, broken assumption), stop early. More loops won't help.
 - The signal to stop is **"I'm making the same kind of fix repeatedly without convergence"**.
 
-## Commands
+## Godot C# Gotchas
 
-```bash
-# Import new/modified assets (MUST run before scene builders):
-timeout 60 godot --headless --import
-
-# Build all C# (MUST succeed before running Godot with --script):
-timeout 60 dotnet build
-
-# Run a scene builder (produces .tscn):
-timeout 60 godot --headless --script scenes/BuildXxx.cs
-
-# Validate all project scripts + scenes:
-timeout 60 godot --headless --quit 2>&1
-```
-
-**Common errors:**
-- `CS0246: The type or namespace name '...' could not be found` — missing `using` directive or typo in type name
-- `CS0103: The name '...' does not exist` — variable/method not declared or wrong scope
-- `CS0260: Missing partial modifier on declaration of type` — all Godot classes must be `partial`
-- `CS1061: '...' does not contain a definition for '...'` — wrong API name (check PascalCase), wrong base class, or missing cast
-- `CS0029: Cannot implicitly convert type` — explicit cast needed (common with `Instantiate()` returning `Node`)
-- Script hangs — missing `Quit()` call in scene builder; kill the process and add `Quit()`
-- `GD.Load()` returns null — assets not imported, run `godot --headless --import` first
-- Signal not firing — delegate name doesn't end in `EventHandler`, or class not `partial`
-
-## Project Memory
-
-Read `MEMORY.md` before starting work — it contains discoveries from previous tasks (workarounds, Godot quirks, asset details, architectural decisions). After completing your task, write back anything useful you learned: what worked, what failed, technical specifics later tasks will need.
+- All Godot classes must be `partial` (`CS0260`)
+- Godot API is PascalCase — `CS1061` usually means wrong casing or wrong base class
+- `Instantiate()` returns `Node` — cast explicitly (`CS0029`)
+- Scene builder hangs — missing `Quit()` call; kill and add it
+- `GD.Load()` returns null — assets not imported, run `godot --headless --import`
+- Signal not firing — delegate name must end in `EventHandler`, and class must be `partial`
 
 ## Visual Debugging
 
