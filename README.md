@@ -31,11 +31,11 @@ You describe what you want. An AI pipeline designs the architecture, generates t
 
 ### Create a game project
 
-This repo is the skill development source. To start making a game, run `publish.sh` to set up a new project folder with all skills installed:
+This repo is the skill development source. To start making a game, run `publish.py` to set up a new project folder with all skills installed:
 
 ```bash
-./publish.sh ~/my-game
-./publish.sh --force ~/my-game  # clean existing target before publishing
+python publish.py ~/my-game
+python publish.py --force ~/my-game  # clean existing target before publishing
 ```
 
 This creates the target directory with `.claude/skills/` and a `CLAUDE.md`, then initializes a git repo. Open Claude Code in that folder and tell it what game to make — the `/godogen` skill handles everything from there.

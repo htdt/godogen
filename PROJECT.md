@@ -124,7 +124,7 @@ This document-based communication is deliberate. Even though task execution now 
 
 ### Deployment Model
 
-The `publish.sh` script copies the `skills/` directory into a target game directory under `.claude/skills/`, drops in a `CLAUDE.md` (from `game.md`), and initializes a git repo. A `--force` flag will clean the target directory before publishing. The game project is then self-contained: anyone with Claude Code can open the folder and run `/godogen` to build or iterate on the game.
+The `publish.py` script copies the `skills/` directory into a target game directory under `.claude/skills/`, drops in a `CLAUDE.md` (from `game.md`), and initializes a git repo. A `--force` flag will clean the target directory before publishing. The game project is then self-contained: anyone with Claude Code can open the folder and run `/godogen` to build or iterate on the game.
 
 For remote operation, `game.md` configures the system to share progress via a connected channel — Telegram, Slack, or another supported service. The user sends a message, walks away, and receives screenshots, QA verdicts, and a final gameplay video as the game takes shape — a game studio in a chat window.
 
