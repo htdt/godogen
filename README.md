@@ -26,8 +26,8 @@ You describe what you want. An AI pipeline designs the architecture, generates t
   - `XAI_API_KEY` — [xAI Grok](https://console.x.ai/home), used for image/video generation (textures, simple objects)
   - `TRIPO3D_API_KEY` — [Tripo3D](https://platform.tripo3d.ai/), used for image-to-3D model conversion (only needed for 3D games)
 - Python 3 with pip (asset tools install their own deps)
-- System packages: `mesa-utils`, `ffmpeg` (see [setup.md](setup.md) for full details including macOS)
-- Tested on Ubuntu, Debian, and macOS.
+- System packages: `mesa-utils`, `ffmpeg` (see [setup.md](setup.md) for full details including macOS and Windows)
+- Tested on Ubuntu, Debian, macOS, and Windows 11.
 
 ### Create a game project
 

@@ -39,7 +39,7 @@ winget install ImageMagick.ImageMagick
 - **ffmpeg** — AVI→MP4 conversion
 - Godot 4 must be on `PATH`. You can download it from the Godot Engine website or install via `winget install GodotEngine.Godot`.
 - Windows 11 uses native rendering — no xvfb or Vulkan setup needed.
-- Using Git Bash or MSYS2 is recommended if you wish to run typical shell commands, but Python scripts work natively in PowerShell or Command Prompt.
+- Fully supported for native execution via PowerShell or Command Prompt. The project uses cross-platform Python scripts rather than platform-specific Bash scripts, so WSL2, Git Bash, or MSYS2 are not required.
 
 ## Python
 
