@@ -144,7 +144,11 @@ JSON to stdout: `{"ok": true, "path": "assets/img/car.png", "cost_cents": 7}`
 
 On failure: `{"ok": false, "error": "...", "cost_cents": 0}`
 
-Progress goes to stderr.
+Progress and API client output goes to stderr. **Redirect stderr to a temp file** to keep context clean — read it only on failure:
+```bash
+_log=$(mktemp)
+result=$(python3 ${CLAUDE_SKILL_DIR}/tools/asset_gen.py image --prompt "..." -o path.png 2>"$_log") || tail -20 "$_log"
+```
 
 ## Cost Table
 

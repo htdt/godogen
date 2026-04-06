@@ -27,11 +27,14 @@ Engine-level gotchas discovered through building games. These are Godot bugs and
 - **GLB `MaterialOverride` doesn't serialize** — setting `MaterialOverride` on GLB-internal MeshInstance3D nodes does NOT persist in .tscn because `SetOwnerOnNewNodes()` skips GLB children (has `SceneFilePath`). Use procedural ArrayMesh when custom material is required.
 - **Camera lerp from origin** — cameras using `Lerp()` in `_PhysicsProcess()` will visibly swoop from (0,0,0) on the first frame. Use an `_initialized` flag to snap position on the first frame, then lerp on subsequent frames.
 - **Chase camera `Current` re-assertion** — game cameras that set `Current = true` in `_PhysicsProcess()` override the test harness camera every frame. Test harnesses must disable the game camera EVERY frame.
-- **`CharacterBody3D.MotionModeEnum.Floating`** — also needed for 3D non-platformer movement (vehicles on slopes, snowboards). GROUNDED mode's `FloorStopOnSlope` fights slope movement.
+- **`CharacterBody3D.MotionModeEnum.Floating`** — needed for 3D non-platformer movement (vehicles on slopes, snowboards) to bypass GROUNDED mode's `FloorStopOnSlope`. But Floating mode's `MoveAndSlide()` does NOT project velocity along surfaces — objects plow into slopes instead of sliding. Requires manual surface physics (slope normal projection, gravity decomposition) bypassing `MoveAndSlide()` entirely.
 - **Default collision mask misses non-default layers** — new bodies get `CollisionMask = 1`. If terrain/walls use layer 2+, player falls through with no error. Always set mask to include all layers the body should collide with.
 - **Frame-rate dependent drag** — `speed *= (1f - drag)` per tick is exponential decay tied to tick rate. At 60Hz: `(1-0.04)^60 ~ 8.5%` remaining/sec. At 120Hz: `(1-0.04)^120 ~ 0.7%`. Use `speed *= Mathf.Exp(-rate * (float)delta)` for frame-rate independent damping.
 
 - **BoxShape3D on trimesh** — snags on collision edges (Godot/Jolt bug). Use CapsuleShape3D for objects that slide across trimesh surfaces (vehicles, rolling objects).
+- **Jolt ConcavePolygonShape3D winding** — requires clockwise winding order for upward-facing collision normals. Counter-clockwise triangles produce downward normals — objects fall through from above but collide from below. Test with a flat quad: if a RigidBody falls through, reverse the triangle index order.
+- **Raycasts vs ConcavePolygonShape3D** — `RayCast3D` and `PhysicsRayQueryParameters3D` do NOT detect `ConcavePolygonShape3D` collisions reliably. Use `PhysicsShapeQueryParameters3D` (shape cast) or query the mesh geometry directly (e.g., closest-point on the `SurfaceTool` data) for floor/surface detection on trimesh terrain.
+- **`ArrayMesh.GenerateNormals()` required for shadows** — procedural meshes built with `SurfaceTool` or raw `ArrayMesh` must call `GenerateNormals()` before committing. Without it, shadows are not received — no error, no warning, shadows just don't appear. Manually computed normals (even visually correct ones) can also break shadow reception if they don't match Godot's expected format. Always use `GenerateNormals()`.
 - **`ResetPhysicsInterpolation()`** — call when teleporting or switching cameras to prevent visible interpolation glitch.
 - **MultiMeshInstance3D `Mesh.Duplicate()`** — needed before freeing the source GLB instance, otherwise the mesh resource is garbage-collected.
 - **MultiMeshInstance3D `CustomAabb`** — must cover the entire visible area. Without it, the MultiMesh gets frustum-culled when the camera moves to edges.
@@ -72,7 +75,7 @@ Engine-level gotchas discovered through building games. These are Godot bugs and
 **Material visibility in forward_plus:**
 - `StandardMaterial3D` with `NoDepthTest = true` + transparency alpha = invisible. Use opaque + unshaded for overlays.
 - Z-fighting between layered surfaces (road on terrain): offset 0.15-0.30m vertically + `RenderPriority = 1`.
-- `CullMode = BaseMaterial3D.CullModeEnum.Disabled` as safety net on all procedural meshes until winding is confirmed correct.
+- `CullMode = BaseMaterial3D.CullModeEnum.Disabled` — do NOT use as a "safety net" on procedural meshes. Disabling culling breaks shadow reception silently (no error, shadows just vanish). Fix winding correctness instead, and call `GenerateNormals()` on the ArrayMesh (see below).
 
 ## Feedback Loop
 

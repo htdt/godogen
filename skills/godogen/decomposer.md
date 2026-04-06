@@ -25,9 +25,7 @@ Features that fail unpredictably and produce ambiguous errors when mixed with ot
 - **Dynamic navigation** — pathfinding adapting to runtime obstacles, crowd simulation, flocking
 - **Complex camera systems** — third-person with collision avoidance, cinematic rail transitions, split-screen
 
-### Never isolate
-
-Patterns Godot handles well: CharacterBody movement, collision/triggers, TileMap/GridMap, NavigationAgent on static navmesh, UI with Control nodes, spawning/timers/waves, camera follow, state machines, input handling.
+Everything not listed above goes in the main build — no isolation needed.
 
 ## Verification Criteria
 

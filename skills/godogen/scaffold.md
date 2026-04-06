@@ -17,11 +17,12 @@ Works for both fresh projects and incremental changes (adding scenes/scripts, re
 6. **Write `.csproj`** — create or verify the project file exists.
 7. **Write `STRUCTURE.md`** — always the complete architecture, not a diff.
 8. **Write script stubs** — for new scripts and any existing scripts the task explicitly asks to replace. C# files in `scripts/`.
-9. **Build .NET project** — `timeout 60 dotnet build 2>&1`. Ensures all C# compiles before scene builders run.
-10. **Import assets** — `timeout 60 godot --headless --import 2>&1`. Ensures all assets (`.glb`, `.png`, etc.) are imported before scene builders reference them.
-11. **Build scene stubs** — for each new/changed scene, write a scene builder script to `scenes/BuildXxx.cs`, then run in dependency order (leaf scenes first): `timeout 60 godot --headless --script scenes/BuildXxx.cs`
-12. **Verify** — `timeout 60 godot --headless --quit 2>&1`. No `ERROR` lines. RID warnings are benign.
-13. **Git commit** — repo is already initialized before Claude Code starts:
+9. **Write `scenes/SceneBuilderBase.cs`** — shared base class (see `scene-generation.md`). Create once per project; skip if it already exists.
+10. **Build .NET project** — `timeout 60 dotnet build 2>&1`. Ensures all C# compiles before scene builders run.
+11. **Import assets** — `timeout 60 godot --headless --import 2>&1`. Ensures all assets (`.glb`, `.png`, etc.) are imported before scene builders reference them.
+12. **Build scene stubs** — for each new/changed scene, write a scene builder script to `scenes/BuildXxx.cs`, then run in dependency order (leaf scenes first): `timeout 60 godot --headless --script scenes/BuildXxx.cs`
+13. **Verify** — `timeout 60 godot --headless --quit 2>&1`. No `ERROR` lines. RID warnings are benign.
+14. **Git commit** — repo is already initialized before Claude Code starts:
     ```bash
     git add -A && git commit -m "scaffold: project skeleton"
     ```
@@ -213,7 +214,11 @@ public partial class PlayerController : CharacterBody3D
 
 Correct base class, signal delegate declarations, `[Export]` defaults, empty lifecycle and handler methods. All classes `partial`.
 
-### 6. Scene builder stubs: `scenes/Build*.cs`
+### 6. `scenes/SceneBuilderBase.cs`
+
+Create once — all builders inherit from this. See `scene-generation.md` for the full base class.
+
+### 7. Scene builder stubs: `scenes/Build*.cs`
 
 Write each scene builder using this template — replace all UPPER_CASE placeholders with concrete values, delete optional blocks (SCRIPT, CHILDREN) that don't apply:
 
@@ -221,11 +226,10 @@ Write each scene builder using this template — replace all UPPER_CASE placehol
 using Godot;
 
 /// Scene builder — run: dotnet build && timeout 60 godot --headless --script scenes/Build<Name>.cs
-public partial class Build<Name> : SceneTree
+public partial class Build<Name> : SceneBuilderBase
 {
     public override void _Initialize()
     {
-        // Temp parent — needed to re-obtain root after SetScript() disposes the wrapper
         var temp = new Node();
         var root = new ROOT_TYPE();         // REPLACE ROOT_TYPE — e.g. CharacterBody3D
         root.Name = "ROOT_NAME";            // REPLACE ROOT_NAME — e.g. "Player"
@@ -244,23 +248,7 @@ public partial class Build<Name> : SceneTree
         temp.RemoveChild(rootNode);
         temp.Free();
 
-        // SAVE
-        SetOwnerOnNewNodes(rootNode, rootNode);
-        var packed = new PackedScene();
-        packed.Pack(rootNode);
-        ResourceSaver.Save(packed, "OUTPUT_PATH");  // REPLACE — e.g. "res://scenes/player.tscn"
-        GD.Print("Saved: OUTPUT_PATH");     // REPLACE OUTPUT_PATH
-        Quit(0);
-    }
-
-    private void SetOwnerOnNewNodes(Node node, Node owner)
-    {
-        foreach (var child in node.GetChildren())
-        {
-            child.Owner = owner;
-            if (string.IsNullOrEmpty(child.SceneFilePath))
-                SetOwnerOnNewNodes(child, owner);
-        }
+        PackAndSave(rootNode, "OUTPUT_PATH");  // REPLACE — e.g. "res://scenes/player.tscn"
     }
 }
 ```

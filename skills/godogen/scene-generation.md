@@ -185,18 +185,89 @@ root.AddChild(car);
 car.Owner = root;  // Child internals already have owner — just set on instance root
 ```
 
+## Shared Base Class
+
+All scene builders inherit from `SceneBuilderBase` instead of `SceneTree`. This eliminates 30+ lines of repeated boilerplate per builder. Create this file once during scaffold:
+
+**`scenes/SceneBuilderBase.cs`:**
+```csharp
+using Godot;
+
+public partial class SceneBuilderBase : SceneTree
+{
+    protected void SetOwnerOnNewNodes(Node node, Node sceneOwner)
+    {
+        foreach (var child in node.GetChildren())
+        {
+            child.Owner = sceneOwner;
+            if (string.IsNullOrEmpty(child.SceneFilePath))
+                SetOwnerOnNewNodes(child, sceneOwner);
+        }
+    }
+
+    protected int CountNodes(Node node)
+    {
+        int total = 1;
+        foreach (var child in node.GetChildren())
+            total += CountNodes(child);
+        return total;
+    }
+
+    protected bool ValidatePackedScene(PackedScene packed, int expectedCount, string scenePath)
+    {
+        var testInstance = packed.Instantiate();
+        int actual = CountNodes(testInstance);
+        testInstance.Free();
+        if (actual < expectedCount)
+        {
+            GD.PushError($"Pack validation failed for {scenePath}: expected {expectedCount} nodes, got {actual}");
+            return false;
+        }
+        return true;
+    }
+
+    protected void PackAndSave(Node rootNode, string outputPath)
+    {
+        SetOwnerOnNewNodes(rootNode, rootNode);
+        int count = CountNodes(rootNode);
+
+        var packed = new PackedScene();
+        var err = packed.Pack(rootNode);
+        if (err != Error.Ok)
+        {
+            GD.PushError($"Pack failed: {err}");
+            Quit(1);
+            return;
+        }
+        if (!ValidatePackedScene(packed, count, outputPath))
+        {
+            Quit(1);
+            return;
+        }
+        err = ResourceSaver.Save(packed, outputPath);
+        if (err != Error.Ok)
+        {
+            GD.PushError($"Save failed: {err}");
+            Quit(1);
+            return;
+        }
+        GD.Print($"BUILT: {count} nodes → {outputPath}");
+        Quit(0);
+    }
+}
+```
+
 ## Scene Template
 
 ```csharp
 using Godot;
 
-public partial class Build{SceneName} : SceneTree
+public partial class Build{SceneName} : SceneBuilderBase
 {
     public override void _Initialize()
     {
         GD.Print("Generating: {scene_name}");
 
-        // Temp parent — needed to re-obtain root after SetScript() disposes wrapper
         var temp = new Node();
         var root = new {RootNodeType}();
         root.Name = "{SceneName}";
@@ -212,70 +283,7 @@ public partial class Build{SceneName} : SceneTree
         temp.RemoveChild(rootNode);
         temp.Free();
 
-        // Set ownership chain (skips instantiated scene internals)
-        SetOwnerOnNewNodes(rootNode, rootNode);
-
-        // Count nodes before packing for verification
-        int count = CountNodes(rootNode);
-
-        // Pack and validate
-        var packed = new PackedScene();
-        var err = packed.Pack(rootNode);
-        if (err != Error.Ok)
-        {
-            GD.PushError($"Pack failed: {err}");
-            Quit(1);
-            return;
-        }
-        if (!ValidatePackedScene(packed, count, "res://{output_path}.tscn"))
-        {
-            Quit(1);
-            return;
-        }
-
-        // Save (only if validation passed)
-        err = ResourceSaver.Save(packed, "res://{output_path}.tscn");
-        if (err != Error.Ok)
-        {
-            GD.PushError($"Save failed: {err}");
-            Quit(1);
-            return;
-        }
-
-        GD.Print($"BUILT: {count} nodes");
-        GD.Print("Saved: res://{output_path}.tscn");
-        Quit(0);
-    }
-
-    private void SetOwnerOnNewNodes(Node node, Node sceneOwner)
-    {
-        foreach (var child in node.GetChildren())
-        {
-            child.Owner = sceneOwner;
-            if (string.IsNullOrEmpty(child.SceneFilePath))
-                SetOwnerOnNewNodes(child, sceneOwner);
-        }
-    }
-
-    private int CountNodes(Node node)
-    {
-        int total = 1;
-        foreach (var child in node.GetChildren())
-            total += CountNodes(child);
-        return total;
-    }
-
-    private bool ValidatePackedScene(PackedScene packed, int expectedCount, string scenePath)
-    {
-        var testInstance = packed.Instantiate();
-        int actual = CountNodes(testInstance);
-        testInstance.Free();
-        if (actual < expectedCount)
-        {
-            GD.PushError($"Pack validation failed for {scenePath}: expected {expectedCount} nodes, got {actual}");
-            return false;
-        }
-        return true;
+        PackAndSave(rootNode, "res://{output_path}.tscn");
     }
 }
 ```

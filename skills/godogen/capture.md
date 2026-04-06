@@ -24,7 +24,7 @@ fi
 GPU_AVAILABLE=false
 if [[ "$PLATFORM" == "Darwin" ]]; then
     GPU_AVAILABLE=true
-    run_godot() { godot --rendering-method forward_plus "$@" 2>&1; }
+    run_godot() { godot --rendering-method forward_plus "$@" 2>&1 | grep -v "leaked RID\|Leaked instance\|ObjectDB instances"; }
 else
     # Linux — try NVIDIA Vulkan ICD (no X server required)
     NVIDIA_ICD=/usr/share/vulkan/icd.d/nvidia_icd.json
@@ -32,14 +32,14 @@ else
         GPU_AVAILABLE=true
         run_godot() {
             VK_ICD_FILENAMES=$NVIDIA_ICD \
-            godot --rendering-method forward_plus "$@" 2>&1
+            godot --rendering-method forward_plus "$@" 2>&1 | grep -v "leaked RID\|Leaked instance\|ObjectDB instances"
         }
     else
         echo "WARNING: No NVIDIA GPU detected — using software rendering (lavapipe)"
         echo "Screenshots will work but video capture will be skipped"
         run_godot() {
             xvfb-run -a -s '-screen 0 1280x720x24' \
-            godot --rendering-driver vulkan "$@" 2>&1
+            godot --rendering-driver vulkan "$@" 2>&1 | grep -v "leaked RID\|Leaked instance\|ObjectDB instances"
         }
     fi
 fi
