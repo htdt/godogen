@@ -1,62 +1,53 @@
 # Workstation Setup
 
-## .NET 8 SDK
+## .NET 9 SDK
 
-Required for C# Godot projects. Install before Godot.
+Godot 4.5+ requires .NET 9.
 
 ### Linux (Ubuntu/Debian)
 
 ```bash
-# Microsoft package repo (recommended — apt dotnet-sdk-8.0 may not exist on all distros)
-wget https://dot.net/v1/dotnet-install.sh -O /tmp/dotnet-install.sh
+wget -q https://dot.net/v1/dotnet-install.sh -O /tmp/dotnet-install.sh
 chmod +x /tmp/dotnet-install.sh
-/tmp/dotnet-install.sh --channel 8.0 --install-dir /usr/local/share/dotnet
-sudo ln -sf /usr/local/share/dotnet/dotnet /usr/local/bin/dotnet
+/tmp/dotnet-install.sh --channel 9.0 --install-dir ~/.dotnet
 ```
 
-Or if your distro has it:
+Add to `~/.bashrc`:
 ```bash
-sudo apt-get install -y dotnet-sdk-8.0
+export PATH="$HOME/.dotnet:$PATH"
+export DOTNET_ROOT="$HOME/.dotnet"
 ```
 
 ### macOS
 
 ```bash
-brew install dotnet@8
+brew install dotnet@9
 ```
 
-### Verify and PATH
-
-`dotnet` must be on PATH for both the user and any shell Claude Code spawns:
+### Verify
 
 ```bash
-dotnet --version   # 8.0.x
-which dotnet       # should resolve
-```
-
-If installed via the script to `/usr/local/share/dotnet`, the symlink above handles PATH. If installed elsewhere, add to `~/.bashrc` or `~/.zshrc`:
-```bash
-export DOTNET_ROOT=/path/to/dotnet
-export PATH="$DOTNET_ROOT:$PATH"
+dotnet --version   # 9.0.x
 ```
 
 ## System Packages
 
 ```bash
 sudo apt-get install vulkan-tools xvfb ffmpeg imagemagick
+```
 
+- **vulkan-tools** — `vulkaninfo` for GPU validation
+- **xvfb** — virtual X11 display. Godot needs a display server for **any** rendering (including offscreen `--write-movie`), even with an NVIDIA GPU. On headless machines (SSH, CI), xvfb provides this.
+- **ffmpeg** — AVI→MP4 conversion, video frame extraction
+- **imagemagick** — image resize, flip, crop for sprite pipelines
+
+```bash
 # ImageMagick 7 (provides `magick` CLI — apt only has v6)
 wget https://imagemagick.org/archive/binaries/magick
 chmod +x magick
 sudo mv magick /usr/local/bin/
 ```
 
-- **vulkan-tools** — provides `vulkaninfo` for GPU validation
-- **xvfb** — virtual framebuffer for software rendering (no-GPU fallback)
-- **ffmpeg** — AVI→MP4 conversion, video frame extraction
-- **imagemagick** — image resize, flip, crop for sprite pipelines
-
-With an NVIDIA GPU, Godot uses Vulkan directly — no X server needed. Without a GPU, xvfb + lavapipe handles screenshots (video capture is skipped).
 
 ## macOS
 
@@ -205,15 +196,18 @@ Set in environment:
 ## Verify All
 
 ```bash
-dotnet --version                 # 8.0.x
+dotnet --version                 # 9.0.x
 godot --version                  # 4.x.x.stable.mono
 nvidia-smi                       # GPU available
 python3 -c "import rembg; print('rembg ok')"
 ```
 
-Verify NVIDIA Vulkan (required for capture):
+Verify rendering pipeline (GPU + xvfb):
 
 ```bash
+# NVIDIA Vulkan driver
 VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/nvidia_icd.json vulkaninfo --summary 2>&1 | grep "deviceName"
-# Should show: deviceName = NVIDIA GeForce RTX ...
+
+# xvfb + Godot (headless rendering — the actual capture path)
+xvfb-run -a godot --headless --quit
 ```
