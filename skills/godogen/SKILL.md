@@ -22,7 +22,7 @@ Read each sub-file from `${CLAUDE_SKILL_DIR}/` when you reach its pipeline stage
 | `rembg.md` | Background removal | Only when an asset needs transparency removed |
 | `task-execution.md` | Task workflow + commands | Before first task |
 | `quirks.md` | Godot gotchas | Before writing code |
-| *(godot-api skill)* | GDScript syntax ref | When unsure about GDScript syntax |
+| *(godot-api skill)* | C# Godot syntax ref | When unsure about C# Godot syntax |
 | `scene-generation.md` | Scene builders | Targets include .tscn |
 | `test-harness.md` | Verification scripts | Before test harness |
 | `capture.md` | Screenshot/video | Before capture |
@@ -62,6 +62,8 @@ Read `task-execution.md` before starting. Three phases:
 1. **Risk tasks** (if any) — implement each in isolation, verify, commit
 2. **Main build** — implement everything else, verify, present results (video for new games), commit
 
+The final task in PLAN.md is a presentation video — a ~30-second cinematic MP4 showcasing gameplay.
+
 ## Godot API Lookup
 
 When you need to look up a Godot class API (methods, properties, signals), use `Skill(skill="godot-api")` with your query. This runs in a separate context to avoid loading large API docs into the main pipeline.
@@ -74,17 +76,7 @@ Examples:
 - Skill(skill="godot-api") "TileMapLayer: methods for setting/getting cells and their alternatives"
 - Skill(skill="godot-api") "full API for CharacterBody3D"
 - Skill(skill="godot-api") "which class handles 2D particle effects?"
-- Skill(skill="godot-api") "GDScript: tween parallel syntax and callbacks"
-
-## Visual QA
-
-After capturing screenshots, verify with `Skill(skill="visual-qa")`. Runs in a forked context with Claude's native vision.
-
-- **Static:** `Skill(skill="visual-qa") "Check reference.png against screenshots/{task}/frame0003.png — Goal: ..., Verify: ..."`
-- **Dynamic:** `Skill(skill="visual-qa") "Check reference.png against frame1.png frame2.png ... — Goal: ..., Verify: ..."`
-- **Question:** `Skill(skill="visual-qa") "Are surfaces showing magenta? screenshots/{task}/frame*.png"`
-
-Save output to `visual-qa/{N}.md`. See `visual-qa.md` for full usage.
+- Skill(skill="godot-api") "C#: tween parallel syntax and callbacks"
 
 ## Context Hygiene
 
@@ -102,15 +94,20 @@ If the context becomes polluted from debugging loops, manually compact with:
 
 ## Visual QA
 
-**Don't trust code — verify on screenshots.** The most common failure mode: code looks correct, you assume it works, and report "everything's fine." Then screenshots reveal broken placement, wrong scale, missing elements, clipped geometry — dozens of small details that go wrong in unexpected ways, especially with custom assets. Visual QA is your quality partner: use it actively after every task, not as a formality.
+**Don't trust code — verify on screenshots.** Code that looks correct often has broken placement, wrong scale, missing elements, or clipped geometry.
 
-Visual QA runs inline with each task. **Never ignore a fail verdict** — always act on it before marking a task done.
+**Two levels of validation:**
 
-**VQA reports are clear signal.** If a significant issue is reported, fix it. If you genuinely believe it's a false positive — report it to the user and let them decide. Never silently ignore a fail verdict.
+- **Quick check** — read the screenshot yourself with Read. Use for small, targeted changes where you know exactly what to look for. Be aware: you are biased toward confirming your own work, especially code you just wrote.
+- **VQA skill** — `Skill(skill="visual-qa")` runs in a forked context with Gemini (unbiased, no knowledge of your code). Use for end-to-end validation, after major changes, or whenever you need a fresh assessment. Pass `--both` for Gemini + Claude when higher confidence is needed.
+
+Read `visual-qa.md` for invocation modes (static/dynamic/question) and context passing. Save VQA output to `visual-qa/{N}.md`.
+
+**Handling verdicts:**
 
 - **pass/warning** — move on.
-- **fail** — fix the issue. If you've already attempted up to 3 fix cycles, decide:
-  - **Replan** — reset architecture, rewrite plan, and/or regenerate assets if the root cause is upstream.
-  - **Escalate** — surface the issue to the user if you can't determine the right fix.
+- **fail** — fix the issue. After 3 fix cycles:
+  - **Replan** — if root cause is upstream (architecture, assets).
+  - **Escalate** — surface to user if you can't determine the fix.
 
-The final task in PLAN.md is a presentation video — a script that showcases gameplay in a ~30-second cinematic MP4.
+Never silently ignore a fail verdict. If you believe it's a false positive — report to user, let them decide.

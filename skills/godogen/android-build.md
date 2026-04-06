@@ -1,11 +1,13 @@
 # Android Build
 
-Export a Godot project as a debug APK for Android.
+Export a Godot C# (.NET) project as a debug APK for Android.
 
 ## Prerequisites
 
+- .NET 9 SDK — see `setup.md`
 - OpenJDK 17, Android SDK, export templates, debug keystore — see `setup.md` Android section
 - Editor settings configured with Java/SDK/keystore paths
+- Godot .NET edition (not the standard build)
 
 ## Steps
 
@@ -99,14 +101,25 @@ Empty `keystore/*` fields fall back to the debug keystore in editor settings —
 
 Do NOT set `gradle_build/min_sdk`, `gradle_build/target_sdk`, or `gradle_build/compress_native_libraries` when `use_gradle_build=false` — Godot rejects them.
 
-### 3. Export
+### 3. Build .NET and Export
 
 ```bash
+# Build C# project first
+dotnet build
+
+# Then export
 mkdir -p build
 godot --headless --export-debug "Android" build/game.apk
 ```
 
 The preset name (`"Android"`) must match `name=` in `export_presets.cfg`.
+
+## .NET Export Considerations
+
+- Godot .NET for Android uses Mono runtime (not CoreCLR). The export process bundles Mono and the compiled assemblies.
+- `dotnet build` must succeed before export — Godot embeds the compiled DLL from `bin/`.
+- Assembly trimming is enabled by default for release exports, which can strip types used only via reflection. Add `[DynamicallyAccessedMembers]` or disable trimming if needed.
+- Debug APKs are larger (~30-50MB overhead from Mono runtime + BCL).
 
 ## Gotchas
 
@@ -114,3 +127,5 @@ The preset name (`"Android"`) must match `name=` in `export_presets.cfg`.
 - **Keystore error** — all three editor settings (`debug_keystore`, `debug_keystore_user`, `debug_keystore_pass`) must be set together or none
 - **`cannot connect to daemon`** — benign, just means no adb server is running (no device connected)
 - **gradle-only fields** — `min_sdk`, `target_sdk`, `compress_native_libraries` cause errors when gradle build is disabled
+- **Missing assemblies on device** — if game crashes on launch with TypeLoadException, a required type was trimmed. Rebuild with trimming disabled or add preserve attributes.
+- **dotnet build not run** — export silently uses stale DLLs from `bin/`. Always rebuild before exporting.

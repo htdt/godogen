@@ -25,9 +25,7 @@ Features that fail unpredictably and produce ambiguous errors when mixed with ot
 - **Dynamic navigation** — pathfinding adapting to runtime obstacles, crowd simulation, flocking
 - **Complex camera systems** — third-person with collision avoidance, cinematic rail transitions, split-screen
 
-### Never isolate
-
-Patterns Godot handles well: CharacterBody movement, collision/triggers, TileMap/GridMap, NavigationAgent on static navmesh, UI with Control nodes, spawning/timers/waves, camera follow, state machines, input handling.
+Everything not listed above goes in the main build — no isolation needed.
 
 ## Verification Criteria
 
@@ -63,6 +61,7 @@ Produce `PLAN.md`:
 
 ### 1. {Risk Feature}
 - **Why isolated:** {what makes this algorithmically hard}
+- **Approach:** {algorithmic strategy or key constraints — enough for the implementor to know *how*, not just *what*}
 - **Verify:** {specific criteria targeting the failure mode}
 
 ## Main Build
@@ -77,7 +76,7 @@ Produce `PLAN.md`:
   - No visual glitches, clipping, or placeholder assets
   - reference.png consistency: color palette, scale, camera angle, visual density
   - **Presentation video:** ~30s cinematic MP4 showcasing gameplay
-    - Write test/presentation.gd (SceneTree script), ~900 frames at 30 FPS
+    - Write test/Presentation.cs (SceneTree script), ~900 frames at 30 FPS
     - **3D:** smooth camera work, good lighting, post-processing
     - **2D:** camera pans, zoom transitions, tight viewport framing
     - Output: screenshots/presentation/gameplay.mp4
@@ -87,8 +86,8 @@ Include only the relevant 3D/2D presentation requirements.
 
 ## What NOT to Include
 
-- GDScript code or implementation details
-- Detailed technical specs
+- Implementation details for routine features (risk tasks need algorithmic specificity — see template)
+- Detailed technical specs for routine features
 - Micro-tasks for routine features
 - Untestable requirements
 - Artificial boundaries between routine systems

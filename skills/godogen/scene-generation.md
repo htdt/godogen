@@ -1,70 +1,84 @@
 # Scene Generation
 
-Scene builders are GDScript files that run headless in Godot to produce `.tscn` files programmatically. They are NOT runtime scripts — they run once at build-time and exit.
+Scene builders are C# files that run headless in Godot 4 (.NET 9+) to produce `.tscn` files programmatically. They are NOT runtime scripts — they run once at build-time and exit.
 
 ## Scene Output Requirements
 
-Generate a single GDScript file that:
-1. `extends SceneTree` (required for headless execution)
-2. Implements `_initialize()` as entry point
+Generate a single C# file that:
+1. `public partial class BuildXxx : SceneTree` (must be `partial`)
+2. Implements `public override void _Initialize()` as entry point
 3. Builds complete node hierarchy with all properties set
-4. Sets `owner` on ALL descendants for serialization
-5. Attaches scripts from STRUCTURE.md via `set_script()`
-6. Saves scene using `PackedScene.pack()` + `ResourceSaver.save()`
-7. Calls `quit()` when done
+4. Sets `Owner` on ALL descendants for serialization
+5. Attaches scripts from STRUCTURE.md via `SetScript()`
+6. Saves scene using `PackedScene.Pack()` + `ResourceSaver.Save()`
+7. Calls `Quit()` when done
 
 ## Owner Chain (CRITICAL)
 
-**MUST call `set_owner_on_new_nodes(root, root)` ONCE at the end**, after all nodes are added.
+**MUST call `SetOwnerOnNewNodes(root, root)` ONCE at the end**, after all nodes are added.
 
-```gdscript
-# At end of _initialize(), AFTER all add_child() calls:
-set_owner_on_new_nodes(root, root)
+```csharp
+// At end of _Initialize(), AFTER all AddChild() calls:
+SetOwnerOnNewNodes(root, root);
 
-func set_owner_on_new_nodes(node: Node, scene_owner: Node) -> void:
-    for child in node.get_children():
-        child.owner = scene_owner
-        if child.scene_file_path.is_empty():
-            # Node created with .new() — recurse into children
-            set_owner_on_new_nodes(child, scene_owner)
-        # else: instantiated scene (GLB/TSCN) — don't recurse, keeps as reference
+private void SetOwnerOnNewNodes(Node node, Node sceneOwner)
+{
+    foreach (var child in node.GetChildren())
+    {
+        child.Owner = sceneOwner;
+        if (string.IsNullOrEmpty(child.SceneFilePath))
+        {
+            // Node created with new() — recurse into children
+            SetOwnerOnNewNodes(child, sceneOwner);
+        }
+        // else: instantiated scene (GLB/TSCN) — don't recurse, keeps as reference
+    }
+}
 ```
 
 ### Post-Pack Validation
 
-Call after `packed.pack(root)` to verify no nodes were silently dropped:
+Call after `packed.Pack(root)` to verify no nodes were silently dropped:
 
-```gdscript
-func validate_packed_scene(packed: PackedScene, expected_count: int, scene_path: String) -> bool:
-    var test_instance = packed.instantiate()
-    var actual := _count_nodes(test_instance)
-    test_instance.free()
-    if actual < expected_count:
-        push_error("Pack validation failed for %s: expected %d nodes, got %d — nodes were dropped during serialization" % [scene_path, expected_count, actual])
-        return false
-    return true
+```csharp
+private bool ValidatePackedScene(PackedScene packed, int expectedCount, string scenePath)
+{
+    var testInstance = packed.Instantiate();
+    int actual = CountNodes(testInstance);
+    testInstance.Free();
+    if (actual < expectedCount)
+    {
+        GD.PushError($"Pack validation failed for {scenePath}: expected {expectedCount} nodes, got {actual} — nodes were dropped during serialization");
+        return false;
+    }
+    return true;
+}
 ```
 
-Use in the scene template between `packed.pack(root)` and `ResourceSaver.save()`. **Gate the save on the validation result:**
-```gdscript
-    var count := _count_nodes(root)
-    var err := packed.pack(root)
-    if err != OK:
-        push_error("Pack failed: " + str(err))
-        quit(1)
-        return
-    if not validate_packed_scene(packed, count, "res://{output_path}.tscn"):
-        quit(1)
-        return
+Use in the scene template between `packed.Pack(root)` and `ResourceSaver.Save()`. **Gate the save on the validation result:**
+```csharp
+    int count = CountNodes(root);
+    var err = packed.Pack(root);
+    if (err != Error.Ok)
+    {
+        GD.PushError($"Pack failed: {err}");
+        Quit(1);
+        return;
+    }
+    if (!ValidatePackedScene(packed, count, "res://{output_path}.tscn"))
+    {
+        Quit(1);
+        return;
+    }
 ```
 
 **WRONG patterns** (cause missing nodes in saved .tscn):
-```gdscript
-# WRONG: Setting owner only on direct children, forgetting grandchildren
-terrain.owner = root  # Terrain's children (Mesh, Collision) have NO owner!
+```csharp
+// WRONG: Setting owner only on direct children, forgetting grandchildren
+terrain.Owner = root;  // Terrain's children (Mesh, Collision) have NO owner!
 
-# WRONG: Calling helper on containers instead of root
-set_owner_on_new_nodes(track_container, root)  # track_container itself has NO owner!
+// WRONG: Calling helper on containers instead of root
+SetOwnerOnNewNodes(trackContainer, root);  // trackContainer itself has NO owner!
 ```
 
 **GLB OWNERSHIP BUG** — Never use unconditional recursion. If you recurse into instantiated GLB models, ALL internal mesh/material nodes get serialized inline as text, causing 100MB+ .tscn files.
@@ -72,240 +86,298 @@ set_owner_on_new_nodes(track_container, root)  # track_container itself has NO o
 ## Common Node Compositions
 
 **3D Physics Object:**
-```gdscript
-var body := RigidBody3D.new()
-var collision := CollisionShape3D.new()
-var mesh := MeshInstance3D.new()
-var shape := BoxShape3D.new()
-shape.size = Vector3(1, 1, 1)
-collision.shape = shape
-body.add_child(collision)
-body.add_child(mesh)
+```csharp
+var body = new RigidBody3D();
+var collision = new CollisionShape3D();
+var mesh = new MeshInstance3D();
+var shape = new BoxShape3D();
+shape.Size = new Vector3(1, 1, 1);
+collision.Shape = shape;
+body.AddChild(collision);
+body.AddChild(mesh);
 ```
 
 **Camera Rig:**
-```gdscript
-var pivot := Node3D.new()
-var camera := Camera3D.new()
-camera.position.z = 5
-pivot.add_child(camera)
+```csharp
+var pivot = new Node3D();
+var camera = new Camera3D();
+camera.Position = new Vector3(0, 0, 5);
+pivot.AddChild(camera);
 ```
 
 ## Script Attachment (in Scenes)
 
-```gdscript
-# Attach scripts listed in STRUCTURE.md "Attaches to" fields
-var script := load("res://scripts/player_controller.gd")
-player_node.set_script(script)
+**`SetScript()` disposes the C# wrapper** — after calling `SetScript()`, the local variable is dead. Build the full hierarchy first, set scripts last. For the root node, use a temp parent to re-obtain the reference.
+
+```csharp
+// Set scripts AFTER building the full hierarchy — SetScript() invalidates the C# wrapper.
+// For non-root nodes, just call it last (no further use of the variable needed):
+playerNode.SetScript(GD.Load("res://scripts/PlayerController.cs"));
+
+// For the root node, use a temp parent pattern (see Scene Template below).
 ```
 
 ## Asset Loading
 
 **3D models (GLB):**
-```gdscript
-# MUST type as PackedScene, use = (not :=) for instantiate()
-var model_scene: PackedScene = load("res://assets/glb/car.glb")
-var model = model_scene.instantiate()
-model.name = "CarModel"
+```csharp
+var modelScene = GD.Load<PackedScene>("res://assets/glb/car.glb");
+var model = modelScene.Instantiate();
+model.Name = "CarModel";
 
-# Measure for scaling — find MeshInstance3D (GLB structure varies, may be nested)
-var mesh_inst: MeshInstance3D = find_mesh_instance(model)
-var aabb: AABB = mesh_inst.get_aabb() if mesh_inst else AABB(Vector3.ZERO, Vector3.ONE)
+// Measure for scaling — find MeshInstance3D (GLB structure varies, may be nested)
+var meshInst = FindMeshInstance(model);
+var aabb = meshInst != null ? meshInst.GetAabb() : new Aabb(Vector3.Zero, Vector3.One);
 
-# Scale to target size (e.g., car should be ~2 units long)
-var target_length := 2.0
-var scale_factor: float = target_length / aabb.size.x
-model.scale = Vector3.ONE * scale_factor
-model.position.y = -aabb.position.y * scale_factor  # Fix vertical alignment
+// Scale to target size (e.g., car should be ~2 units long)
+float targetLength = 2.0f;
+float scaleFactor = targetLength / aabb.Size.X;
+model.Set("scale", Vector3.One * scaleFactor);
+((Node3D)model).Position = new Vector3(0, -aabb.Position.Y * scaleFactor, 0);
 
-parent_node.add_child(model)
+parentNode.AddChild(model);
 
-func find_mesh_instance(node: Node) -> MeshInstance3D:
-    if node is MeshInstance3D:
-        return node
-    for child in node.get_children():
-        var found = find_mesh_instance(child)  # Recursive — use = not :=
-        if found:
-            return found
-    return null
+private MeshInstance3D FindMeshInstance(Node node)
+{
+    if (node is MeshInstance3D mi)
+        return mi;
+    foreach (var child in node.GetChildren())
+    {
+        var found = FindMeshInstance(child);
+        if (found != null)
+            return found;
+    }
+    return null;
+}
 ```
 
-**GLB orientation:** Imported models often face the wrong axis. After instantiating, check the AABB: the longest dimension tells you which local axis the model faces. If a car's AABB is longest on Z but your game expects forward=negative Z, no rotation needed; if longest on X, rotate 90°. For animals/characters, the forward-facing axis must align with the direction of movement — an animal moving sideways is a clear bug. Verify this in screenshots: if the bounding box or silhouette doesn't match the movement direction, fix the rotation.
+**GLB orientation:** Imported models often face the wrong axis. After instantiating, check the AABB: the longest dimension tells you which local axis the model faces. If a car's AABB is longest on Z but your game expects forward=negative Z, no rotation needed; if longest on X, rotate 90 degrees. For animals/characters, the forward-facing axis must align with the direction of movement — an animal moving sideways is a clear bug. Verify this in screenshots: if the bounding box or silhouette doesn't match the movement direction, fix the rotation.
 
-**Collision shapes for 3D models:** Always use simple primitives (BoxShape3D, SphereShape3D, CapsuleShape3D). Never use `create_convex_shape()` or `create_trimesh_shape()` on imported GLB meshes — causes <1 FPS on high-poly models (100k+ triangles).
+**Collision shapes for 3D models:** Always use simple primitives (BoxShape3D, SphereShape3D, CapsuleShape3D). Never use `CreateConvexShape()` or `CreateTrimeshShape()` on imported GLB meshes — causes <1 FPS on high-poly models (100k+ triangles).
 
-```gdscript
-# Box from AABB — use this for all imported models
-var box := BoxShape3D.new()
-box.size = aabb.size * model.scale
-collision_shape.shape = box
+```csharp
+// Box from AABB — use this for all imported models
+var box = new BoxShape3D();
+box.Size = aabb.Size * ((Node3D)model).Scale;
+collisionShape.Shape = box;
 ```
 
 **Textures (PNG):**
-```gdscript
-var mat := StandardMaterial3D.new()
-mat.albedo_texture = load("res://assets/img/grass.png")
-mesh_instance.set_surface_override_material(0, mat)
+```csharp
+var mat = new StandardMaterial3D();
+mat.AlbedoTexture = GD.Load<Texture2D>("res://assets/img/grass.png");
+meshInstance.SetSurfaceOverrideMaterial(0, mat);
 ```
 
 **Texture UV tiling:** For large surfaces, scale UVs to avoid stretched textures:
-```gdscript
-mat.uv1_scale = Vector3(10, 10, 1)  # Tile every 2m on a 20m floor
+```csharp
+mat.Uv1Scale = new Vector3(10, 10, 1);  // Tile every 2m on a 20m floor
 ```
 
 ## Child Scene Instancing
 
-```gdscript
-# MUST type as PackedScene, use = for instantiate()
-var car_scene: PackedScene = load("res://scenes/car.tscn")
-var car = car_scene.instantiate()
-car.name = "PlayerCar"
-car.position = Vector3(0, 0, 5)
-root.add_child(car)
-car.owner = root  # Child internals already have owner — just set on instance root
+```csharp
+var carScene = GD.Load<PackedScene>("res://scenes/car.tscn");
+var car = carScene.Instantiate<Node3D>();
+car.Name = "PlayerCar";
+car.Position = new Vector3(0, 0, 5);
+root.AddChild(car);
+car.Owner = root;  // Child internals already have owner — just set on instance root
+```
+
+## Shared Base Class
+
+All scene builders inherit from `SceneBuilderBase` instead of `SceneTree`. This eliminates 30+ lines of repeated boilerplate per builder. Create this file once during scaffold:
+
+**`scenes/SceneBuilderBase.cs`:**
+```csharp
+using Godot;
+
+public partial class SceneBuilderBase : SceneTree
+{
+    protected void SetOwnerOnNewNodes(Node node, Node sceneOwner)
+    {
+        foreach (var child in node.GetChildren())
+        {
+            child.Owner = sceneOwner;
+            if (string.IsNullOrEmpty(child.SceneFilePath))
+                SetOwnerOnNewNodes(child, sceneOwner);
+        }
+    }
+
+    protected int CountNodes(Node node)
+    {
+        int total = 1;
+        foreach (var child in node.GetChildren())
+            total += CountNodes(child);
+        return total;
+    }
+
+    protected bool ValidatePackedScene(PackedScene packed, int expectedCount, string scenePath)
+    {
+        var testInstance = packed.Instantiate();
+        int actual = CountNodes(testInstance);
+        testInstance.Free();
+        if (actual < expectedCount)
+        {
+            GD.PushError($"Pack validation failed for {scenePath}: expected {expectedCount} nodes, got {actual}");
+            return false;
+        }
+        return true;
+    }
+
+    protected void PackAndSave(Node rootNode, string outputPath)
+    {
+        SetOwnerOnNewNodes(rootNode, rootNode);
+        int count = CountNodes(rootNode);
+
+        var packed = new PackedScene();
+        var err = packed.Pack(rootNode);
+        if (err != Error.Ok)
+        {
+            GD.PushError($"Pack failed: {err}");
+            Quit(1);
+            return;
+        }
+        if (!ValidatePackedScene(packed, count, outputPath))
+        {
+            Quit(1);
+            return;
+        }
+        err = ResourceSaver.Save(packed, outputPath);
+        if (err != Error.Ok)
+        {
+            GD.PushError($"Save failed: {err}");
+            Quit(1);
+            return;
+        }
+        GD.Print($"BUILT: {count} nodes → {outputPath}");
+        Quit(0);
+    }
+}
 ```
 
 ## Scene Template
 
-```gdscript
-extends SceneTree
+```csharp
+using Godot;
 
-func _initialize() -> void:
-    print("Generating: {scene_name}")
+public partial class Build{SceneName} : SceneBuilderBase
+{
+    public override void _Initialize()
+    {
+        GD.Print("Generating: {scene_name}");
 
-    var root := {RootNodeType}.new()
-    root.name = "{SceneName}"
+        var temp = new Node();
+        var root = new {RootNodeType}();
+        root.Name = "{SceneName}";
+        temp.AddChild(root);
 
-    # ... build node hierarchy, add_child(), set properties ...
+        // ... build node hierarchy, AddChild(), set properties ...
 
-    # Set ownership chain (skips instantiated scene internals)
-    set_owner_on_new_nodes(root, root)
+        // Set scripts LAST (SetScript disposes C# wrapper — see quirks.md)
+        // root.SetScript(GD.Load("res://scripts/{Script}.cs"));
 
-    # Count nodes before packing for verification
-    var count := _count_nodes(root)
+        // Re-obtain root (old wrapper is disposed after SetScript)
+        var rootNode = temp.GetChild(0);
+        temp.RemoveChild(rootNode);
+        temp.Free();
 
-    # Pack and validate
-    var packed := PackedScene.new()
-    var err := packed.pack(root)
-    if err != OK:
-        push_error("Pack failed: " + str(err))
-        quit(1)
-        return
-    if not validate_packed_scene(packed, count, "res://{output_path}.tscn"):
-        quit(1)
-        return
-
-    # Save (only if validation passed)
-    err = ResourceSaver.save(packed, "res://{output_path}.tscn")
-    if err != OK:
-        push_error("Save failed: " + str(err))
-        quit(1)
-        return
-
-    print("BUILT: %d nodes" % count)
-    print("Saved: res://{output_path}.tscn")
-    quit(0)
-
-func set_owner_on_new_nodes(node: Node, scene_owner: Node) -> void:
-    for child in node.get_children():
-        child.owner = scene_owner
-        if child.scene_file_path.is_empty():
-            set_owner_on_new_nodes(child, scene_owner)
-
-func _count_nodes(node: Node) -> int:
-    var total := 1
-    for child in node.get_children():
-        total += _count_nodes(child)
-    return total
-
-func validate_packed_scene(packed: PackedScene, expected_count: int, scene_path: String) -> bool:
-    var test_instance = packed.instantiate()
-    var actual := _count_nodes(test_instance)
-    test_instance.free()
-    if actual < expected_count:
-        push_error("Pack validation failed for %s: expected %d nodes, got %d" % [scene_path, expected_count, actual])
-        return false
-    return true
+        PackAndSave(rootNode, "res://{output_path}.tscn");
+    }
+}
 ```
+
+### CRITICAL: Build order
+
+Scene builders run via `godot --headless --script res://builders/BuildXxx.cs`. Each builder must be self-contained. If scene A instances scene B, build B first.
+
+### What NOT to Include
+
+Scene builders produce `.tscn` files only. They must NOT contain:
+- Runtime logic (`_Ready()`, `_Process()`, `_PhysicsProcess()`, input handling)
+- Signal connections (signals are wired in runtime scripts)
+- Game state, scoring, win/lose conditions
+- UI behavior or button callbacks
 
 ## Scene Constraints
 
-- Do NOT use `@onready` or scene-time annotations (this runs at build-time)
-- Do NOT use `preload()` — use `load()` (preload fails in headless)
-- Do NOT connect signals at build-time — scripts aren't instantiated yet. Signal connections belong in runtime scripts' `_ready()` method
-- **No spatial methods in `_initialize()`** — `look_at()`, `to_global()`, etc. fail because nodes aren't in the tree yet. Use `rotation_degrees` or compute transforms manually. In runtime scripts (`_ready()`, `_process()`), **always use `look_at()` to orient cameras and objects toward targets** — it's the correct tool there. Manual rotation math is error-prone and unnecessary.
+- Do NOT use `[Export]` or scene-time annotations (this runs at build-time)
+- Do NOT use `preload()` — use `GD.Load<T>()` (no preload equivalent in C#)
+- Do NOT connect signals at build-time — scripts aren't instantiated yet. Signal connections belong in runtime scripts' `_Ready()` method
+- **No spatial methods in `_Initialize()`** — `LookAt()`, `ToGlobal()`, etc. fail because nodes aren't in the tree yet. Use `RotationDegrees` or compute transforms manually. In runtime scripts (`_Ready()`, `_Process()`), **always use `LookAt()` to orient cameras and objects toward targets** — it's the correct tool there. Manual rotation math is error-prone and unnecessary.
 - **2D/3D consistency** — never mix dimensions in the same scene hierarchy.
 
 ## Environment & Lighting (3D Scenes)
 
 When building 3D scenes, set up environment and lighting programmatically:
 
-```gdscript
-# WorldEnvironment
-var world_env := WorldEnvironment.new()
-var env := Environment.new()
-env.background_mode = Environment.BG_SKY
-env.tonemap_mode = Environment.TONE_MAPPER_FILMIC
-env.ambient_light_color = Color.WHITE
-env.ambient_light_sky_contribution = 0.5
-var sky := Sky.new()
-sky.sky_material = ProceduralSkyMaterial.new()
-env.sky = sky
-world_env.environment = env
-root.add_child(world_env)
+```csharp
+// WorldEnvironment
+var worldEnv = new WorldEnvironment();
+var env = new Godot.Environment();
+env.BackgroundMode = Godot.Environment.BGMode.Sky;
+env.TonemapMode = Godot.Environment.ToneMapper.Filmic;
+env.AmbientLightColor = Colors.White;
+env.AmbientLightSkyContribution = 0.5f;
+var sky = new Sky();
+sky.SkyMaterial = new ProceduralSkyMaterial();
+env.Sky = sky;
+worldEnv.Environment = env;
+root.AddChild(worldEnv);
 
-# Sun (DirectionalLight3D)
-var sun := DirectionalLight3D.new()
-sun.shadow_enabled = true
-sun.shadow_bias = 0.05
-sun.shadow_blur = 2.0
-sun.directional_shadow_max_distance = 30.0
-sun.sky_mode = DirectionalLight3D.SKY_MODE_LIGHT_AND_SKY
-sun.rotation_degrees = Vector3(-45, -30, 0)
-root.add_child(sun)
+// Sun (DirectionalLight3D)
+var sun = new DirectionalLight3D();
+sun.ShadowEnabled = true;
+sun.ShadowBias = 0.05f;
+sun.ShadowBlur = 2.0f;
+sun.DirectionalShadowMaxDistance = 30.0f;
+sun.SkyMode = DirectionalLight3D.SkyModeEnum.LightAndSky;
+sun.RotationDegrees = new Vector3(-45, -30, 0);
+root.AddChild(sun);
 ```
 
 ## CSG for Rapid Prototyping
 
 CSG nodes generate collision automatically — no separate CollisionShape needed:
 
-```gdscript
-var floor := CSGBox3D.new()
-floor.size = Vector3(20, 0.5, 20)
-floor.use_collision = true
-floor.material = ground_mat
-root.add_child(floor)
+```csharp
+var floor = new CsgBox3D();
+floor.Size = new Vector3(20, 0.5f, 20);
+floor.UseCollision = true;
+floor.Material = groundMat;
+root.AddChild(floor);
 
-# Subtraction (carve holes): child CSG on parent CSG
-var hole := CSGCylinder3D.new()
-hole.operation = CSGShape3D.OPERATION_SUBTRACTION
-hole.radius = 1.0
-hole.height = 1.0
-floor.add_child(hole)
+// Subtraction (carve holes): child CSG on parent CSG
+var hole = new CsgCylinder3D();
+hole.Operation = CsgShape3D.OperationEnum.Subtraction;
+hole.Radius = 1.0f;
+hole.Height = 1.0f;
+floor.AddChild(hole);
 ```
 
 ## Noise/Procedural Textures
 
-```gdscript
-var noise := FastNoiseLite.new()
-noise.noise_type = FastNoiseLite.TYPE_CELLULAR
-noise.frequency = 0.02
-noise.fractal_type = FastNoiseLite.FRACTAL_FBM
-noise.fractal_octaves = 5
+```csharp
+var noise = new FastNoiseLite();
+noise.NoiseType = FastNoiseLite.NoiseTypeEnum.Cellular;
+noise.Frequency = 0.02f;
+noise.FractalType = FastNoiseLite.FractalTypeEnum.Fbm;
+noise.FractalOctaves = 5;
 
-var tex := NoiseTexture2D.new()
-tex.noise = noise
-tex.width = 1024
-tex.height = 1024
-tex.seamless = true       # tileable
-tex.as_normal_map = true  # for normal maps
-tex.bump_strength = 2.0
+var tex = new NoiseTexture2D();
+tex.Noise = noise;
+tex.Width = 1024;
+tex.Height = 1024;
+tex.Seamless = true;       // tileable
+tex.AsNormalMap = true;     // for normal maps
+tex.BumpStrength = 2.0f;
 ```
 
 ## StandardMaterial3D Extended Properties
 
 Beyond basic albedo, useful properties for richer materials:
-- `normal_enabled = true` + `normal_texture` + `normal_scale = 2.0`
-- `rim_enabled = true` + `rim_tint = 1.0` — silhouette glow
-- `emission_enabled = true` + `emission_texture` — self-illumination
-- `texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS_ANISOTROPIC`
+- `NormalEnabled = true` + `NormalTexture` + `NormalScale = 2.0f`
+- `RimEnabled = true` + `RimTint = 1.0f` — silhouette glow
+- `EmissionEnabled = true` + `EmissionTexture` — self-illumination
+- `TextureFilter = BaseMaterial3D.TextureFilterEnum.LinearWithMipmapsAnisotropic`

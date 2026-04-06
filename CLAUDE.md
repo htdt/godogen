@@ -1,4 +1,4 @@
-We develop agents and skills here. They are then used in another folder for Godot game development with Claude Code.
+We develop agents and skills here. They are then used in another folder for Godot game development (C# / .NET 9+) with Claude Code.
 
 ## Layout
 

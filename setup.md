@@ -1,31 +1,62 @@
 # Workstation Setup
 
+## .NET 9 SDK
+
+Godot 4.5+ requires .NET 9.
+
+### Linux (Ubuntu/Debian)
+
+```bash
+wget -q https://dot.net/v1/dotnet-install.sh -O /tmp/dotnet-install.sh
+chmod +x /tmp/dotnet-install.sh
+/tmp/dotnet-install.sh --channel 9.0 --install-dir ~/.dotnet
+```
+
+Add to `~/.bashrc`:
+```bash
+export PATH="$HOME/.dotnet:$PATH"
+export DOTNET_ROOT="$HOME/.dotnet"
+```
+
+### macOS
+
+```bash
+brew install dotnet@9
+```
+
+### Verify
+
+```bash
+dotnet --version   # 9.0.x
+```
+
 ## System Packages
 
 ```bash
-sudo apt-get install mesa-utils ffmpeg imagemagick
+sudo apt-get install vulkan-tools xvfb ffmpeg imagemagick
+```
 
+- **vulkan-tools** — `vulkaninfo` for GPU validation
+- **xvfb** — virtual X11 display. Godot needs a display server for **any** rendering (including offscreen `--write-movie`), even with an NVIDIA GPU. On headless machines (SSH, CI), xvfb provides this.
+- **ffmpeg** — AVI→MP4 conversion, video frame extraction
+- **imagemagick** — image resize, flip, crop for sprite pipelines
+
+```bash
 # ImageMagick 7 (provides `magick` CLI — apt only has v6)
 wget https://imagemagick.org/archive/binaries/magick
 chmod +x magick
 sudo mv magick /usr/local/bin/
 ```
 
-- **mesa-utils** — provides `glxinfo` for GPU detection
-- **ffmpeg** — AVI→MP4 conversion, video frame extraction
-- **imagemagick** — image resize, flip, crop for sprite pipelines
-
-No xvfb needed when a GPU is available.
 
 ## macOS
 
 ```bash
-brew install coreutils ffmpeg
+brew install coreutils ffmpeg dotnet@9
 ```
 
 - **coreutils** — provides `gtimeout`; the capture script falls back to a perl-based timeout if missing
 - **ffmpeg** — AVI→MP4 conversion
-- Godot 4 must be on `PATH` (symlink from `Godot.app/Contents/MacOS/Godot` or install via Homebrew)
 - macOS uses Metal natively — no xvfb or Vulkan setup needed.
 
 ## Python
@@ -37,17 +68,46 @@ python3 --version
 pip install -r skills/godogen/tools/requirements.txt
 ```
 
-## Godot
+## Godot (.NET edition)
 
-Fetch the latest version and install:
+The **.NET edition** is required — the standard Godot build cannot run C# scripts. Download from the **Mono/.NET** column on the Godot downloads page.
+
+### Linux
 
 ```bash
 VERSION=$(curl -s https://api.github.com/repos/godotengine/godot/releases/latest | grep -oP '"tag_name": "\K[^"]+' | sed 's/-stable//')
-echo "Installing Godot $VERSION"
+echo "Installing Godot .NET $VERSION"
 cd /tmp
-wget https://github.com/godotengine/godot/releases/download/${VERSION}-stable/Godot_v${VERSION}-stable_linux.x86_64.zip
-unzip Godot_v${VERSION}-stable_linux.x86_64.zip
-sudo mv Godot_v${VERSION}-stable_linux.x86_64 /usr/local/bin/godot
+wget https://github.com/godotengine/godot/releases/download/${VERSION}-stable/Godot_v${VERSION}-stable_mono_linux_x86_64.zip
+unzip Godot_v${VERSION}-stable_mono_linux_x86_64.zip
+sudo mv Godot_v${VERSION}-stable_mono_linux_x86_64/Godot_v${VERSION}-stable_mono_linux.x86_64 /usr/local/bin/godot
+sudo mv Godot_v${VERSION}-stable_mono_linux_x86_64/GodotSharp /usr/local/bin/GodotSharp
+```
+
+`GodotSharp/` must live next to the `godot` binary. Godot resolves it relative to itself — if you symlink `godot`, the directory must be next to the real binary, not the symlink.
+
+### macOS
+
+```bash
+# Download .NET build from godotengine.org, or:
+brew install --cask godot-mono
+```
+
+Godot must be on PATH as `godot`. If installed from the .app bundle:
+```bash
+sudo ln -sf /Applications/Godot_mono.app/Contents/MacOS/Godot /usr/local/bin/godot
+```
+
+### Verify
+
+```bash
+godot --version          # should show version
+godot --headless --quit  # should exit cleanly (may show RID warnings — harmless)
+```
+
+If `godot --headless --quit` crashes with assembly errors, `GodotSharp/` is not being found. Check it's next to the binary:
+```bash
+ls "$(dirname "$(which godot)")"/GodotSharp/
 ```
 
 ## Android Export
@@ -133,19 +193,21 @@ Set in environment:
 - `XAI_API_KEY` — xAI Grok image/video generation (textures, simple objects)
 - `TRIPO3D_API_KEY` — image-to-3D conversion (3D games only)
 
-## Verify
+## Verify All
 
 ```bash
-godot --version
-nvidia-smi
+dotnet --version                 # 9.0.x
+godot --version                  # 4.x.x.stable.mono
+nvidia-smi                       # GPU available
 python3 -c "import rembg; print('rembg ok')"
 ```
 
-GPU detection needs X11 sockets in `/tmp/.X11-unix/`. Confirm with:
+Verify rendering pipeline (GPU + xvfb):
 
 ```bash
-for sock in /tmp/.X11-unix/X*; do
-  d=":${sock##*/X}"
-  DISPLAY=$d glxinfo 2>/dev/null | grep -i "opengl renderer" && echo "GPU on $d"
-done
+# NVIDIA Vulkan driver
+VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/nvidia_icd.json vulkaninfo --summary 2>&1 | grep "deviceName"
+
+# xvfb + Godot (headless rendering — the actual capture path)
+xvfb-run -a godot --headless --quit
 ```

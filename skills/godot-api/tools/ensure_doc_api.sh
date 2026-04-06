@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Bootstrap doc_api for gdscript-doc skill.
-# Clones Godot docs (sparse checkout) and generates per-class markdown API reference.
+# Bootstrap doc_api for godot-api skill.
+# Clones Godot docs (sparse checkout) and generates per-class C# markdown API reference.
 # Safe to re-run — skips if doc_api/ already exists.
 set -euo pipefail
 
@@ -31,6 +31,7 @@ PYTHONPATH="$TOOLS_DIR" python3 "$TOOLS_DIR/godot_api_converter.py" \
     --signal-desc full \
     --constant-desc full \
     --include-virtual \
-    --full-signals
+    --full-signals \
+    --lang csharp
 
 echo "doc_api ready at $DOC_API"
