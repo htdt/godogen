@@ -11,7 +11,7 @@ You describe what you want. An AI pipeline designs the architecture, generates t
 - **Three Claude Code skills** — one orchestrator runs the full pipeline in a single 1M-token context window (planning, building, debugging), while two forked support skills handle Godot API lookup and visual QA without polluting the main context.
 - **Godot 4 output** — real projects with proper scene trees, scripts, and asset organization.
 - **Asset generation** — Gemini creates precise references and characters; xAI Grok handles textures and simple objects; Tripo3D converts images to 3D models. Animated sprites use Grok video generation with loop detection. Budget-aware: maximizes visual impact per cent spent.
-- **GDScript expertise** — custom-built language reference and lazy-loaded API docs for all 850+ Godot classes compensate for LLMs' thin training data on GDScript.
+- **C# / .NET 8+** — all generated code uses C#. See [why C# over GDScript](gdscript-vs-csharp.md).
 - **Visual QA closes the loop** — captures actual screenshots from the running game and analyzes them with Gemini Flash and Claude vision. Includes question mode for free-form visual debugging. Catches z-fighting, missing textures, broken physics.
 - **Runs on commodity hardware** — any PC with Godot and Claude Code works.
 
@@ -46,19 +46,31 @@ A single generation run can take several hours. Running on a cloud VM keeps your
 
 You don't need to keep a terminal open for the entire run. Connect a [channel](https://code.claude.com/docs/en/channels#quickstart) (Telegram, Slack, etc.) to send prompts and receive progress updates from your phone, or use [remote control](https://code.claude.com/docs/en/remote-control) to manage sessions from any browser.
 
+## Improving the skills
+
+After a full generation session, ask Claude to review how the pipeline performed:
+
+> Analyze this session. Were all skill instructions optimal? Flag anything that was too obvious (handholding that wasted context), missing (you had to search for something the skills should have told you), or misleading. Did any tools pollute context with noise that should run in a sub-agent? Did you use the GPU? Any tool failures or workarounds?
+
+Then use the feedback to improve the skills in this repo. Contributions welcome — open an issue with what you found.
+
 ## Is Claude Code the only option?
 
 The skills were tested across different setups. Claude Code with Opus 4.6 delivers the best outcome. Sonnet 4.6 works but requires more guidance from the user. [OpenCode](https://opencode.ai/) was quite nice and porting the skills is straightforward — I'd recommend it if you're looking for an alternative.
 
 ## Roadmap
 
-- Explore C# as GDScript alternative
 - Publish a full game end-to-end as a public demo
 - Explore Bevy Engine as Godot alternative
 
 ## Changelog
 
-**2026-04-03 — Single-context architecture** (current)
+**2026-04-06 — C# migration** (current)
+- All skills and generated code migrated from GDScript to C# / .NET 8+ ([comparison](gdscript-vs-csharp.md))
+- Eliminates GDScript's Variant type inference errors — compiler catches mistakes before runtime
+- `dotnet build` replaces per-file `--check-only` validation
+
+**2026-04-03 — Single-context architecture**
 - Merged task executor into godogen — full pipeline runs in one 1M-token context window
 - Added godot-api skill (forked, Sonnet) for Godot class API lookup
 - Added visual-qa skill (forked) with Gemini Flash, Claude vision, and question mode
