@@ -52,7 +52,7 @@ sudo mv magick /usr/local/bin/
 ## macOS
 
 ```bash
-brew install coreutils ffmpeg dotnet@8
+brew install coreutils ffmpeg dotnet@9
 ```
 
 - **coreutils** — provides `gtimeout`; the capture script falls back to a perl-based timeout if missing

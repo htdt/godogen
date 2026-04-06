@@ -102,7 +102,7 @@ fire={
 ```xml
 <Project Sdk="Godot.NET.Sdk/4.4.0">
   <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
+    <TargetFramework>net9.0</TargetFramework>
     <EnableDynamicLoading>true</EnableDynamicLoading>
   </PropertyGroup>
 </Project>

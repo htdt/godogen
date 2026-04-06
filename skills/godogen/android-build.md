@@ -4,7 +4,7 @@ Export a Godot C# (.NET) project as a debug APK for Android.
 
 ## Prerequisites
 
-- .NET 8 SDK — see `setup.md`
+- .NET 9 SDK — see `setup.md`
 - OpenJDK 17, Android SDK, export templates, debug keystore — see `setup.md` Android section
 - Editor settings configured with Java/SDK/keystore paths
 - Godot .NET edition (not the standard build)

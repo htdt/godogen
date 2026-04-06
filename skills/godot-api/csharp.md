@@ -4,7 +4,7 @@
 
 - All Godot C# classes must be `public partial class` — the `partial` keyword enables Godot's source generators for signals, exports, and node bindings.
 - Godot API uses PascalCase everywhere: `_Ready()`, `GetNode()`, `Position`, `EmitSignal()`.
-- C# uses .NET 8+. Standard C# features (LINQ, async/await, generics, pattern matching) are available.
+- C# uses .NET 9+. Standard C# features (LINQ, async/await, generics, pattern matching) are available.
 
 ## Types
 

@@ -11,7 +11,7 @@ You describe what you want. An AI pipeline designs the architecture, generates t
 - **Three Claude Code skills** — one orchestrator runs the full pipeline in a single 1M-token context window (planning, building, debugging), while two forked support skills handle Godot API lookup and visual QA without polluting the main context.
 - **Godot 4 output** — real projects with proper scene trees, scripts, and asset organization.
 - **Asset generation** — Gemini creates precise references and characters; xAI Grok handles textures and simple objects; Tripo3D converts images to 3D models. Animated sprites use Grok video generation with loop detection. Budget-aware: maximizes visual impact per cent spent.
-- **C# / .NET 8+** — all generated code uses C#. See [why C# over GDScript](gdscript-vs-csharp.md).
+- **C# / .NET 9** — all generated code uses C#. See [why C# over GDScript](gdscript-vs-csharp.md).
 - **Visual QA closes the loop** — captures actual screenshots from the running game and analyzes them with Gemini Flash and Claude vision. Includes question mode for free-form visual debugging. Catches z-fighting, missing textures, broken physics.
 - **Runs on commodity hardware** — any PC with Godot and Claude Code works.
 
@@ -66,7 +66,7 @@ The skills were tested across different setups. Claude Code with Opus 4.6 delive
 ## Changelog
 
 **2026-04-06 — C# migration** (current)
-- All skills and generated code migrated from GDScript to C# / .NET 8+ ([comparison](gdscript-vs-csharp.md))
+- All skills and generated code migrated from GDScript to C# / .NET 9 ([comparison](gdscript-vs-csharp.md))
 - Eliminates GDScript's Variant type inference errors — compiler catches mistakes before runtime
 - `dotnet build` replaces per-file `--check-only` validation
 

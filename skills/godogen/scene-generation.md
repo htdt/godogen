@@ -1,6 +1,6 @@
 # Scene Generation
 
-Scene builders are C# files that run headless in Godot 4 (.NET 8+) to produce `.tscn` files programmatically. They are NOT runtime scripts — they run once at build-time and exit.
+Scene builders are C# files that run headless in Godot 4 (.NET 9+) to produce `.tscn` files programmatically. They are NOT runtime scripts — they run once at build-time and exit.
 
 ## Scene Output Requirements
 
