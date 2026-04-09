@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Asset Generator CLI - creates images (Gemini / xAI Grok) and GLBs (Tripo3D).
+"""Asset Generator CLI - creates images (Gemini / xAI Grok / OpenRouter) and GLBs (Tripo3D).
 
 Subcommands:
-  image   Generate a PNG from a prompt (Gemini 5-15¢ or Grok 2¢)
+  image   Generate a PNG from a prompt (Gemini 5-15¢, Grok 2¢, or OpenRouter ~5¢ auto-detected)
   video   Generate MP4 video from prompt + reference image (5¢/sec, Grok)
   glb     Convert a PNG to a GLB 3D model via Tripo3D (30-60¢)
 
@@ -13,6 +13,7 @@ import argparse
 import base64
 import io
 import json
+import os
 import sys
 from pathlib import Path
 
@@ -102,8 +103,20 @@ GROK_ASPECT_RATIOS = [
     "2:1", "1:2", "19.5:9", "9:19.5", "20:9", "9:20", "auto",
 ]
 
+# --- OpenRouter ---
+OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions"
+OPENROUTER_MODELS_URL = "https://openrouter.ai/api/v1/models"
+OPENROUTER_DEFAULT_MODEL = "openai/gpt-5-image-mini"
+OPENROUTER_SIZES = ["512", "1K", "2K", "4K"]
+OPENROUTER_FALLBACK_COST = 5  # cents — used only when pricing lookup fails
+OPENROUTER_ASPECT_RATIOS = [
+    "1:1", "16:9", "9:16", "4:3", "3:4", "3:2", "2:3",
+]
+# Models whose output_modalities include text; for others, request image-only.
+_OPENROUTER_TEXT_CAPABLE_MODELS: set[str] | None = None  # lazily populated
+
 ALL_SIZES = ["512", "1K", "2K", "4K"]
-ALL_ASPECT_RATIOS = sorted(set(GEMINI_ASPECT_RATIOS + GROK_ASPECT_RATIOS))
+ALL_ASPECT_RATIOS = sorted(set(GEMINI_ASPECT_RATIOS + GROK_ASPECT_RATIOS + OPENROUTER_ASPECT_RATIOS))
 
 
 def _mime_for_image(path: Path) -> str:
@@ -119,6 +132,69 @@ def _image_data_uri(image_path: Path) -> str:
     b64 = base64.b64encode(image_path.read_bytes()).decode()
     mime = _mime_for_image(image_path)
     return f"data:{mime};base64,{b64}"
+
+
+_openrouter_models_cache: list[dict] | None = None
+
+
+def _fetch_openrouter_models() -> list[dict]:
+    """Fetch the OpenRouter model catalog (cached for the process lifetime)."""
+    global _openrouter_models_cache
+    if _openrouter_models_cache is not None:
+        return _openrouter_models_cache
+    try:
+        resp = requests.get(OPENROUTER_MODELS_URL, timeout=15)
+        resp.raise_for_status()
+        _openrouter_models_cache = resp.json().get("data", [])
+    except Exception as e:
+        print(f"Warning: could not fetch OpenRouter models: {e}", file=sys.stderr)
+        _openrouter_models_cache = []
+    return _openrouter_models_cache
+
+
+def _openrouter_model_cost_cents(model_id: str) -> int:
+    """Estimate cost in cents for a single image generation on OpenRouter.
+
+    Checks pricing fields in order:
+    1. per-image (pricing.image) — flat per-image cost
+    2. per-request (pricing.request) — flat per-request cost
+    3. per-token (pricing.prompt + pricing.completion) — estimated with
+       300 prompt + 1200 completion tokens (typical for image generation)
+    Falls back to OPENROUTER_FALLBACK_COST if the model isn't found.
+    """
+    models = _fetch_openrouter_models()
+    for m in models:
+        if m.get("id") == model_id:
+            pricing = m.get("pricing", {})
+            try:
+                # Per-image or per-request flat pricing (USD per generation)
+                for flat_key in ("image", "request"):
+                    flat = pricing.get(flat_key)
+                    if flat is not None and float(flat) > 0:
+                        return max(1, round(float(flat) * 100))
+
+                # Per-token pricing
+                prompt_per_tok = float(pricing.get("prompt", 0))
+                completion_per_tok = float(pricing.get("completion", 0))
+                if prompt_per_tok > 0 or completion_per_tok > 0:
+                    cost_usd = prompt_per_tok * 300 + completion_per_tok * 1200
+                    return max(1, round(cost_usd * 100))
+            except (TypeError, ValueError):
+                break
+    return OPENROUTER_FALLBACK_COST
+
+
+def _openrouter_model_supports_text(model_id: str) -> bool:
+    """Check whether a model's output_modalities include 'text'."""
+    global _OPENROUTER_TEXT_CAPABLE_MODELS
+    if _OPENROUTER_TEXT_CAPABLE_MODELS is None:
+        _OPENROUTER_TEXT_CAPABLE_MODELS = set()
+        for m in _fetch_openrouter_models():
+            arch = m.get("architecture", {})
+            out_mods = arch.get("output_modalities", []) if isinstance(arch, dict) else []
+            if "text" in out_mods and "image" in out_mods:
+                _OPENROUTER_TEXT_CAPABLE_MODELS.add(m.get("id", ""))
+    return model_id in _OPENROUTER_TEXT_CAPABLE_MODELS
 
 
 def _generate_gemini(args, output: Path, cost: int):
@@ -197,18 +273,173 @@ def _generate_grok(args, output: Path, cost: int):
     result_json(True, path=str(output), cost_cents=cost)
 
 
+def _extract_openrouter_image(data: dict) -> bytes:
+    """Extract image bytes from OpenRouter response, handling multiple formats.
+
+    Supported response structures:
+    1. choices[0].message.content[].image_url.url (base64 data URL or HTTP URL)
+    2. choices[0].message.images[].image_url.url (some models)
+    3. data[].b64_json (DALL-E style)
+
+    Returns raw image bytes or raises ValueError with a descriptive message.
+    """
+    choices = data.get("choices", [])
+    if not choices:
+        raise ValueError("No choices in response")
+
+    message = choices[0].get("message", {})
+
+    # Strategy 1: content array with image_url entries
+    content = message.get("content")
+    if isinstance(content, list):
+        for part in content:
+            if isinstance(part, dict) and part.get("type") == "image_url":
+                url = part.get("image_url", {}).get("url", "")
+                if url:
+                    return _fetch_image_url(url)
+
+    # Strategy 2: images array
+    images = message.get("images", [])
+    if images:
+        entry = images[0]
+        url = ""
+        if isinstance(entry, dict):
+            url = entry.get("image_url", {}).get("url", "") or entry.get("url", "")
+        if url:
+            return _fetch_image_url(url)
+
+    # Strategy 3: DALL-E style data array
+    dall_e_data = data.get("data", [])
+    if dall_e_data and isinstance(dall_e_data[0], dict):
+        b64 = dall_e_data[0].get("b64_json", "")
+        if b64:
+            return base64.b64decode(b64)
+        url = dall_e_data[0].get("url", "")
+        if url:
+            return _fetch_image_url(url)
+
+    raise ValueError(f"Could not find image in response. Keys: choices[0].message keys={list(message.keys())}")
+
+
+def _fetch_image_url(url: str) -> bytes:
+    """Fetch image bytes from a base64 data URL or HTTP URL."""
+    if url.startswith("data:"):
+        # "data:image/png;base64,..."
+        if "," not in url:
+            raise ValueError("Malformed data URL: no comma separator")
+        b64_data = url.split(",", 1)[1]
+        return base64.b64decode(b64_data)
+    elif url.startswith("http"):
+        resp = requests.get(url, timeout=60)
+        resp.raise_for_status()
+        return resp.content
+    else:
+        raise ValueError(f"Unrecognized image URL format: {url[:80]}")
+
+
+def _generate_openrouter(args, output: Path, cost: int):
+    api_key = os.environ.get("OPENROUTER_API_KEY")
+    if not api_key:
+        result_json(False, error="OPENROUTER_API_KEY environment variable not set")
+        sys.exit(1)
+
+    or_model = getattr(args, 'openrouter_model', None) or OPENROUTER_DEFAULT_MODEL
+
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json",
+    }
+
+    messages_content = []
+    if args.image:
+        ref_path = Path(args.image)
+        if not ref_path.exists():
+            result_json(False, error=f"Reference image not found: {ref_path}")
+            sys.exit(1)
+        data_uri = _image_data_uri(ref_path)
+        messages_content.append({
+            "type": "image_url",
+            "image_url": {"url": data_uri},
+        })
+    messages_content.append({"type": "text", "text": args.prompt})
+
+    # Only request text modality if the model supports it; image-only models
+    # (e.g. FLUX, Seedream) reject requests that include text output.
+    modalities = ["image", "text"] if _openrouter_model_supports_text(or_model) else ["image"]
+
+    payload = {
+        "model": or_model,
+        "messages": [{"role": "user", "content": messages_content}],
+        "modalities": modalities,
+        "image_config": {
+            "aspect_ratio": args.aspect_ratio,
+            "image_size": args.size,
+        },
+    }
+
+    print(f"Generating via OpenRouter ({or_model})...", file=sys.stderr)
+    try:
+        resp = requests.post(OPENROUTER_API_URL, headers=headers, json=payload, timeout=120)
+        if not resp.ok:
+            # Extract API error message before raising
+            try:
+                err_data = resp.json()
+                err_msg = err_data.get("error", {}).get("message", "") or json.dumps(err_data)
+            except Exception:
+                err_msg = resp.text[:500] if resp.text else f"HTTP {resp.status_code}"
+            result_json(False, error=f"OpenRouter API error ({resp.status_code}): {err_msg}")
+            sys.exit(1)
+
+        data = resp.json()
+
+        # Check for business-level error in 2xx response
+        if "error" in data and not data.get("choices"):
+            err_msg = data["error"].get("message", json.dumps(data["error"]))
+            result_json(False, error=f"OpenRouter: {err_msg}")
+            sys.exit(1)
+
+        img_bytes = _extract_openrouter_image(data)
+        img = Image.open(io.BytesIO(img_bytes))
+        img.save(output, format="PNG")
+    except SystemExit:
+        raise
+    except Exception as e:
+        result_json(False, error=str(e))
+        sys.exit(1)
+
+    print(f"Saved: {output}", file=sys.stderr)
+    record_spend(cost, "openrouter")
+    result_json(True, path=str(output), cost_cents=cost)
+
+
 def cmd_image(args):
     backend = args.model
     size = args.size
+    ar = args.aspect_ratio
 
     if backend == "gemini":
         if size not in GEMINI_SIZES:
             result_json(False, error=f"Gemini does not support size {size}. Use: {', '.join(GEMINI_SIZES)}")
             sys.exit(1)
+        if ar not in GEMINI_ASPECT_RATIOS:
+            result_json(False, error=f"Gemini does not support aspect ratio {ar}. Use: {', '.join(GEMINI_ASPECT_RATIOS)}")
+            sys.exit(1)
         cost = GEMINI_COSTS[size]
+    elif backend == "openrouter":
+        if size not in OPENROUTER_SIZES:
+            result_json(False, error=f"OpenRouter does not support size {size}. Use: {', '.join(OPENROUTER_SIZES)}")
+            sys.exit(1)
+        if ar not in OPENROUTER_ASPECT_RATIOS:
+            result_json(False, error=f"OpenRouter does not support aspect ratio {ar}. Use: {', '.join(OPENROUTER_ASPECT_RATIOS)}")
+            sys.exit(1)
+        or_model = getattr(args, 'openrouter_model', None) or OPENROUTER_DEFAULT_MODEL
+        cost = _openrouter_model_cost_cents(or_model)
     else:
         if size not in GROK_SIZES:
             result_json(False, error=f"Grok does not support size {size}. Use: {', '.join(GROK_SIZES)}")
+            sys.exit(1)
+        if ar not in GROK_ASPECT_RATIOS:
+            result_json(False, error=f"Grok does not support aspect ratio {ar}. Use: {', '.join(GROK_ASPECT_RATIOS)}")
             sys.exit(1)
         cost = GROK_COST
 
@@ -223,6 +454,8 @@ def cmd_image(args):
 
     if backend == "gemini":
         _generate_gemini(args, output, cost)
+    elif backend == "openrouter":
+        _generate_openrouter(args, output, cost)
     else:
         _generate_grok(args, output, cost)
 
@@ -307,13 +540,15 @@ def cmd_set_budget(args):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Asset Generator — images (Gemini / xAI Grok) and GLBs (Tripo3D)")
+    parser = argparse.ArgumentParser(description="Asset Generator — images (Gemini / xAI Grok / OpenRouter) and GLBs (Tripo3D)")
     sub = parser.add_subparsers(dest="command", required=True)
 
-    p_img = sub.add_parser("image", help="Generate a PNG image (Gemini 5-15¢ or Grok 2¢)")
+    p_img = sub.add_parser("image", help="Generate a PNG image (Gemini 5-15¢, Grok 2¢, or OpenRouter ~5¢)")
     p_img.add_argument("--prompt", required=True, help="Full image generation prompt")
-    p_img.add_argument("--model", choices=["gemini", "grok"], default="grok",
-                       help="Backend: grok (2¢, fast, simple images) or gemini (5-15¢, precise prompt following). Default: grok.")
+    p_img.add_argument("--model", choices=["gemini", "grok", "openrouter"], default="grok",
+                       help="Backend: grok (2¢, fast, simple images), gemini (5-15¢, precise prompt following), or openrouter (~5¢, flexible model selection). Default: grok.")
+    p_img.add_argument("--openrouter-model", default=None,
+                       help="OpenRouter model ID (default: openai/gpt-5-image-mini). Only used when --model openrouter.")
     p_img.add_argument("--size", choices=ALL_SIZES, default="1K",
                        help="Resolution. Grok: 1K, 2K. Gemini: 512, 1K, 2K, 4K. Default: 1K.")
     p_img.add_argument("--aspect-ratio", choices=ALL_ASPECT_RATIOS, default="1:1",

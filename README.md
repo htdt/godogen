@@ -10,7 +10,7 @@ You describe what you want. An AI pipeline designs the architecture, generates t
 
 - **Three Claude Code skills** — one orchestrator runs the full pipeline in a single 1M-token context window (planning, building, debugging), while two forked support skills handle Godot API lookup and visual QA without polluting the main context.
 - **Godot 4 output** — real projects with proper scene trees, scripts, and asset organization.
-- **Asset generation** — Gemini creates precise references and characters; xAI Grok handles textures and simple objects; Tripo3D converts images to 3D models. Animated sprites use Grok video generation with loop detection. Budget-aware: maximizes visual impact per cent spent.
+- **Asset generation** — Gemini creates precise references and characters; xAI Grok handles textures and simple objects; OpenRouter provides flexible access to many image models; Tripo3D converts images to 3D models. Animated sprites use Grok video generation with loop detection. Budget-aware: maximizes visual impact per cent spent.
 - **C# / .NET 9** — all generated code uses C#. See [why C# over GDScript](gdscript-vs-csharp.md).
 - **Visual QA closes the loop** — captures actual screenshots from the running game and analyzes them with Gemini Flash and Claude vision. Includes question mode for free-form visual debugging. Catches z-fighting, missing textures, broken physics.
 - **Runs on commodity hardware** — any PC with Godot and Claude Code works.
@@ -24,6 +24,7 @@ You describe what you want. An AI pipeline designs the architecture, generates t
 - API keys as environment variables:
   - `GOOGLE_API_KEY` — [Google AI Studio](https://aistudio.google.com/), used for Gemini image generation (references, characters, precise work)
   - `XAI_API_KEY` — [xAI Grok](https://console.x.ai/home), used for image/video generation (textures, simple objects)
+  - `OPENROUTER_API_KEY` *(optional)* — [OpenRouter](https://openrouter.ai/), alternative image generation backend (only needed with `--model openrouter`)
   - `TRIPO3D_API_KEY` — [Tripo3D](https://platform.tripo3d.ai/), used for image-to-3D model conversion (only needed for 3D games)
 - Python 3 with pip (asset tools install their own deps)
 - System packages: `mesa-utils`, `ffmpeg` (see [setup.md](setup.md) for full details including macOS)
