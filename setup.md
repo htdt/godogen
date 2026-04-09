@@ -191,6 +191,7 @@ Set in environment:
 
 - `GOOGLE_API_KEY` — Gemini image generation (references, characters, precise work)
 - `XAI_API_KEY` — xAI Grok image/video generation (textures, simple objects)
+- `OPENROUTER_API_KEY` *(optional)* — [OpenRouter](https://openrouter.ai/) image generation (only needed with `--model openrouter`)
 - `TRIPO3D_API_KEY` — image-to-3D conversion (3D games only)
 
 ## Verify All

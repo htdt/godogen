@@ -1,6 +1,6 @@
 # Asset Generator
 
-Generate PNG images (Gemini or xAI Grok) and GLB 3D models (Tripo3D) from text prompts.
+Generate PNG images (Gemini, xAI Grok, or OpenRouter) and GLB 3D models (Tripo3D) from text prompts.
 
 ## Models
 
@@ -8,10 +8,12 @@ Generate PNG images (Gemini or xAI Grok) and GLB 3D models (Tripo3D) from text p
 |-------|------|------|----------|
 | `gemini-3.1-flash-image-preview` | `--model gemini` | 5-15¢ (by size) | Precise prompt following — references, characters, backgrounds, 3D refs |
 | `grok-imagine-image` | `--model grok` | 2¢ | High-quality but imprecise — textures, simple objects, item kits |
+| OpenRouter (configurable) | `--model openrouter` | ~5¢ (varies by model, auto-detected) | Flexible — any OpenRouter image model. Default: openai/gpt-5-image-mini |
 
 **When to use which:**
 - **Gemini** — reference images, character design, 3D model references, animated sprite refs/poses, backgrounds with precise layout. Gemini costs more but reliably produces what you described.
 - **Grok** — textures, simple objects, item kits, props, simple scenic backgrounds (sky, clouds, abstract). Produces high-quality (even photographic) output but often defaults to common interpretations instead of following specific instructions. Great when exact prompt adherence doesn't matter.
+- **OpenRouter** — flexible alternative when you have an OpenRouter API key. Supports many image models via `--openrouter-model`. Good option when you don't have Gemini or xAI API keys, or want to try different models.
 
 Default is `grok`. Switch to `gemini` when precision matters.
 
@@ -35,14 +37,17 @@ python3 ${CLAUDE_SKILL_DIR}/tools/asset_gen.py image \
   --prompt "the full prompt" -o assets/img/car.png
 ```
 
-`--model` (default `grok`): `grok` (2¢), `gemini` (5-15¢ by size)
-`--size` (default `1K`): Grok: `1K`, `2K`. Gemini: `512`, `1K`, `2K`, `4K`.
+`--model` (default `grok`): `grok` (2¢), `gemini` (5-15¢ by size), `openrouter` (~5¢, configurable model)
+`--openrouter-model` (default `openai/gpt-5-image-mini`): OpenRouter model ID. Only used with `--model openrouter`.
+`--size` (default `1K`): Grok: `1K`, `2K`. Gemini/OpenRouter: `512`, `1K`, `2K`, `4K`.
 `--aspect-ratio` (default `1:1`): varies by backend — both support `1:1`, `16:9`, `9:16`, `4:3`, `3:4`, `3:2`, `2:3`
 
 Typical combos:
 - `--model gemini --size 1K` — reference images, character sprites, 3D refs (7¢)
 - `--model gemini --size 2K --aspect-ratio 16:9` — backgrounds, title screens (10¢)
 - `--model grok` — textures, simple objects, item kits (2¢)
+- `--model openrouter` — flexible alternative with default model (~5¢)
+- `--model openrouter --openrouter-model google/gemini-2.5-flash-image` — use a specific OpenRouter model
 
 ### Remove background
 
@@ -159,6 +164,7 @@ result=$(python3 ${CLAUDE_SKILL_DIR}/tools/asset_gen.py image --prompt "..." -o 
 | Image | --model gemini --size 1K | 7 cents | References, characters, 3D refs |
 | Image | --model gemini --size 2K | 10 cents | Backgrounds, title screens |
 | Image | --model gemini --size 4K | 15 cents | Large maps, panoramas |
+| Image | --model openrouter | ~5 cents (auto-detected from model pricing) | Flexible model, configurable via --openrouter-model |
 | GLB | default | 50 cents | P1 model, fast, game-optimized topology |
 | GLB | high | 40 cents | v3.1, HD textures |
 | Video | --duration N | 5¢ × N seconds | Pose frame as starting image |
