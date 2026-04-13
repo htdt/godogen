@@ -1,6 +1,6 @@
 # Visual Quality Assurance
 
-Analyze game screenshots against the visual reference. Runs in a forked context via the `visual-qa` skill. Default backend is Gemini 3 Flash; pass `--native` for Claude vision or `--both` for aggregated verdict.
+Analyze game screenshots against the visual reference. Runs in a forked context via the `visual-qa` skill. Default backend is `gemini-3-flash-preview`; pass `--native` for Claude vision or `--both` for aggregated verdict.
 
 ## Static Mode
 

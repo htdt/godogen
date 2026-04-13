@@ -14,7 +14,7 @@ CRITICAL: Your job is to find problems, not confirm things look fine. Do not rat
 
 ## Backend
 
-- **Default (Gemini):** Run the script below. All queries go to Gemini 3 Flash.
+- **Default (Gemini):** Run the script below. All queries go to `gemini-3-flash-preview`.
 - **`--native`** flag in arguments: Use Claude vision — read every image with the Read tool, analyze directly. Do NOT run the Gemini script.
 - **`--both`** flag in arguments: Run Gemini first, then do native analysis. Aggregate verdicts (details below).
 

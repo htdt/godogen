@@ -1,0 +1,7 @@
+interface:
+  display_name: "Godot API Lookup"
+  short_description: "Targeted Godot class and C# API lookup"
+  default_prompt: "Use $godot-api to answer a specific Godot API or C# Godot syntax question."
+
+policy:
+  allow_implicit_invocation: false

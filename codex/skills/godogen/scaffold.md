@@ -6,34 +6,60 @@ Works for both fresh projects and incremental changes (adding scenes/scripts, re
 
 ## Workflow
 
-1. **Read `reference.png`** — understand the visual target: camera angle, distance, FOV, lighting direction, environment structure, scene layout. Use this to inform architecture decisions (node hierarchy, camera setup, lighting rig).
-2. **Read input** — game description (fresh) or change request (incremental).
-3. **Assess project state:**
+1. **Check installed toolchain first** — run `godot --version` and `dotnet --version` before writing `project.godot` or the `.csproj`. Record the detected versions in `MEMORY.md` if the project is long-running.
+2. **Match templates to the local toolchain** — never hardcode version-sensitive values from an example. At minimum, match:
+   - `project.godot` `config_version`
+   - `Project Sdk="Godot.NET.Sdk/..."`
+   - `TargetFramework`
+   - any other engine-version-specific keys already present in an existing `project.godot`
+   If a project already exists, preserve those version-sensitive values unless the user explicitly asked for a toolchain migration.
+3. **Read `reference.png`** — understand the visual target: camera angle, distance, FOV, lighting direction, environment structure, scene layout. Use this to inform architecture decisions (node hierarchy, camera setup, lighting rig).
+4. **Read input** — game description (fresh) or change request (incremental).
+5. **Assess project state:**
    - No project → create from scratch.
    - Existing project, fresh start requested → delete existing scenes/scripts.
-   - Existing project, incremental change → read existing `STRUCTURE.md` and scripts. Identify what to add or replace. Preserve unchanged files.
-4. **Design / update architecture** — scenes, scripts, signals, input actions.
-5. **Write/update `project.godot`** — create or merge input mappings. Include `[dotnet]` section.
-6. **Write `.csproj`** — create or verify the project file exists.
-7. **Write `STRUCTURE.md`** — always the complete architecture, not a diff.
-8. **Write script stubs** — for new scripts and any existing scripts the task explicitly asks to replace. C# files in `scripts/`.
-9. **Write `scenes/SceneBuilderBase.cs`** — shared base class (see `scene-generation.md`). Create once per project; skip if it already exists.
-10. **Build .NET project** — `timeout 60 dotnet build 2>&1`. Ensures all C# compiles before scene builders run.
-11. **Import assets** — `timeout 60 godot --headless --import 2>&1`. Ensures all assets (`.glb`, `.png`, etc.) are imported before scene builders reference them.
-12. **Build scene stubs** — for each new/changed scene, write a scene builder script to `scenes/BuildXxx.cs`, then run in dependency order (leaf scenes first): `timeout 60 godot --headless --script scenes/BuildXxx.cs`
-13. **Verify** — `timeout 60 godot --headless --quit 2>&1`. No `ERROR` lines. RID warnings are benign.
-14. **Git commit** — repo is already initialized before Claude Code starts:
+   - Existing project, incremental change → read existing `STRUCTURE.md`, `project.godot`, `.csproj`, and scripts. Identify what to add or replace. Preserve unchanged files, especially version-sensitive settings.
+6. **Design / update architecture** — scenes, scripts, signals, input actions.
+7. **Write/update `project.godot`** — create or merge input mappings. Include `[dotnet]` section. Match the local engine's expected `config_version`; do not guess.
+8. **Write `.csproj`** — create or verify the project file exists. Match the local Godot/.NET toolchain instead of hardcoding an SDK version from examples.
+9. **Write `STRUCTURE.md`** — always the complete architecture, not a diff.
+10. **Write script stubs** — for new scripts and any existing scripts the task explicitly asks to replace. C# files in `scripts/`.
+11. **Write `scenes/SceneBuilderBase.cs`** — shared base class (see `scene-generation.md`). Create once per project; skip if it already exists.
+12. **Build .NET project** — `timeout 60 dotnet build 2>&1`. If this fails because the target framework or Godot SDK version does not match the installed toolchain, fix that first before changing game code.
+13. **Import assets** — `timeout 60 godot --headless --import 2>&1`. If Godot fails here because `project.godot` has the wrong `config_version` or incompatible engine keys, fix the project file before proceeding.
+14. **Build scene stubs** — for each new/changed scene, write a scene builder script to `scenes/BuildXxx.cs`, then run in dependency order (leaf scenes first): `timeout 60 godot --headless --script scenes/BuildXxx.cs`
+15. **Verify** — `timeout 60 godot --headless --quit 2>&1`. No `ERROR` lines. RID warnings are benign.
+16. **Git commit** — repo is already initialized before Codex starts:
     ```bash
     git add -A && git commit -m "scaffold: project skeleton"
     ```
+
+## Version-Sensitive Files
+
+Treat these as local-toolchain outputs, not static templates:
+
+- `project.godot` `config_version`
+- `.csproj` `Project Sdk="Godot.NET.Sdk/..."`
+- `.csproj` `TargetFramework`
+
+Rules:
+
+- Existing project -> preserve the current values unless the user explicitly asked to migrate the toolchain.
+- Fresh project -> detect the installed versions first and write matching values.
+- Do not blindly copy `config_version=6`, `Godot.NET.Sdk/4.4.0`, or `net9.0` from examples.
+- If the first `godot --headless --import` or `godot --headless --quit` reports a project-version mismatch, stop and fix the version fields before doing any more work.
 
 ## Output Files
 
 ### 1. `project.godot`
 
+This example is schematic. Version-sensitive fields must match the installed local engine, not the literal values shown in an old template.
+
 ```ini
 ; Engine configuration file
 ; Do not edit manually
+
+config_version={match local Godot}
 
 [application]
 
@@ -99,10 +125,12 @@ fire={
 
 ### 2. `.csproj`
 
+This example is schematic. Match the installed Godot and .NET versions on the machine running the project.
+
 ```xml
-<Project Sdk="Godot.NET.Sdk/4.4.0">
+<Project Sdk="Godot.NET.Sdk/{match local Godot/.NET integration}">
   <PropertyGroup>
-    <TargetFramework>net9.0</TargetFramework>
+    <TargetFramework>{match installed dotnet}</TargetFramework>
     <EnableDynamicLoading>true</EnableDynamicLoading>
   </PropertyGroup>
 </Project>
@@ -165,8 +193,6 @@ Architecture graph plus asset hints for the asset planner. No descriptions, no r
 
 Assets, tools, and build artifacts stay out of git:
 ```
-.claude
-CLAUDE.md
 assets
 screenshots
 .godot

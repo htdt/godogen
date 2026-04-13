@@ -1,5 +1,14 @@
 # Workstation Setup
 
+Shared workstation setup for both source trees in this repo.
+
+When a command references bundled Godogen tools, use the path that matches the variant you are working on:
+
+- Claude source repo: `claude/...`
+- Codex source repo: `codex/...`
+- Published Claude game repo: `.claude/skills/...`
+- Published Codex game repo: `.agents/skills/...`
+
 ## .NET 9 SDK
 
 Godot 4.5+ requires .NET 9.
@@ -65,8 +74,17 @@ Requires Python 3.10+.
 
 ```bash
 python3 --version
-pip install -r skills/godogen/tools/requirements.txt
+pip install -r claude/skills/godogen/tools/requirements.txt
+# or
+pip install -r codex/skills/godogen/tools/requirements.txt
 ```
+
+The two requirements files should stay aligned. Install either one in the source repo.
+
+In a published game repo, the same file lives at:
+
+- `.claude/skills/godogen/tools/requirements.txt` for Claude Code
+- `.agents/skills/godogen/tools/requirements.txt` for Codex
 
 ## Godot (.NET edition)
 

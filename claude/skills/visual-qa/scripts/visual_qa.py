@@ -12,7 +12,7 @@ Question mode: free-form question + any number of screenshots. No reference need
 
 --context: Task context (Goal, Requirements, Verify) for goal verification.
 --question: Free-form question about the screenshots (replaces reference-based modes).
---model: Override model (default: gemini-3-flash).
+--model: Override model (default: gemini-3-flash-preview).
 --log: Path to JSONL log file for debug logging.
 Requires: GEMINI_API_KEY or GOOGLE_API_KEY.
 """
@@ -30,7 +30,7 @@ STATIC_PROMPT = PROMPTS_DIR / "static_prompt.md"
 DYNAMIC_PROMPT = PROMPTS_DIR / "dynamic_prompt.md"
 QUESTION_PROMPT = PROMPTS_DIR / "question_prompt.md"
 
-DEFAULT_MODEL = "gemini-3-flash"
+DEFAULT_MODEL = "gemini-3-flash-preview"
 
 
 def log_entry(log_path, *, mode, model, query, files, output):

@@ -1,12 +1,12 @@
 # Godot Capture
 
-Screenshot and video capture. GPU gives hardware rendering (shadows, SSR, SSAO, glow); without GPU, screenshots still work via software Vulkan (lavapipe) but video capture is skipped.
+Screenshot and video capture. Hardware Vulkan gives proper rendering performance (shadows, SSR, SSAO, glow) and is required for video capture. Without a hardware GPU, screenshots can still work via software Vulkan (`llvmpipe`/`lavapipe`), but video capture should be skipped.
 
 Working directory is the Godot project.
 
 ## Setup (run once per session)
 
-Detects platform and GPU. Writes `.capture/run_godot` — a persistent wrapper script compatible with `timeout`.
+Detects platform and whether Vulkan exposes a hardware GPU. Writes `.capture/run_godot` — a persistent wrapper script compatible with `timeout`.
 
 ```bash
 set -e
@@ -15,6 +15,7 @@ touch .capture/.gdignore
 
 PLATFORM=$(uname -s)
 GPU=none
+GPU_KIND=software
 
 # --- Timeout command ---
 if command -v timeout &>/dev/null; then
@@ -35,8 +36,12 @@ fi
 NVIDIA_ICD=/usr/share/vulkan/icd.d/nvidia_icd.json
 if [[ "$PLATFORM" == "Darwin" ]]; then
     GPU=metal
-elif [[ -f "$NVIDIA_ICD" ]] && VK_ICD_FILENAMES=$NVIDIA_ICD vulkaninfo --summary 2>&1 | grep -q "NVIDIA"; then
-    GPU=nvidia
+    GPU_KIND=hardware
+elif command -v vulkaninfo &>/dev/null; then
+    if vulkaninfo --summary 2>&1 | grep -Eq "deviceType *= PHYSICAL_DEVICE_TYPE_(DISCRETE_GPU|INTEGRATED_GPU|VIRTUAL_GPU)"; then
+        GPU=vulkan
+        GPU_KIND=hardware
+    fi
 fi
 
 # --- Persistent run_godot wrapper ---
@@ -54,11 +59,13 @@ fi
 
 # Renderer
 if [[ "$(uname -s)" == "Darwin" ]]; then
-    cmd+=(godot --rendering-method forward_plus)
+    cmd+=(godot --path . --rendering-method forward_plus)
 elif [[ -f "$NVIDIA_ICD" ]]; then
-    cmd+=(env "VK_ICD_FILENAMES=$NVIDIA_ICD" godot --rendering-method forward_plus)
+    cmd+=(env "VK_ICD_FILENAMES=$NVIDIA_ICD" godot --path . --rendering-method forward_plus)
+elif command -v vulkaninfo &>/dev/null && vulkaninfo --summary 2>&1 | grep -Eq "deviceType *= PHYSICAL_DEVICE_TYPE_(DISCRETE_GPU|INTEGRATED_GPU|VIRTUAL_GPU)"; then
+    cmd+=(godot --path . --rendering-method forward_plus)
 else
-    cmd+=(godot --rendering-driver vulkan)
+    cmd+=(godot --path . --rendering-driver vulkan)
 fi
 
 "${cmd[@]}" "$@" 2>&1 | { grep -v "$NOISE" || true; }
@@ -66,7 +73,7 @@ WRAPPER
 chmod +x .capture/run_godot
 
 # --- Env for sourcing in subsequent bash calls ---
-GPU_AVAILABLE=$([[ "$GPU" != "none" ]] && echo true || echo false)
+GPU_AVAILABLE=$([[ "$GPU_KIND" == "hardware" ]] && echo true || echo false)
 cat > .capture/env << ENV
 GPU_AVAILABLE=$GPU_AVAILABLE
 TIMEOUT_CMD=$TIMEOUT_CMD
@@ -97,6 +104,8 @@ $TIMEOUT_CMD 30 .capture/run_godot \
 ```
 
 Where `{task_folder}` is derived from the task name/number (e.g., `task_01_terrain`). Use lowercase with underscores.
+
+Godot expands `frame.png` into numbered images such as `frame00000003.png` and also writes a companion `frame.wav`. Treat the PNG sequence as the screenshot output.
 
 **Timeout:** `$TIMEOUT_CMD 30` is a safety net — `--quit-after` handles exit normally. Exit code 124 means timeout fired.
 

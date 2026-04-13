@@ -1,0 +1,4 @@
+interface:
+  display_name: "Godogen"
+  short_description: "Generate or update complete Godot games"
+  default_prompt: "Use $godogen to build or update this Godot game from a natural-language design brief."
