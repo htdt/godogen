@@ -2,13 +2,6 @@
 
 Shared workstation setup for both source trees in this repo.
 
-When a command references bundled Godogen tools, use the path that matches the variant you are working on:
-
-- Claude source repo: `claude/...`
-- Codex source repo: `codex/...`
-- Published Claude game repo: `.claude/skills/...`
-- Published Codex game repo: `.agents/skills/...`
-
 ## .NET 9 SDK
 
 Godot 4.5+ requires .NET 9.
@@ -210,6 +203,16 @@ Set in environment:
 - `GOOGLE_API_KEY` — Gemini image generation (references, characters, precise work)
 - `XAI_API_KEY` — xAI Grok image/video generation (textures, simple objects)
 - `TRIPO3D_API_KEY` — image-to-3D conversion (3D games only)
+
+## Notifications (optional)
+
+[tg-push](https://github.com/htdt/tg-push) is a single-shot CLI that sends text plus an optional image or video to Telegram. The agent uses it to report progress, QA verdicts, and the final video — especially useful when a run executes on a remote server.
+
+```bash
+pipx install tg-push
+```
+
+Set `TG_BOT_TOKEN` (from [@BotFather](https://t.me/BotFather)) and `TG_CHAT_ID` in the environment.
 
 ## Verify All
 

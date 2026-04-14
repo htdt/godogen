@@ -1,4 +1,4 @@
-# Godogen: Claude Code and Codex skills that build complete Godot 4 projects
+# Godogen: Claude Code and Codex skills that build complete Godot projects
 
 [![Watch the video](https://img.youtube.com/vi/eUz19GROIpY/maxresdefault.jpg)](https://youtu.be/eUz19GROIpY)
 
@@ -6,30 +6,20 @@
 
 You describe what you want. An AI pipeline designs the architecture, generates the art, writes every line of code, captures screenshots from the running engine, and fixes what does not look right. The output is a real Godot 4 project with organized scenes, readable scripts, and proper game architecture.
 
-This repository now carries two implementations of that pipeline:
+This repo is not a Godot game. It is the source for a generator that produces Godot games: **godogen → game repo → game**. You publish the skills into a fresh game repo (Claude Code or Codex flavored), then the agent runs inside that repo to build the actual game.
 
-- `claude/` — the Claude Code version. It publishes game repos with `CLAUDE.md` and `.claude/skills/`.
-- `codex/` — the Codex version. It publishes game repos with `AGENTS.md` and `.agents/skills/`.
+Two parallel source trees live here, one per host agent:
 
-This repo is the skill authoring source, not the runtime layout that either tool uses day to day inside a generated game project.
-Shared repo-level agent instructions live at the root in `AGENTS.md`. `CLAUDE.md` is a symlink to the same file.
+- `claude/` — the Claude Code version
+- `codex/` — the Codex version
 
-## What both versions do
+## What skills do
 
 - **Godot 4 output** — real projects with proper scene trees, scripts, and asset organization.
 - **Asset generation** — Gemini creates precise references and characters; xAI Grok handles textures and simple objects; Tripo3D converts images to 3D models. Animated sprites use Grok video generation with loop detection.
 - **C# / .NET 9** — all generated code uses C#. See [why C# over GDScript](gdscript-vs-csharp.md).
 - **Visual QA closes the loop** — captures actual screenshots from the running game and uses multimodal review to catch z-fighting, missing textures, broken physics, and other visual regressions.
 - **Runs on commodity hardware** — any machine with Godot, Python, and the required API keys can run the pipeline.
-
-## Repo layout
-
-- `AGENTS.md` — shared repo-level instructions for agent work in this combined source repo
-- `CLAUDE.md` — symlink to `AGENTS.md`
-- `claude/` — Claude Code source tree: `publish.sh`, `game.md`, and `skills/`
-- `codex/` — Codex source tree: `publish.sh`, `game.md`, and `skills/`
-- `demo_prompts.md` — example prompts used for demos
-- `gdscript-vs-csharp.md` — rationale for C# / .NET 9
 
 ## Getting started
 
@@ -43,63 +33,32 @@ Shared repo-level agent instructions live at the root in `AGENTS.md`. `CLAUDE.md
   - `TRIPO3D_API_KEY` — [Tripo3D](https://platform.tripo3d.ai/) for 3D generation
 - System packages from [setup.md](setup.md): `vulkan-tools`, `xvfb`, `ffmpeg`, `imagemagick`, plus platform-specific extras
 - Tested on Ubuntu, Debian, and macOS
-- Either Claude Code or Codex, depending on which variant you want to use
+- Claude Code or Codex
 
 ### Publish a game repo
 
-Claude Code version:
+Pick the variant that matches your host agent:
 
 ```bash
-./claude/publish.sh ~/my-game
-./claude/publish.sh --force ~/my-game
+./claude/publish.sh ~/my-game   # writes CLAUDE.md and .claude/skills/
+./codex/publish.sh  ~/my-game   # writes AGENTS.md and .agents/skills/
 ```
 
-This creates a target repo with `CLAUDE.md` and `.claude/skills/`.
+Pass `--force` to wipe existing contents at the target before publishing — use this when re-publishing over a previous run.
 
-Codex version:
+## Running on a server
 
-```bash
-./codex/publish.sh ~/my-game
-./codex/publish.sh --force ~/my-game
-```
+A full generation run can take hours, so it's convenient to offload it to a server, ideally a GPU instance, since Godot renders screenshots and videos much faster with hardware acceleration.
 
-This creates a target repo with `AGENTS.md` and `.agents/skills/`.
-
-### Codex defaults
-
-- Start with `gpt-5.4` for full generation runs.
-- Use `gpt-5.4-mini` for lighter tasks or cheaper helper work.
-- Invoke `$godogen` explicitly for new runs, or ask Codex to use the `godogen` skill.
-- Use dedicated helper agents only when you want context isolation for `godot-api` or `visual-qa`.
-
-Example:
-
-```text
-Use $godogen to build a 3D alpine snowboard game. Treat screenshot-based verification as mandatory. If I explicitly ask for helper agents, use them only for Godot API lookup or visual QA context isolation.
-```
-
-## Running on a VM
-
-A full generation run can take hours. Running on a cloud VM keeps your local machine free and gives Godot a GPU for screenshot capture.
-
-- Claude Code users can lean on channels or remote control for long-running sessions.
-- Codex users will usually keep long runs alive in `tmux` or `screen`; GPU-backed screenshot capture matters more than remote chat integrations.
+- Keep the session alive across SSH drops with `tmux` or `screen`.
+- Install [tg-push](https://github.com/htdt/tg-push) so the agent can push progress updates, screenshots, and the final video to Telegram while you're away.
+- Enable remote control so you can check in and steer the run from any device — both Claude Code and Codex have official remote-control interfaces.
 
 ## Improving the skills
 
 After a full generation session, ask the agent you used to review how the pipeline performed:
 
 > Analyze this session. Were the instructions optimal? Flag anything that was too obvious, missing, or misleading. Did any tools pollute context with noise? Did the screenshot verification loop catch the real problems? Any tool failures or workarounds?
-
-Then make the fix in the matching source tree:
-
-- Claude Code changes live under `claude/`
-- Codex changes live under `codex/`
-
-## Which version to use
-
-- Use `claude/` if you want the Claude Code workflow and published `CLAUDE.md` runtime layout.
-- Use `codex/` if you want the Codex CLI / IDE workflow and published `AGENTS.md` runtime layout.
 
 ## Roadmap
 
@@ -108,13 +67,9 @@ Then make the fix in the matching source tree:
 
 ## Changelog
 
-**2026-04-13 — Repo split**
-- Source tree split into `claude/` and `codex/`
-- Root docs now describe the shared project and link to variant-specific workflows
-
-**2026-04-11 — Codex migration**
-- Codex source tree moved to the repo-wide `AGENTS.md` policy plus `codex/game.md` publish template
-- Codex workflow defaults now assume local CLI use, explicit `$godogen` invocation, and helper agents only for context isolation
+**2026-04-14 — Codex support**
+- Added a parallel Codex source tree alongside the existing Claude Code one
+- Each variant publishes to its own runtime layout (`.claude/skills/` vs `.agents/skills/`)
 
 **2026-04-06 — C# migration**
 - All skills and generated code migrated from GDScript to C# / .NET 9 ([comparison](gdscript-vs-csharp.md))

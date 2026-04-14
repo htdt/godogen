@@ -2,7 +2,7 @@ Use `/godogen` to generate or update this game from a natural language descripti
 
 The working directory is the project root. NEVER `cd` — use relative paths for all commands.
 
-When a channel is connected (Telegram, Slack, etc.), share progress via `reply`. Attach screenshots and videos using `files` — task completions, QA verdicts, reference image, final video are all worth sharing.
+If `tg-push` is on PATH with `TG_BOT_TOKEN` and `TG_CHAT_ID` set, share key visuals via `tg-push --text "caption" --file path/to/image_or_video`: the reference image, the screenshot confirming each task is done, and the final video.
 
 # Project Structure
 
@@ -26,9 +26,9 @@ test/
 assets/                # gitignored — img/*.png, glb/*.glb
 screenshots/           # gitignored — per-task frames
 .vqa.log               # Visual QA debug log (gitignored)
+.claude/skills/        # Published Godogen skills
 ```
 
 ## Limitations
 
 - No audio support
-- No animated GLBs — static models only
