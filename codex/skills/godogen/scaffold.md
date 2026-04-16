@@ -210,6 +210,10 @@ mkdir -p screenshots && touch screenshots/.gdignore
 
 Do NOT create `.gdignore` in `assets/` or any subdirectory of it — Godot must import those files. `.gdignore` makes the importer skip the entire directory silently.
 
+### Runtime vs reference/debug separation
+
+`assets/` contains only files the running game loads — it is the exportable subtree. Generation inputs (reference images used only to seed image_to_model, pose frames that don't ship, debug grids), sidecars, and meta files go outside `assets/` — either at repo root (like `reference.png`) or under a sibling like `refs/` or `_meta/` with its own `.gdignore`. Mixing them bloats APK exports and muddies what the asset planner considers "the asset set".
+
 ### 5. Script stubs: `scripts/*.cs`
 
 ```csharp

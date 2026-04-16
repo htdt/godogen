@@ -4,6 +4,12 @@ Analyze game screenshots against the visual reference. Default backend is `gemin
 
 Context policy: run Gemini inline. For `--native` or `--both`, use a helper agent so image review starts from a fresh context.
 
+## Mode choice
+
+Pick Dynamic whenever the task or goal mentions smooth, transition, handoff, blend, state change, or any verb that implies motion (idle/walk, walk/attack, run/jump, place/pickup). Static one-frame check cannot catch timing, frozen poses, or pops — and those are the failures that actually ship.
+
+Static is for decoration, terrain, UI/HUD, title — scenes with no motion contract.
+
 ## Static Mode
 
 For scenes without meaningful motion (decoration, terrain, UI). Two images: reference + one game screenshot.

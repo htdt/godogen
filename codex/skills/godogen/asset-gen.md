@@ -158,6 +158,16 @@ Reads the rig task id from the sidecar next to `--rigged` and submits `animate_r
 
 The baked clip shows up in Godot's `AnimationPlayer` as `NlaTrack` (Tripo's Blender export name), not the preset name you requested.
 
+### Tripo3D operational quirks
+
+- Jobs routinely sit at 99% with empty output for several minutes before resolving. Let the default timeout run — empty intermediate output is expected.
+- A timeout in `glb` / `rig` / `retarget` does **not** mean the job failed on the server. The task id and stage are already persisted in `<output>.tripo.json`, and the spend has been recorded once. Do **not** resubmit — that double-charges.
+- Resume the stalled task with no extra cost:
+  ```bash
+  python3 .agents/skills/godogen/tools/asset_gen.py resume -o assets/glb/car.glb
+  ```
+  Works for `glb`, `rig` (picks up from whichever of image_to_model / prerigcheck / animate_rig is pending), and `retarget`. Safe to re-run — it no-ops when the sidecar reports `status: "complete"`.
+
 #### Biped presets (full list from tripo3d docs)
 
 ```

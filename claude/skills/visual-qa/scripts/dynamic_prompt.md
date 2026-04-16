@@ -45,7 +45,7 @@ The assets are usually fine — what breaks is placement, scaling, and compositi
 - Orphaned UI elements at default positions
 
 ### Motion & Animation (compare consecutive frames)
-Frames are 0.5 seconds apart. Compare them in sequence:
+Frames are 0.5 seconds apart. Compare them in sequence. Motion-timing and state-handoff bugs are the primary failures to catch here — broad art similarity with the reference is secondary and often matches even when the motion is broken:
 - **Stuck entities:** same position/pose across multiple frames when movement expected
 - **Jitter/teleportation:** large position jumps between consecutive frames
 - **Sliding:** position changes but animation pose stays frozen (ice-skating)

@@ -2,6 +2,12 @@
 
 Analyze game screenshots against the visual reference. Runs in a forked context via the `visual-qa` skill. Default backend is `gemini-3-flash-preview`; pass `--native` for Claude vision or `--both` for aggregated verdict.
 
+## Mode choice
+
+Pick Dynamic whenever the task or goal mentions smooth, transition, handoff, blend, state change, or any verb that implies motion (idle/walk, walk/attack, run/jump, place/pickup). Static one-frame check cannot catch timing, frozen poses, or pops — and those are the failures that actually ship.
+
+Static is for decoration, terrain, UI/HUD, title — scenes with no motion contract.
+
 ## Static Mode
 
 For scenes without meaningful motion (decoration, terrain, UI). Two images: reference + one game screenshot.

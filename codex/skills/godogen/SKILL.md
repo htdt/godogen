@@ -55,6 +55,12 @@ User request
     +- Summary of completed game
 ```
 
+## Assets
+
+**If a budget is provided, generating proper assets is part of the task, not optional.** Do not fall back to procedural primitives (boxes stacked into a human, spheres for heads, coloured quads for props) when the budget allows a real asset — plan and generate the asset through `asset-planner.md` / `asset-gen.md`. Procedural stand-ins are acceptable only for genuinely abstract shapes (platforms, blocks, particles) or when the asset-planner has explicitly ruled an asset out on budget grounds.
+
+Placeholder primitives in gameplay code are a signal that the asset step was skipped — go back and generate the asset before continuing.
+
 ## Execution
 
 Read `task-execution.md` before starting. Two phases:

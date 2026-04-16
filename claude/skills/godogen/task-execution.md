@@ -69,6 +69,26 @@ Don't debug in a complex scene — isolate the problem:
 2. **Targeted frames** — for animation/motion issues, capture at `--fixed-fps 10` for 3-5 seconds and feed the full sequence. Single frames cannot show timing bugs.
 3. **Before/after** — capture with the fix applied and without. Ask "What changed between these two sets?".
 
+### Animation & state-handoff loop
+
+The canonical debug loop for any "smooth X" or state-transition requirement:
+
+1. **Isolate** the transition in a minimal repro scene — strip everything unrelated.
+2. **Capture** a short multi-frame sequence across the transition (3-5s at `--fixed-fps 10`).
+3. **Inspect** the specific handoff with `visual-qa` dynamic or question mode — ask about the transition, not the static art.
+4. **Patch**, re-capture the same window, confirm.
+
+Static VQA is never sufficient here: motion-timing and state-handoff bugs (idle→walk pop, frozen mid-action pose, sliding, animation-mismatched speed) are the defects that slip past reference-match checks.
+
+### Missing or failed animation clips
+
+A missing or failed retarget clip must **fail verification** — do not silently swap in a different character GLB or a different mesh source. Acceptable fallbacks, in order:
+
+1. Re-run the retarget on the same rigged mesh.
+2. Reuse another successful clip on the **same** rigged mesh (e.g., play idle where walk was expected) and log the substitution in MEMORY.md.
+
+Never substitute a different model. A working-looking clip on the wrong body is a worse failure than an obvious missing animation.
+
 ### Animation Failures
 
 Animations are the #1 source of silent failures — they "work" (no errors) but produce wrong results. The current pipeline is bad at detecting these because validation only checks for compile errors.

@@ -33,6 +33,8 @@ Each task gets a **Verify** field inline — what to check after implementation.
 
 **Risk tasks** — target the exact failure mode (e.g., for animations: "every direction plays correct frames, transitions smooth, no pose snapping").
 
+Whenever a requirement mentions smooth motion, state handoff (idle→walk, walk→attack, place/pickup, jump→land), or any runtime transition, the Verify line must name the specific transition to probe dynamically — not "matches reference.png". Reference-match is a static check and cannot see motion-timing bugs.
+
 **Main build** — combine cross-cutting checks with game-specific ones:
 - Movement direction matches player input
 - Animation direction matches movement direction

@@ -7,6 +7,7 @@ Subcommands:
   glb       Convert a PNG to a static GLB (30¢ default, 60¢ hd)
   rig       Convert a PNG to a rigged biped GLB (preset + 25¢)
   retarget  Apply a biped preset animation to a rigged GLB (10¢)
+  resume    Resume a timed-out Tripo3D job (glb/rig/retarget) from its sidecar — no extra cost
 
 Output: JSON to stdout. Progress to stderr.
 """
@@ -30,7 +31,6 @@ from tripo3d import (
     create_retarget_task,
     create_rig_task,
     download_model,
-    image_to_glb,
     poll_task,
 )
 
@@ -302,6 +302,10 @@ def _resolve_preset(name: str) -> dict:
     return QUALITY_PRESETS[name]
 
 
+def _resume_hint(output: Path) -> str:
+    return f"Task is still processing on the server. Resume (no extra cost) with: asset_gen.py resume -o {output}"
+
+
 def cmd_glb(args):
     image_path = Path(args.image)
     if not image_path.exists():
@@ -318,27 +322,37 @@ def cmd_glb(args):
 
     print(f"Generating GLB (quality={args.quality}, pbr={args.pbr}, face_limit={face_limit})...", file=sys.stderr)
 
+    sidecar = {
+        "kind": "mesh",
+        "preset": args.quality,
+        "pbr": args.pbr,
+        "status": "pending",
+    }
     try:
-        _, task_id = image_to_glb(
+        task_id = create_image_to_model_task(
             image_path,
-            output,
             face_limit=face_limit,
             pbr=args.pbr,
             geometry_quality=preset["geometry_quality"],
             texture_quality=preset["texture_quality"],
         )
+        print(f"  image_to_model: {task_id}", file=sys.stderr)
+        record_spend(preset["cost_cents"], "tripo3d-glb")
+        sidecar["image_to_model_task_id"] = task_id
+        _write_sidecar(output, sidecar)
+
+        result = poll_task(task_id)
+        download_model(result, output)
+    except TimeoutError as e:
+        result_json(False, error=f"{e}. {_resume_hint(output)}", cost_cents=preset["cost_cents"])
+        sys.exit(1)
     except Exception as e:
         result_json(False, error=str(e))
         sys.exit(1)
 
-    _write_sidecar(output, {
-        "kind": "mesh",
-        "image_to_model_task_id": task_id,
-        "preset": args.quality,
-        "pbr": args.pbr,
-    })
+    sidecar["status"] = "complete"
+    _write_sidecar(output, sidecar)
     print(f"Saved: {output}", file=sys.stderr)
-    record_spend(preset["cost_cents"], "tripo3d-glb")
     result_json(True, path=str(output), cost_cents=preset["cost_cents"])
 
 
@@ -359,6 +373,13 @@ def cmd_rig(args):
 
     print(f"Generating rigged GLB (quality={args.quality}, face_limit={face_limit})...", file=sys.stderr)
 
+    sidecar = {
+        "kind": "rig",
+        "preset": args.quality,
+        "pbr": args.pbr,
+        "rig_type": "biped",
+        "status": "pending",
+    }
     try:
         gen_id = create_image_to_model_task(
             image_path,
@@ -368,11 +389,17 @@ def cmd_rig(args):
             texture_quality=preset["texture_quality"],
         )
         print(f"  image_to_model: {gen_id}", file=sys.stderr)
-        poll_task(gen_id)
         record_spend(preset["cost_cents"], "tripo3d-glb")
+        sidecar["image_to_model_task_id"] = gen_id
+        sidecar["stage"] = "image_to_model"
+        _write_sidecar(output, sidecar)
+        poll_task(gen_id)
 
         check_id = create_prerigcheck_task(gen_id)
         print(f"  animate_prerigcheck: {check_id}", file=sys.stderr)
+        sidecar["prerigcheck_task_id"] = check_id
+        sidecar["stage"] = "prerigcheck"
+        _write_sidecar(output, sidecar)
         check_result = poll_task(check_id)
         check_out = check_result.get("output", {})
         rig_type = check_out.get("rig_type")
@@ -385,20 +412,21 @@ def cmd_rig(args):
 
         rig_id = create_rig_task(gen_id, rig_type="biped")
         print(f"  animate_rig: {rig_id}", file=sys.stderr)
+        record_spend(RIG_COST_CENTS, "tripo3d-rig")
+        sidecar["animate_rig_task_id"] = rig_id
+        sidecar["stage"] = "animate_rig"
+        _write_sidecar(output, sidecar)
         rig_result = poll_task(rig_id)
         download_model(rig_result, output)
-        record_spend(RIG_COST_CENTS, "tripo3d-rig")
+    except TimeoutError as e:
+        result_json(False, error=f"{e}. {_resume_hint(output)}", cost_cents=0)
+        sys.exit(1)
     except Exception as e:
         result_json(False, error=str(e))
         sys.exit(1)
 
-    _write_sidecar(output, {
-        "kind": "rig",
-        "image_to_model_task_id": gen_id,
-        "animate_rig_task_id": rig_id,
-        "rig_type": "biped",
-        "preset": args.quality,
-    })
+    sidecar["status"] = "complete"
+    _write_sidecar(output, sidecar)
     print(f"Saved: {output}", file=sys.stderr)
     result_json(True, path=str(output), cost_cents=total_cost)
 
@@ -410,13 +438,13 @@ def cmd_retarget(args):
         sys.exit(1)
 
     try:
-        sidecar = _read_sidecar(rigged)
+        rigged_sidecar = _read_sidecar(rigged)
     except FileNotFoundError as e:
         result_json(False, error=str(e))
         sys.exit(1)
 
-    rig_task_id = sidecar.get("animate_rig_task_id")
-    if not rig_task_id or sidecar.get("kind") != "rig":
+    rig_task_id = rigged_sidecar.get("animate_rig_task_id")
+    if not rig_task_id or rigged_sidecar.get("kind") != "rig":
         result_json(False, error=f"Sidecar for {rigged} is not a rig output")
         sys.exit(1)
 
@@ -426,24 +454,116 @@ def cmd_retarget(args):
 
     print(f"Retargeting ({args.animation})...", file=sys.stderr)
 
+    sidecar = {
+        "kind": "anim",
+        "animate_rig_task_id": rig_task_id,
+        "animation": args.animation,
+        "status": "pending",
+    }
     try:
         task_id = create_retarget_task(rig_task_id, args.animation)
         print(f"  animate_retarget: {task_id}", file=sys.stderr)
+        record_spend(RETARGET_COST_CENTS, "tripo3d-retarget")
+        sidecar["animate_retarget_task_id"] = task_id
+        _write_sidecar(output, sidecar)
         result = poll_task(task_id)
         download_model(result, output)
+    except TimeoutError as e:
+        result_json(False, error=f"{e}. {_resume_hint(output)}", cost_cents=RETARGET_COST_CENTS)
+        sys.exit(1)
     except Exception as e:
         result_json(False, error=str(e))
         sys.exit(1)
 
-    _write_sidecar(output, {
-        "kind": "anim",
-        "animate_rig_task_id": rig_task_id,
-        "animate_retarget_task_id": task_id,
-        "animation": args.animation,
-    })
+    sidecar["status"] = "complete"
+    _write_sidecar(output, sidecar)
     print(f"Saved: {output}", file=sys.stderr)
-    record_spend(RETARGET_COST_CENTS, "tripo3d-retarget")
     result_json(True, path=str(output), cost_cents=RETARGET_COST_CENTS)
+
+
+def cmd_resume(args):
+    output = Path(args.output)
+    try:
+        sidecar = _read_sidecar(output)
+    except FileNotFoundError as e:
+        result_json(False, error=str(e))
+        sys.exit(1)
+
+    if sidecar.get("status") == "complete":
+        print(f"Already complete: {output}", file=sys.stderr)
+        result_json(True, path=str(output), cost_cents=0)
+        return
+
+    kind = sidecar.get("kind")
+    output.parent.mkdir(parents=True, exist_ok=True)
+
+    try:
+        if kind == "mesh":
+            task_id = sidecar["image_to_model_task_id"]
+            print(f"  resuming image_to_model: {task_id}", file=sys.stderr)
+            result = poll_task(task_id)
+            download_model(result, output)
+
+        elif kind == "rig":
+            stage = sidecar.get("stage")
+            gen_id: str = sidecar["image_to_model_task_id"]
+
+            if stage == "image_to_model":
+                print(f"  resuming image_to_model: {gen_id}", file=sys.stderr)
+                poll_task(gen_id)
+                check_id = create_prerigcheck_task(gen_id)
+                print(f"  animate_prerigcheck: {check_id}", file=sys.stderr)
+                sidecar["prerigcheck_task_id"] = check_id
+                sidecar["stage"] = "prerigcheck"
+                _write_sidecar(output, sidecar)
+                stage = "prerigcheck"
+
+            if stage == "prerigcheck":
+                check_id = sidecar["prerigcheck_task_id"]
+                print(f"  resuming animate_prerigcheck: {check_id}", file=sys.stderr)
+                check_result = poll_task(check_id)
+                rt = check_result.get("output", {}).get("rig_type")
+                if rt != "biped":
+                    result_json(False, error=f"prerigcheck: rig_type={rt!r}; rig pipeline is biped-only")
+                    sys.exit(1)
+                rig_id = create_rig_task(gen_id, rig_type="biped")
+                print(f"  animate_rig: {rig_id}", file=sys.stderr)
+                record_spend(RIG_COST_CENTS, "tripo3d-rig")
+                sidecar["animate_rig_task_id"] = rig_id
+                sidecar["stage"] = "animate_rig"
+                _write_sidecar(output, sidecar)
+                stage = "animate_rig"
+
+            if stage == "animate_rig":
+                rig_id = sidecar["animate_rig_task_id"]
+                print(f"  resuming animate_rig: {rig_id}", file=sys.stderr)
+                rig_result = poll_task(rig_id)
+                download_model(rig_result, output)
+            else:
+                result_json(False, error=f"Unknown rig stage: {stage}")
+                sys.exit(1)
+
+        elif kind == "anim":
+            task_id = sidecar["animate_retarget_task_id"]
+            print(f"  resuming animate_retarget: {task_id}", file=sys.stderr)
+            result = poll_task(task_id)
+            download_model(result, output)
+
+        else:
+            result_json(False, error=f"Unknown sidecar kind: {kind!r}")
+            sys.exit(1)
+
+    except TimeoutError as e:
+        result_json(False, error=f"{e}. Task still processing; retry resume.", cost_cents=0)
+        sys.exit(1)
+    except Exception as e:
+        result_json(False, error=str(e))
+        sys.exit(1)
+
+    sidecar["status"] = "complete"
+    _write_sidecar(output, sidecar)
+    print(f"Saved: {output}", file=sys.stderr)
+    result_json(True, path=str(output), cost_cents=0)
 
 
 def cmd_set_budget(args):
@@ -509,6 +629,10 @@ def main():
     p_rt.add_argument("--animation", required=True, help="e.g. preset:biped:walk")
     p_rt.add_argument("-o", "--output", required=True, help="Output animated GLB path")
     p_rt.set_defaults(func=cmd_retarget)
+
+    p_res = sub.add_parser("resume", help="Resume a timed-out Tripo3D job from its sidecar (no extra cost)")
+    p_res.add_argument("-o", "--output", required=True, help="Output path whose .tripo.json sidecar holds the pending task id(s)")
+    p_res.set_defaults(func=cmd_resume)
 
     p_budget = sub.add_parser("set_budget", help="Set the asset generation budget in cents")
     p_budget.add_argument("cents", type=int, help="Budget in cents")
