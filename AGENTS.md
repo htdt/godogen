@@ -1,9 +1,10 @@
 # Godogen Source Repo
 
-This repository contains two source trees for the same project:
+This repository contains two published source trees plus one Bevy migration workspace:
 
 - `claude/` — Claude Code source tree
-- `codex/` — Codex source tree
+- `codex/` — Codex Godot source tree
+- `codex_bevy/` — Codex Bevy migration workspace
 
 This is not a published game repo. The files at the repo root describe how to work on the source trees themselves.
 
@@ -13,6 +14,7 @@ This is not a published game repo. The files at the repo root describe how to wo
 - `codex/game.md` is the template that becomes `AGENTS.md` in a published Codex game repo.
 - `claude/publish.sh` publishes runtime skills into `.claude/skills/`.
 - `codex/publish.sh` publishes runtime skills into `.agents/skills/`.
+- `codex_bevy/` is additive migration work. Do not treat it as a replacement for `codex/` unless the user explicitly asks for that transition.
 - Root docs such as `README.md` and `setup.md` describe the combined repo and shared workstation setup.
 
 ## Skills
@@ -25,8 +27,8 @@ Both source trees carry the same three skills:
 
 ## Editing Rules
 
-- User must specify which is the target source tree.
-- Variant-specific work stays in the matching subtree: `claude/` or `codex/`.
+- User must specify which is the target source tree or migration workspace.
+- Variant-specific work stays in the matching subtree: `claude/`, `codex/`, or `codex_bevy/`.
 - Shared docs and shared repo policy live at the repo root.
 - Do not align the behavior across both variants unless asked.
 - Do not create or maintain `.claude/skills/` or `.agents/skills/` in this source repo.

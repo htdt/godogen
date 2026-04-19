@@ -1,0 +1,7 @@
+interface:
+  display_name: "Bevy API Lookup"
+  short_description: "Targeted Bevy API and example lookup"
+  default_prompt: "Use $bevy-api to answer a specific Bevy API, example, or current-pattern question."
+
+policy:
+  allow_implicit_invocation: false

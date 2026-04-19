@@ -1,0 +1,7 @@
+interface:
+  display_name: "Godogen (Bevy Core Loop)"
+  short_description: "Create or update a Bevy scaffold, code-first scene, runtime loop, or capture flow"
+  default_prompt: "Use $godogen to scaffold or refresh this Bevy game project, generate the default code-first scene setup, execute the current proven Bevy implementation loop, or apply the validated capture workflow for screenshots and video."
+
+policy:
+  allow_implicit_invocation: false

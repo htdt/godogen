@@ -8,10 +8,12 @@ You describe what you want. An AI pipeline designs the architecture, generates t
 
 This repo is not a Godot game. It is the source for a generator that produces Godot games: **godogen → game repo → game**. You publish the skills into a fresh game repo (Claude Code or Codex flavored), then the agent runs inside that repo to build the actual game.
 
-Two parallel source trees live here, one per host agent:
+Two published source trees live here, one per host agent:
 
 - `claude/` — the Claude Code version
 - `codex/` — the Codex version
+
+An additional top-level workspace, `codex_bevy/`, tracks the Bevy migration in parallel. It is additive work and does not replace the Godot-based `codex/` tree yet.
 
 ## What skills do
 
