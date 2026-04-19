@@ -5,6 +5,8 @@ Headless screenshot and video capture for Bevy projects after the runtime loop i
 ## Default Capture Shape
 
 - Use a dedicated capture entrypoint. Do not default to the interactive game binary for automated media output.
+- In a normal Cargo layout, that capture entrypoint is another Rust binary target such as `src/bin/capture.rs`, not a shell script or a separate project.
+- Keep it in the same package and reuse the shared game/library code so capture runs the real scene with different app wiring.
 - Render the scene to an offscreen `RenderTarget::Image`, not the primary window.
 - Run capture headless with `WindowPlugin { primary_window: None, exit_condition: DontExit }`, `WinitPlugin` disabled, and `ScheduleRunnerPlugin` as the app runner.
 - Use `Screenshot::image(...)` plus `save_to_disk(...)` for the proven screenshot path.
@@ -27,7 +29,7 @@ Prove one still image before adding video:
 
 1. Create the offscreen render target as a resource before the scene camera is spawned.
 2. Point the main scene camera at that image target.
-3. Run the normal scene graph in a non-interactive capture mode.
+3. Run the normal scene graph in a non-interactive capture mode from the dedicated capture binary target.
 4. Spawn `Screenshot::image(render_target_handle)` and save the result to `.png`.
 5. Exit only after the screenshot callback confirms the frame was captured.
 
