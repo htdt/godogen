@@ -1,8 +1,9 @@
 # Godogen Source Repo
 
-This repository contains three source trees:
+This repository contains four source trees:
 
-- `claude/` — Claude Code source tree
+- `claude/` — Claude Code Godot source tree
+- `claude_bevy/` — Claude Code Bevy source tree
 - `codex/` — Codex Godot source tree
 - `codex_bevy/` — Codex Bevy source tree
 
@@ -11,10 +12,10 @@ This is not a published game repo. The files at the repo root describe how to wo
 ## Source vs Runtime
 
 - `*/game.md` files are runtime instruction templates:
-  `claude/game.md` becomes `CLAUDE.md`; `codex/game.md` and `codex_bevy/game.md` become `AGENTS.md` in published repos.
+  `claude/game.md` and `claude_bevy/game.md` become `CLAUDE.md`; `codex/game.md` and `codex_bevy/game.md` become `AGENTS.md` in published repos.
 - `*/publish.sh` publishes runtime skills:
-  `claude/` publishes to `.claude/skills/`; `codex/` and `codex_bevy/` publish to `.agents/skills/`.
-- `codex/` and `codex_bevy/` are both active Codex source trees for different engines.
+  `claude/` and `claude_bevy/` publish to `.claude/skills/`; `codex/` and `codex_bevy/` publish to `.agents/skills/`.
+- `claude/` and `codex/` target Godot; `claude_bevy/` and `codex_bevy/` target Bevy.
 - Root docs such as `README.md` and `setup.md` describe the combined repo and shared workstation setup.
 
 ## Skills
@@ -22,12 +23,12 @@ This is not a published game repo. The files at the repo root describe how to wo
 The current source trees carry these runtime skills:
 
 - `claude/` and `codex/`: **godogen**, **godot-api**, **visual-qa**
-- `codex_bevy/`: **godogen**, **bevy-api**, **visual-qa**
+- `claude_bevy/` and `codex_bevy/`: **godogen**, **bevy-api**, **visual-qa**
 
 ## Editing Rules
 
 - User must specify the target source tree.
-- Variant-specific work stays in the matching subtree: `claude/`, `codex/`, or `codex_bevy/`.
+- Variant-specific work stays in the matching subtree: `claude/`, `claude_bevy/`, `codex/`, or `codex_bevy/`.
 - Shared docs and shared repo policy live at the repo root.
 - Do not align the behavior across both variants unless asked.
 - Do not create or maintain `.claude/skills/` or `.agents/skills/` in this source repo.
