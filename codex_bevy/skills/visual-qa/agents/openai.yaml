@@ -1,0 +1,7 @@
+interface:
+  display_name: "Visual QA"
+  short_description: "Analyze Bevy screenshots for visual defects"
+  default_prompt: "Use $visual-qa to compare gameplay screenshots against a reference or answer a visual debugging question."
+
+policy:
+  allow_implicit_invocation: false
