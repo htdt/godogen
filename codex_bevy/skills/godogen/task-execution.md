@@ -38,7 +38,8 @@ If the task has one risky or unclear part, isolate it first:
 7. Run `cargo build` once the type check is clean.
 8. Run a runtime smoke test:
    - local desktop: `cargo run`
-   - headless or CI only when the display path is already known-good: `timeout 10 xvfb-run ./target/debug/{package-name}`
+   - no display or CI: retry the interactive smoke test with `timeout 10 xvfb-run ./target/debug/{package-name}`
+   - screenshots or video needed: stop using the interactive binary and switch to the dedicated offscreen capture path in `capture.md`
 9. Read runtime logs, not just the exit code. Missing assets, unsupported image formats, hierarchy warnings, and camera/UI ordering problems are real failures.
 10. Update `STRUCTURE.md` if module ownership, state, asset contracts, or verification commands changed.
 11. Repeat from step 3 until the task's stop conditions pass.
@@ -85,4 +86,5 @@ This ordering keeps the fastest objective blockers first. Compile issues and ass
 - Do not skip `cargo check` and jump straight to repeated full builds.
 - Do not rewrite scene structure to chase what is actually an asset-loader or manifest-feature problem.
 - Do not treat a workstation-specific `xvfb` or compositor failure as proof that the Bevy code is wrong.
+- Do not treat `xvfb-run` as the long-term media path. Use it to smoke-test the interactive binary only; use the dedicated offscreen capture entrypoint for screenshots and video.
 - Do not leave `STRUCTURE.md` stale after the runtime shape changes.

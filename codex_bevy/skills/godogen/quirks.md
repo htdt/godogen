@@ -27,7 +27,9 @@ Engine-level and tooling-level gotchas discovered through real Bevy migration wo
   ```
   If runtime logs say `feature "jpeg" is not enabled` or show texture-loader failures, fix `Cargo.toml` before rewriting scene spawning or material code.
 
-- **Do not default to primary-window capture for Linux headless Bevy runs** — the normal windowed app path can panic under virtual X with no usable present mode even when the same project runs fine on a real desktop display. The stable capture path is to render to `RenderTarget::Image`, disable `WinitPlugin`, and run a dedicated offscreen capture entrypoint. If the goal is automated screenshots or video, build the capture flow around an image target first instead of trying to record the interactive window binary.
+- **Do not default to primary-window capture for Linux headless Bevy runs** — the normal windowed app path can panic under virtual X with no usable present mode even when the same project runs fine on a real desktop display. If an interactive smoke test must run without a display, `xvfb-run` is an acceptable workaround. The stable media path is still to render to `RenderTarget::Image`, disable `WinitPlugin`, and run a dedicated offscreen capture entrypoint. If the goal is automated screenshots or video, build the capture flow around an image target first instead of trying to record the interactive window binary.
+
+- **Capture logs get noisy fast unless you suppress engine chatter** — `cargo run --bin capture -- frames ...` can flood the terminal with renderer and asset logs, which hides the lines you actually care about. Prefer `RUST_LOG=warn`, redirect the full run to a temp log, and grep only a unique marker prefix such as `[capture]` that your capture binary emits for progress milestones.
 
 ## Feedback Loop
 

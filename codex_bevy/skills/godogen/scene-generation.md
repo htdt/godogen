@@ -117,7 +117,8 @@ If the first smoke test produces `B0004` warnings, check parent anchors first; t
 - `cargo check`
 - `cargo build`
 - local desktop smoke test: `cargo run`
-- headless smoke test: `xvfb-run timeout 10 ./target/debug/{package-name}`
+- headless interactive smoke test fallback: `xvfb-run timeout 10 ./target/debug/{package-name}`
+- if you need screenshots or video, use the dedicated offscreen capture entrypoint from `capture.md` instead of the interactive binary
 
 The smoke test only needs to prove that the app launches cleanly. Exit code `124` from `timeout` is acceptable once the window loop is running, but hierarchy warnings, missing asset errors, or camera/UI clear-order issues are not.
 

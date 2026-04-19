@@ -15,6 +15,12 @@ Do not make virtual-window capture the default just because it looks simpler. On
 
 Headless Linux capture may fall back to a software Vulkan adapter such as `llvmpipe`. That is acceptable for short validation screenshots and clips if the media output is correct; it just makes the run slower.
 
+Practical fallback order:
+
+1. Prove the scene locally with `cargo run` when a real desktop display exists.
+2. If an interactive smoke test must run without a display, try `xvfb-run` as a workstation workaround.
+3. If the goal is screenshots or video, switch to the dedicated offscreen capture binary instead of trying to keep the interactive window path alive under virtual display plumbing.
+
 ## Screenshot First
 
 Prove one still image before adding video:
@@ -31,6 +37,15 @@ Example command shape:
 cargo run --bin {capture_bin} -- screenshot screenshots/{task}/still.png
 ```
 
+If the binary prints its own progress markers, prefix them with something unique such as `[capture]` and keep the rest of the engine logs quiet:
+
+```bash
+_log=$(mktemp)
+RUST_LOG=warn cargo run --bin {capture_bin} -- screenshot screenshots/{task}/still.png \
+  >"$_log" 2>&1
+rg '^\[capture\]' "$_log"
+```
+
 ## Video Path
 
 The proven video flow is: capture PNG frames first, then convert them with `ffmpeg`.
@@ -45,6 +60,18 @@ Example command shape:
 
 ```bash
 cargo run --bin {capture_bin} -- frames screenshots/{task}/frames 120
+ffmpeg -y -framerate 30 -i screenshots/{task}/frames/frame_%05d.png \
+    -c:v libx264 -pix_fmt yuv420p -preset medium -crf 22 -movflags +faststart \
+    screenshots/{task}/capture.mp4
+```
+
+For noisy capture runs, use the same temp-log pattern and only read the capture markers back into context:
+
+```bash
+_log=$(mktemp)
+RUST_LOG=warn cargo run --bin {capture_bin} -- frames screenshots/{task}/frames 120 \
+  >"$_log" 2>&1
+rg '^\[capture\]' "$_log"
 ffmpeg -y -framerate 30 -i screenshots/{task}/frames/frame_%05d.png \
     -c:v libx264 -pix_fmt yuv420p -preset medium -crf 22 -movflags +faststart \
     screenshots/{task}/capture.mp4
