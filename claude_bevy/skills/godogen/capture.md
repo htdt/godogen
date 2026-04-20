@@ -7,6 +7,7 @@ Headless screenshot and video capture for Bevy projects after the runtime loop i
 - Use a dedicated capture entrypoint. Do not default to the interactive game binary for automated media output.
 - In a normal Cargo layout, that capture entrypoint is another Rust binary target such as `src/bin/capture.rs`, not a shell script or a separate project.
 - Keep it in the same package and reuse the shared game/library code so capture runs the real scene with different app wiring.
+- Prefer invoking that entrypoint with `cargo run --bin {capture_bin}` from the crate root unless the binary sets its asset root explicitly. Bevy resolves asset paths relative to the process CWD, so a bare `./target/debug/{capture_bin}` can break `AssetServer` lookups when launched from the wrong directory.
 - Render the scene to an offscreen `RenderTarget::Image`, not the primary window.
 - Run capture headless with `WindowPlugin { primary_window: None, exit_condition: DontExit }`, `WinitPlugin` disabled, and `ScheduleRunnerPlugin` as the app runner.
 - Use `Screenshot::image(...)` plus `save_to_disk(...)` for the proven screenshot path.
@@ -27,11 +28,15 @@ Practical fallback order:
 
 Prove one still image before adding video:
 
-1. Create the offscreen render target as a resource before the scene camera is spawned.
+1. Create the offscreen render target and publish its handle resource before the scene camera is spawned.
 2. Point the main scene camera at that image target.
 3. Run the normal scene graph in a non-interactive capture mode from the dedicated capture binary target.
 4. Spawn `Screenshot::image(render_target_handle)` and save the result to `.png`.
 5. Exit only after the screenshot callback confirms the frame was captured.
+
+If startup or `OnEnter` systems read the capture target immediately, do not enqueue `Assets<Image>::add(...)` through `Commands` and assume the image exists right away. That write is deferred until commands are applied. Prefer creating the image directly in the world first, for example through `app.world_mut().resource_mut::<Assets<Image>>()`, then hand the stable handle to plugins and systems that consume it.
+
+`Screenshot::image(...).observe(save_to_disk(...))` is asynchronous. Treat screenshot completion as a latched state transition, not as "the file exists on the same frame." If you need a few extra ticks before exit, record an absolute finish tick once and compare against that fixed value. Do not recompute `current_tick + delay` every update or the exit condition can slide forever.
 
 Example command shape:
 
