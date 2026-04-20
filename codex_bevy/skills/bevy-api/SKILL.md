@@ -27,13 +27,17 @@ If the project is not a Cargo package or workspace yet, stop and ask what Bevy r
 
 If `resolve_bevy_context.py` reports an unresolved version, treat that as a hard stop for exact API guidance.
 
-Canonical local sources live inside this skill:
+This skill expects `docs/rustdoc`, `docs/bevy`, and `docs/bevy-website` to already be set up.
+
+In the source repo, run `./setup_bevy_docs.sh /path/to/bevy-docs` before publishing.
+
+Each skill install exposes that shared cache through local symlinks:
 
 - `.agents/skills/bevy-api/docs/rustdoc/`
 - `.agents/skills/bevy-api/docs/bevy/`
 - `.agents/skills/bevy-api/docs/bevy-website/`
 
-Keep that `docs/` directory gitignored. Treat it as local working data, not authored source.
+Keep that `docs/` directory gitignored. Treat the symlinks and shared cache as local working data, not authored source.
 
 Bootstrap or refresh the local cache with:
 

@@ -2,6 +2,23 @@
 
 Shared workstation setup for both source trees in this repo.
 
+## Bevy Docs Cache
+
+If you work on the Bevy source trees in this repo, choose a shared docs folder and wire both trees to it once after clone:
+
+```bash
+./setup_bevy_docs.sh /absolute/or/user/path/to/bevy-docs
+```
+
+This links:
+
+- `codex_bevy/skills/bevy-api/docs/{rustdoc,bevy,bevy-website}`
+- `claude_bevy/skills/bevy-api/docs/{rustdoc,bevy,bevy-website}`
+
+No default path is assumed. Pick a writable folder on your machine.
+
+If you later publish `codex_bevy/` or `claude_bevy/`, the publish script reuses the source repo's configured docs symlinks.
+
 ## .NET 9 SDK
 
 Godot 4.5+ requires .NET 9.

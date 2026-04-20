@@ -13,7 +13,7 @@ Two published source trees live here, one per host agent:
 - `claude/` — the Claude Code version
 - `codex/` — the Codex version
 
-An additional top-level workspace, `codex_bevy/`, tracks the Bevy migration in parallel. It is additive work and does not replace the Godot-based `codex/` tree yet.
+Additional Bevy source trees, `claude_bevy/` and `codex_bevy/`, track the Bevy migration in parallel. They are additive work and do not replace the Godot-based trees yet.
 
 ## What skills do
 
@@ -47,6 +47,16 @@ Pick the variant that matches your host agent:
 ```
 
 Pass `--force` to wipe existing contents at the target before publishing — use this when re-publishing over a previous run.
+
+### Bevy source-tree setup
+
+If you're working on the Bevy source trees in this repo, configure a shared Bevy docs folder once after clone:
+
+```bash
+./setup_bevy_docs.sh /absolute/or/user/path/to/bevy-docs
+```
+
+No default path is assumed. See [setup.md](setup.md) for the full workstation setup.
 
 ## Running on a server
 

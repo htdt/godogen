@@ -9,7 +9,15 @@ BEVY_DIR="$DOCS_DIR/bevy"
 BEVY_WEBSITE_DIR="$DOCS_DIR/bevy-website"
 PROJECT_PATH="${1:-}"
 
-mkdir -p "$DOCS_DIR" "$RUSTDOC_DIR"
+require_docs_layout() {
+    local path
+    for path in "$RUSTDOC_DIR" "$BEVY_DIR" "$BEVY_WEBSITE_DIR"; do
+        if [ ! -e "$path" ]; then
+            echo "error: $path is missing. Run ./setup_bevy_docs.sh <shared_bevy_docs_dir> in the source repo and republish." >&2
+            exit 1
+        fi
+    done
+}
 
 ensure_clean_repo() {
     local repo_dir="$1"
@@ -100,6 +108,7 @@ build_from_bevy_repo() {
     sync_rustdoc "$BEVY_DIR"
 }
 
+require_docs_layout
 clone_or_update_repo "https://github.com/bevyengine/bevy.git" "$BEVY_DIR"
 clone_or_update_repo "https://github.com/bevyengine/bevy-website.git" "$BEVY_WEBSITE_DIR"
 
