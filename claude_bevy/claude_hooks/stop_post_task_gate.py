@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Codex Stop hook for post-task visual verification."""
+"""Claude Code Stop hook for post-task visual verification."""
 
 from __future__ import annotations
 
@@ -48,7 +48,7 @@ def save_json(path: Path, payload: dict[str, object]) -> None:
 def run_verify(project_root: Path, metadata_only: bool) -> dict[str, object]:
     command = [
         "python3",
-        str(project_root / ".codex" / "hooks" / "verify_result.py"),
+        str(project_root / ".claude" / "hooks" / "verify_result.py"),
         "--project-root",
         str(project_root),
     ]
@@ -70,10 +70,7 @@ def run_verify(project_root: Path, metadata_only: bool) -> dict[str, object]:
 
 
 def allow_stop(message: str) -> dict[str, object]:
-    return {
-        "systemMessage": message,
-        "stopReason": message,
-    }
+    return {"systemMessage": message}
 
 
 def block(reason: str) -> dict[str, object]:
@@ -197,7 +194,7 @@ def send_telegram_result(verify: dict[str, object]) -> None:
 def main() -> None:
     event = json.load(sys.stdin)
     project_root = repo_root_from(str(event.get("cwd", ".")))
-    state_path = project_root / ".codex" / "hooks" / "state" / f"{event.get('session_id', 'default')}.json"
+    state_path = project_root / ".claude" / "hooks" / "state" / f"{event.get('session_id', 'default')}.json"
     state = load_json(
         state_path,
         {

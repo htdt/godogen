@@ -23,8 +23,7 @@ Read each sub-file from `${CLAUDE_SKILL_DIR}/` when you reach its pipeline stage
 | `task-execution.md` | Task workflow + commands | Before first task |
 | `quirks.md` | Bevy gotchas | Before writing code |
 | `scene-generation.md` | Code-first world construction | When creating or replacing the default playable scene |
-| `capture.md` | Screenshot/video capture | Before automated screenshots or video |
-| `visual-qa.md` | Visual QA (forked skill) | After capture |
+| `capture.md` | Screenshot/video capture + final result bundle | Before automated screenshots or video |
 | *(bevy-help skill)* | Current Bevy API, examples, and architecture help | For any Bevy-specific question |
 
 ## Pipeline
@@ -48,7 +47,7 @@ User request
     +- Execute (see Execution below)
     |
     +- If final presentation media is required:
-    |   +- Read capture.md, produce PNG frames or stills, assemble final MP4 if needed
+    |   +- Read capture.md, produce a fresh screenshots/result/{N}/ bundle with raw frames, video.mp4, and task.md
     |
     +- Summary of completed game
 ```
@@ -66,7 +65,7 @@ Read `task-execution.md` before starting. Two phases:
 1. **Risk tasks** (if any) — implement each in isolation, verify, commit
 2. **Main build** — implement everything else, verify, present results, commit
 
-If `PLAN.md` calls for presentation media, finish through the Bevy capture flow in `capture.md`.
+If `PLAN.md` calls for presentation media, finish through the Bevy capture flow in `capture.md` and leave a fresh `screenshots/result/{N}/` proof bundle behind.
 
 ## Bevy Help
 
@@ -96,22 +95,10 @@ After completing each task: update PLAN.md status, write discoveries to MEMORY.m
 If the context becomes polluted from debugging loops, manually compact with:
 `/compact "Discard failed debugging attempts."`
 
-## Visual QA
+## Visual Verification
 
-**Don't trust code — verify on screenshots.** Code that looks correct often has broken placement, wrong scale, missing elements, clipped geometry, or bad motion timing.
+**Do not trust code alone — verify on screenshots, captured frames, and video.** Code that looks correct often still ships broken placement, wrong scale, clipped geometry, missing elements, or bad motion timing.
 
-**Two levels of validation:**
+When code and media disagree, trust the media. Be skeptical: the job is to find what is still broken, not to argue that it is probably fine. If a requirement is not clearly visible, treat it as not done.
 
-- **Quick check** — read the screenshot yourself with Read. Use for small, targeted changes where you know exactly what to look for. Be aware: you are biased toward confirming your own work, especially code you just wrote.
-- **VQA skill** — `Skill(skill="visual-qa")` runs in a forked context with Gemini (unbiased, no knowledge of your code). Use for end-to-end validation, after major changes, or whenever you need a fresh assessment. Pass `--both` for Gemini + Claude when higher confidence is needed.
-
-Read `visual-qa.md` for invocation modes (static/dynamic/question) and context passing. Save VQA output to `visual-qa/{N}.md`.
-
-**Handling verdicts:**
-
-- **pass/warning** — move on.
-- **fail** — fix the issue. After 3 fix cycles:
-  - **Replan** — if root cause is upstream (architecture, assets).
-  - **Escalate** — surface to user if you can't determine the fix.
-
-Never silently ignore a fail verdict. If you believe it's a false positive — report to user, let them decide.
+Inspect captures directly while you work, then finish with a fresh `screenshots/result/{N}/` proof bundle containing `video.mp4`, the raw `frameXXX.png` sequence used to encode it, and `task.md` with the exact task that bundle proves.

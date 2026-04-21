@@ -82,7 +82,7 @@ It must contain:
 
 - `video.mp4`
 - the raw `frameXXX.png` sequence used to encode that video
-- `task.md` with the exact task the bundle is meant to prove. Use the original task on the first attempt; on later attempts, write the current task you are trying to prove.
+- `task.md` containing only the task text itself — no commentary, notes, logs, or section headers. Use the original task on the first attempt; on later attempts, write the current task you are trying to prove.
 
 Encode `video.mp4` from the stored raw frames at the same fps they were captured. If the frame cadence and MP4 timing disagree, the bundle no longer proves the motion correctly.
 

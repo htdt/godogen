@@ -94,7 +94,7 @@ Required contents:
 
 - `video.mp4`
 - the raw `frameXXX.png` files used to encode that video, stored in the same folder
-- `task.md` with the exact task this bundle is meant to prove
+- `task.md` containing only the task text itself — no commentary, notes, logs, or section headers
 
 Recommended command shape:
 

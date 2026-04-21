@@ -86,6 +86,28 @@ ffmpeg -y -framerate 30 -i screenshots/{task}/frames/frame_%05d.png \
 
 `120` frames at `30` fps gives a 4 second clip. Increase frame count only after the short path is working.
 
+## Final Result Bundle
+
+The final deliverable is a proof bundle under `screenshots/result/{N}/`, where `{N}` is the next integer counter for this repo.
+
+Required contents:
+
+- `video.mp4`
+- the raw `frameXXX.png` files used to encode that video, stored in the same folder
+- `task.md` containing only the task text itself — no commentary, notes, logs, or section headers
+
+Recommended command shape:
+
+```bash
+RESULT=screenshots/result/{N}
+cargo run --bin {capture_bin} -- frames "$RESULT" 900
+ffmpeg -y -framerate 30 -i "$RESULT/frame%05d.png" \
+    -c:v libx264 -pix_fmt yuv420p -preset medium -crf 22 -movflags +faststart \
+    "$RESULT/video.mp4"
+```
+
+The encoded MP4 must use the same fps as the captured frame sequence. If those disagree, the resulting motion proof is inaccurate.
+
 ## Time and Motion
 
 - Do not let headless capture depend on real wall-clock frame time.

@@ -2,6 +2,10 @@
 
 Analyze a game for implementation risks and define verification criteria. Output is `PLAN.md`.
 
+## Runtime Limitations
+
+This pipeline does not ship audio or Android builds. If the brief asks for either, drop those features from the plan and note the omission in the game description section of `PLAN.md`.
+
 ## Workflow
 
 1. **Read `reference.png`** — camera angle, scene complexity, entity count, environment scope.
@@ -44,7 +48,7 @@ Whenever a requirement mentions smooth motion, state handoff (idle->walk, walk->
 - No missing textures or obvious fallback materials
 - Game-specific checks (e.g., "enemies path around towers," "score increments on pickup")
 - reference.png consistency
-- Presentation video as final deliverable
+- Presentation proof bundle as final deliverable
 
 ## Output Format
 
@@ -77,12 +81,15 @@ Produce `PLAN.md`:
   - Gameplay flow matches game description
   - No visual glitches, clipping, or placeholder assets
   - reference.png consistency: color palette, scale, camera angle, visual density
-  - **Presentation video:** ~30s cinematic MP4 showcasing gameplay
+  - **Presentation proof bundle:** latest final-attempt folder under `screenshots/result/{N}/`
     - Implement a deterministic Bevy capture path (dedicated capture bin or equivalent), ~900 frames at 30 FPS
+    - `{N}` is a simple integer counter; increment it for each new final attempt
+    - Store the raw `frameXXX.png` sequence in that folder and encode `video.mp4` from the same sequence at matching fps
+    - Write `task.md` with the exact task the bundle is proving
     - **3D:** smooth camera work, good lighting, post-processing
     - **2D:** camera pans, zoom transitions, tight viewport framing
-    - Assemble PNG frames into MP4 with `ffmpeg`
-    - Output: screenshots/presentation/gameplay.mp4
+    - Assemble the stored PNG frames into `video.mp4` with `ffmpeg`
+    - Output: `screenshots/result/{N}/video.mp4`
 ````
 
 Include only the relevant 3D/2D presentation requirements.
