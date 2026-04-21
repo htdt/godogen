@@ -4,13 +4,19 @@ Shared workstation setup for both source trees in this repo.
 
 ## Bevy Docs Cache
 
-If you work on the Bevy source trees in this repo, choose a shared docs folder and wire both trees to it once after clone:
+If you work on the Bevy source trees in this repo, choose a shared docs folder and populate it once after clone:
 
 ```bash
 ./setup_bevy_docs.sh /absolute/or/user/path/to/bevy-docs
 ```
 
-This links:
+This script:
+
+- links both Bevy skill trees to one shared docs cache
+- clones or updates `bevy` and `bevy-website`
+- builds local rustdoc for the current stable Bevy release
+
+It exposes:
 
 - `codex_bevy/skills/bevy-api/docs/{rustdoc,bevy,bevy-website}`
 - `claude_bevy/skills/bevy-api/docs/{rustdoc,bevy,bevy-website}`

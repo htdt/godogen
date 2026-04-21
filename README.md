@@ -50,13 +50,13 @@ Pass `--force` to wipe existing contents at the target before publishing — use
 
 ### Bevy source-tree setup
 
-If you're working on the Bevy source trees in this repo, configure a shared Bevy docs folder once after clone:
+If you're working on the Bevy source trees in this repo, configure and populate a shared Bevy docs folder once after clone:
 
 ```bash
 ./setup_bevy_docs.sh /absolute/or/user/path/to/bevy-docs
 ```
 
-No default path is assumed. See [setup.md](setup.md) for the full workstation setup.
+The setup script links both Bevy skill trees to that folder, clones the Bevy docs sources, and builds local rustdoc for the current stable release. No default path is assumed. See [setup.md](setup.md) for the full workstation setup.
 
 ## Running on a server
 

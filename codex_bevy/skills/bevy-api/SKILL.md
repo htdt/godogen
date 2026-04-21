@@ -10,53 +10,29 @@ This skill is a narrow reference tool. Keep answers targeted to the caller's que
 
 Single-version policy:
 
-- Support the Bevy release used by the current project.
-- When the repo upgrades Bevy, update this skill forward.
+- Support the Bevy release installed in this skill's local docs cache.
+- When the repo upgrades Bevy, update this skill forward and republish.
 - Do not carry legacy compatibility guidance unless the caller explicitly asks about migration.
-- If the project context cannot be resolved to one current Bevy version, stop and ask instead of blending sources from multiple versions.
+- If the project cannot be resolved to one current Bevy version, or it clearly targets a different release than the installed docs, stop and ask instead of blending sources from multiple versions.
 
-Resolve the target project context first:
+This skill assumes the local docs cache is already installed. Do not try to install, refresh, or retarget it from inside this skill.
 
-```bash
-python3 .agents/skills/bevy-api/tools/resolve_bevy_context.py
-```
-
-Prefer an explicit project path when the current working directory is not the game root.
-
-If the project is not a Cargo package or workspace yet, stop and ask what Bevy release to target.
-
-If `resolve_bevy_context.py` reports an unresolved version, treat that as a hard stop for exact API guidance.
-
-This skill expects `docs/rustdoc`, `docs/bevy`, and `docs/bevy-website` to already be set up.
-
-In the source repo, run `./setup_bevy_docs.sh /path/to/bevy-docs` before publishing.
-
-Each skill install exposes that shared cache through local symlinks:
+Required local paths:
 
 - `.agents/skills/bevy-api/docs/rustdoc/`
 - `.agents/skills/bevy-api/docs/bevy/`
 - `.agents/skills/bevy-api/docs/bevy-website/`
 
-Keep that `docs/` directory gitignored. Treat the symlinks and shared cache as local working data, not authored source.
+If any required path is missing or unreadable, stop with an error and say the local `bevy-api` docs cache is unavailable.
 
-Bootstrap or refresh the local cache with:
+Resolve the installed docs release from `.agents/skills/bevy-api/docs/bevy/`, then compare it with the target project's Bevy dependency from `Cargo.toml`, workspace manifests, and `Cargo.lock` when present.
 
-```bash
-bash .agents/skills/bevy-api/tools/create_docs.sh
-```
-
-Without a project path, this uses the latest stable Bevy tag from the local `bevy` checkout, not `main`.
-
-If you already have a target Bevy project and want rustdoc aligned to it:
-
-```bash
-bash .agents/skills/bevy-api/tools/create_docs.sh path/to/project
-```
+If the project is not a Cargo package or workspace yet, or the Bevy version still cannot be resolved exactly, stop and ask what release to target.
 
 Lookup order:
 
-1. Project rustdoc
-2. `.agents/skills/bevy-api/docs/bevy/` plus `examples/` for the current release
+1. `.agents/skills/bevy-api/docs/rustdoc/`
+2. `.agents/skills/bevy-api/docs/bevy/` plus `examples/` for the installed release
 3. `.agents/skills/bevy-api/docs/bevy-website/` Learn content for the current release
 4. Small local notes in this skill, if any
 5. Web fallback only when the caller explicitly asks for it or the local stack is unavailable
@@ -97,6 +73,6 @@ When answering:
 - Separate doc facts from inference.
 - Mention feature gates or crate boundaries only when they affect the answer.
 - If you give code, use only symbols you verified in the current sources.
-- If compiler output or runtime behavior disagrees with the local docs, say the cache may be stale and refresh it before answering confidently.
+- If compiler output or runtime behavior disagrees with the local docs, call out a likely version mismatch or stale local cache instead of guessing.
 
 Do not dump whole rustdoc pages or enumerate large directories.
