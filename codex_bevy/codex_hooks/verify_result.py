@@ -246,6 +246,16 @@ def build_metadata(project_root: Path, review_fps: float, max_frames: int) -> di
     selected_frames, selected_times = select_review_frames(frames, video_fps, review_fps, max_frames)
     task_sha = hashlib.sha256(task_text.encode("utf-8")).hexdigest()
     video_sha = sha256_file(video_path)
+
+    reference_path = project_root / "reference.png"
+    reference_str: str | None = None
+    reference_rel: str | None = None
+    reference_sha: str | None = None
+    if reference_path.is_file():
+        reference_str = str(reference_path)
+        reference_rel = str(reference_path.relative_to(project_root))
+        reference_sha = sha256_file(reference_path)
+
     fingerprint = hashlib.sha256(
         "\n".join(
             [
@@ -254,6 +264,7 @@ def build_metadata(project_root: Path, review_fps: float, max_frames: int) -> di
                 video_sha,
                 str(len(frames)),
                 f"{video_fps:.6f}",
+                reference_sha or "no-reference",
             ]
         ).encode("utf-8")
     ).hexdigest()
@@ -281,6 +292,9 @@ def build_metadata(project_root: Path, review_fps: float, max_frames: int) -> di
         "raw_frame_rate": raw_frame_rate,
         "task_sha256": task_sha,
         "video_sha256": video_sha,
+        "reference_path": reference_str,
+        "reference_path_rel": reference_rel,
+        "reference_sha256": reference_sha,
         "fingerprint": fingerprint,
     }
 
@@ -297,6 +311,9 @@ def load_verdict(response: object) -> VerificationVerdict:
 
 
 def verify_result(metadata: dict[str, object], model: str) -> dict[str, object]:
+    reference_path_value = metadata.get("reference_path")
+    has_reference = bool(reference_path_value)
+
     prompt = PROMPT_PATH.read_text().strip()
     prompt += "\n\n## Task Text\n\n"
     prompt += str(metadata["task_text"]).strip()
@@ -307,11 +324,17 @@ def verify_result(metadata: dict[str, object], model: str) -> dict[str, object]:
     prompt += f"- Review fps: {float(metadata['review_fps']):.3f}\n"
     prompt += f"- Raw frame count: {int(metadata['frame_count'])}\n"
     prompt += f"- Selected frame count: {int(metadata['selected_frame_count'])}\n"
+    prompt += f"- Reference image: {'attached as Reference' if has_reference else 'none'}\n"
 
     contents: list[types.Part | str] = [prompt]
     project_root = Path(str(metadata["project_root"]))
     selected_frames = [Path(path) for path in metadata["selected_frames"]]
     selected_times = [float(value) for value in metadata["selected_frame_times"]]
+
+    if has_reference:
+        reference_path = Path(str(reference_path_value))
+        contents.append(f"Reference ({reference_path.name}):")
+        contents.append(types.Part.from_bytes(data=reference_path.read_bytes(), mime_type="image/png"))
 
     for index, frame_path in enumerate(selected_frames, start=1):
         frame_time = selected_times[index - 1]
