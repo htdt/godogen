@@ -1,0 +1,7 @@
+interface:
+  display_name: "Bevy Help"
+  short_description: "Bevy APIs, examples, and implementation patterns"
+  default_prompt: "Use $bevy-help for any Bevy-related question, including API lookup, feature design, architecture, or implementation patterns."
+
+policy:
+  allow_implicit_invocation: false

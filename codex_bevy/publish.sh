@@ -15,7 +15,7 @@ resolve_path() {
 
 link_bevy_docs() {
     local target_docs_dir="$1"
-    local source_docs_dir="$REPO_ROOT/skills/bevy-api/docs"
+    local source_docs_dir="$REPO_ROOT/skills/bevy-help/docs"
     local name
 
     mkdir -p "$target_docs_dir"
@@ -68,11 +68,11 @@ fi
 echo "Publishing to: $TARGET"
 
 mkdir -p "$TARGET/.agents/skills"
-rsync -a --delete --exclude='doc_source/' --exclude='__pycache__/' --exclude='bevy-api/docs/' \
+rsync -a --delete --exclude='doc_source/' --exclude='__pycache__/' --exclude='bevy-help/docs/' \
     "$REPO_ROOT/skills/" "$TARGET/.agents/skills/"
 
-link_bevy_docs "$TARGET/.agents/skills/bevy-api/docs"
-echo "Linked bevy-api docs from source repo"
+link_bevy_docs "$TARGET/.agents/skills/bevy-help/docs"
+echo "Linked bevy-help docs from source repo"
 
 cp "$REPO_ROOT/game.md" "$TARGET/AGENTS.md"
 echo "Created AGENTS.md"
@@ -84,6 +84,7 @@ AGENTS.md
 /target
 /screenshots
 .vqa.log
+.bevy-help.log
 GI_EOF
     echo "Created .gitignore"
 fi

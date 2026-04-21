@@ -25,7 +25,7 @@ Read each stage file from `.agents/skills/godogen/` only when you reach that sta
 | `scene-generation.md` | Code-first world construction | When creating or replacing the default playable scene |
 | `capture.md` | Screenshot/video capture | Before automated screenshots or video |
 | `visual-qa.md` | Visual QA usage | After capture |
-| *(bevy-api skill)* | Current Bevy API lookup | When unsure about Bevy symbols or patterns |
+| *(bevy-help skill)* | Current Bevy API, examples, and architecture help | For any Bevy-specific question |
 
 ## Pipeline
 
@@ -70,11 +70,11 @@ Read `task-execution.md` before starting. Two phases:
 
 If `PLAN.md` calls for presentation media, finish through the Bevy capture flow in `capture.md`.
 
-## Bevy API Lookup
+## Bevy Help
 
-When you need to look up a Bevy API or Rust Bevy pattern, use the `bevy-api` skill with a targeted query. It keeps large API docs out of the main pipeline.
+When you need Bevy-specific help, use the `bevy-help` skill with a targeted query. It keeps large reference material out of the main pipeline while giving you version-aware access to rustdoc, the checked-out Bevy repo, official examples, and Learn docs.
 
-Use the skill inline when you already know what class, trait, or example to inspect and can answer by reading a small number of docs. Use a dedicated helper agent when you need to discover candidate APIs, compare several patterns, or read multiple or large docs and reduce them to a compact answer.
+Use the skill inline when you already know what class, trait, system pattern, or example to inspect and can answer by reading a small number of docs. Use a dedicated helper agent when you need to discover candidate APIs, compare several patterns, or read multiple or large docs and reduce them to a compact answer.
 
 Be specific about what you need:
 

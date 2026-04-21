@@ -18,8 +18,8 @@ This script:
 
 It exposes:
 
-- `codex_bevy/skills/bevy-api/docs/{rustdoc,bevy,bevy-website}`
-- `claude_bevy/skills/bevy-api/docs/{rustdoc,bevy,bevy-website}`
+- `codex_bevy/skills/bevy-help/docs/{rustdoc,bevy,bevy-website}`
+- `claude_bevy/skills/bevy-help/docs/{rustdoc,bevy,bevy-website}`
 
 No default path is assumed. Pick a writable folder on your machine.
 

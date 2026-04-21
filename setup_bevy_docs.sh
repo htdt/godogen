@@ -166,8 +166,8 @@ echo "Using shared Bevy docs folder: $DOCS_ROOT"
 echo "Bevy docs are heavy, about 7 GB after population."
 echo "Use a separate permanent folder outside this repo."
 
-link_skill_docs "$REPO_ROOT/codex_bevy/skills/bevy-api"
-link_skill_docs "$REPO_ROOT/claude_bevy/skills/bevy-api"
+link_skill_docs "$REPO_ROOT/codex_bevy/skills/bevy-help"
+link_skill_docs "$REPO_ROOT/claude_bevy/skills/bevy-help"
 
 clone_or_update_repo "https://github.com/bevyengine/bevy.git" "$BEVY_DIR"
 clone_or_update_repo "https://github.com/bevyengine/bevy-website.git" "$BEVY_WEBSITE_DIR"
@@ -183,6 +183,6 @@ maybe_checkout_tag "$BEVY_WEBSITE_DIR" "$STABLE_TAG" optional
 build_rustdoc
 
 echo "Configured Bevy docs root: $DOCS_ROOT"
-echo "Linked codex_bevy/skills/bevy-api/docs/*"
-echo "Linked claude_bevy/skills/bevy-api/docs/*"
+echo "Linked codex_bevy/skills/bevy-help/docs/*"
+echo "Linked claude_bevy/skills/bevy-help/docs/*"
 echo "Populated Bevy repo, Bevy website, and rustdoc for ${STABLE_TAG#v}"

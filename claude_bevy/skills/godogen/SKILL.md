@@ -25,7 +25,7 @@ Read each sub-file from `${CLAUDE_SKILL_DIR}/` when you reach its pipeline stage
 | `scene-generation.md` | Code-first world construction | When creating or replacing the default playable scene |
 | `capture.md` | Screenshot/video capture | Before automated screenshots or video |
 | `visual-qa.md` | Visual QA (forked skill) | After capture |
-| *(bevy-api skill)* | Current Bevy API lookup | When unsure about Bevy symbols or patterns |
+| *(bevy-help skill)* | Current Bevy API, examples, and architecture help | For any Bevy-specific question |
 
 ## Pipeline
 
@@ -68,19 +68,19 @@ Read `task-execution.md` before starting. Two phases:
 
 If `PLAN.md` calls for presentation media, finish through the Bevy capture flow in `capture.md`.
 
-## Bevy API Lookup
+## Bevy Help
 
-When you need to look up a Bevy API or Rust Bevy pattern, use `Skill(skill="bevy-api")` with your query. This runs in a separate context to avoid loading large API docs into the main pipeline.
+When you need Bevy-specific help, use `Skill(skill="bevy-help")` with your query. This runs in a separate context to avoid loading large reference material into the main pipeline while giving you version-aware access to rustdoc, the checked-out Bevy repo, official examples, and Learn docs.
 
 Be specific about what you need — the docs are comprehensive and full returns are large:
 - **Targeted query** — ask for a concrete symbol or pattern: `"Camera3d: what is the Bevy 0.18 pattern for rendering to an image target?"`
 - **Full API** — only request when you need to survey the whole type: `"full API for AssetServer"`
 
 Examples:
-- Skill(skill="bevy-api") "Camera3d: pattern for rendering to an image target"
-- Skill(skill="bevy-api") "full API for AssetServer"
-- Skill(skill="bevy-api") "which components drive 2D sprite animation?"
-- Skill(skill="bevy-api") "AnimationPlayer: how to play a clip once and listen for completion"
+- Skill(skill="bevy-help") "Camera3d: pattern for rendering to an image target"
+- Skill(skill="bevy-help") "full API for AssetServer"
+- Skill(skill="bevy-help") "which components drive 2D sprite animation?"
+- Skill(skill="bevy-help") "AnimationPlayer: how to play a clip once and listen for completion"
 
 ## Context Hygiene
 

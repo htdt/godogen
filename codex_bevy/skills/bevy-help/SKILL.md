@@ -1,17 +1,12 @@
 ---
-name: bevy-api
+name: bevy-help
 description: |
-  Look up current Bevy engine APIs, crates, examples, and patterns. Use when you need a targeted Bevy API answer or a specific Bevy type/module recommendation.
-context: fork
-model: sonnet
-agent: Explore
+  Look up current Bevy engine APIs, crates, examples, and patterns. Use for any Bevy-related question, including API lookup, feature design, architecture, and implementation patterns.
 ---
 
-# Bevy API Lookup
+# Bevy Help
 
-$ARGUMENTS
-
-This skill is a narrow reference tool. Keep answers targeted to the caller's question.
+Use this skill for any Bevy-related question, not just exact symbol lookup. It should be the default tool for Bevy API questions, feature design, architecture, and implementation-pattern questions such as "how do I add snow particles?" The local docs cache includes many examples that often provide the best pattern to copy. Keep answers targeted to the caller's question.
 
 Single-version policy:
 
@@ -24,21 +19,21 @@ This skill assumes the local docs cache is already installed. Do not try to inst
 
 Required local paths:
 
-- `${CLAUDE_SKILL_DIR}/docs/rustdoc/`
-- `${CLAUDE_SKILL_DIR}/docs/bevy/`
-- `${CLAUDE_SKILL_DIR}/docs/bevy-website/`
+- `.agents/skills/bevy-help/docs/rustdoc/`
+- `.agents/skills/bevy-help/docs/bevy/`
+- `.agents/skills/bevy-help/docs/bevy-website/`
 
-If any required path is missing or unreadable, stop with an error and say the local `bevy-api` docs cache is unavailable.
+If any required path is missing or unreadable, stop with an error and say the local `bevy-help` docs cache is unavailable.
 
-Resolve the installed docs release from `${CLAUDE_SKILL_DIR}/docs/bevy/`, then compare it with the target project's Bevy dependency from `Cargo.toml`, workspace manifests, and `Cargo.lock` when present.
+Resolve the installed docs release from `.agents/skills/bevy-help/docs/bevy/`, then compare it with the target project's Bevy dependency from `Cargo.toml`, workspace manifests, and `Cargo.lock` when present.
 
 If the project is not a Cargo package or workspace yet, or the Bevy version still cannot be resolved exactly, stop and ask what release to target.
 
 Lookup order:
 
-1. `${CLAUDE_SKILL_DIR}/docs/rustdoc/`
-2. `${CLAUDE_SKILL_DIR}/docs/bevy/` plus `examples/` for the installed release
-3. `${CLAUDE_SKILL_DIR}/docs/bevy-website/` Learn content for the current release
+1. `.agents/skills/bevy-help/docs/rustdoc/`
+2. `.agents/skills/bevy-help/docs/bevy/` plus `examples/` for the installed release
+3. `.agents/skills/bevy-help/docs/bevy-website/` Learn content for the current release
 4. Small local notes in this skill, if any
 5. Web fallback only when the caller explicitly asks for it or the local stack is unavailable
 
@@ -46,6 +41,7 @@ Use only the minimum source needed:
 
 - Exact API or symbol names: rustdoc first, then source if implementation details matter
 - "How do I do X?": examples first, then rustdoc for exact names and signatures
+- Feature-design or architecture question: examples first, then Learn content, then rustdoc for the exact types and signatures you recommend
 - Recommendation or best-practice: examples, then rustdoc, then Learn content
 - Behavior, warnings, or "why did Bevy do this?": crate source first, then rustdoc if you need the public surface
 - Migration questions: only compare old and new APIs if the caller asked for migration help
@@ -79,5 +75,14 @@ When answering:
 - Mention feature gates or crate boundaries only when they affect the answer.
 - If you give code, use only symbols you verified in the current sources.
 - If compiler output or runtime behavior disagrees with the local docs, call out a likely version mismatch or stale local cache instead of guessing.
+
+Mandatory action after every successful lookup:
+
+- Append one short entry to `./.bevy-help.log` before returning. Create the file if it does not exist, and always append rather than replace existing entries.
+- Record only:
+  - `requested`: what the caller asked for
+  - `comment`: a short note on the pattern, recommendation, or resolution
+  - `result_files`: links or concrete file paths to the docs/examples you used
+- Do not paste the full answer, long excerpts, or large code blocks into the log. Keep each entry short enough to scan later when compiling an FAQ.
 
 Do not dump whole rustdoc pages or enumerate large directories.

@@ -41,4 +41,4 @@ Engine-level and tooling-level gotchas discovered through real Bevy migration wo
 
 ## Feedback Loop
 
-Quirks are curated manually in this source repo. Add only repeated, non-obvious issues that would have prevented real confusion in `bevy-api`, `scaffold`, `scene-generation`, `task-execution`, or `capture`.
+Quirks are curated manually in this source repo. Add only repeated, non-obvious issues that would have prevented real confusion in `bevy-help`, `scaffold`, `scene-generation`, `task-execution`, or `capture`.

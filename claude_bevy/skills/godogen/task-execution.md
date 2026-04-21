@@ -5,10 +5,16 @@ Implementation workflow and debugging reference for real Bevy feature work after
 ## Planning Each Task
 
 - Read `STRUCTURE.md`, the current `Cargo.toml`, the relevant game modules, `scene-generation.md`, and `quirks.md` before touching code.
-- Use the `bevy-api` skill for exact Bevy names when symbols, component fields, or scheduling patterns are uncertain.
+- Use the `bevy-help` skill for any Bevy-related question, not just exact names when symbols are uncertain. Reach for it when designing a feature, choosing architecture, or asking "how do I add X?" such as snow particles.
 - Decide the concrete scope up front: state owner, modules/files, runtime assets, verification commands, and stop conditions.
 - Preserve the current Bevy version and feature set unless the task explicitly includes a manifest or engine migration.
 - Keep the first pass narrow. Prove shape, scene ownership, and control flow with generated content or simple primitives before adding imported assets, new crates, or polish work.
+
+## Bevy Help
+
+- `bevy-help` is the main reference tool for Bevy work. Use it for feature design, architecture, ECS ownership, rendering and UI setup, particles, animation, asset-loading flows, scheduling choices, and exact symbol lookup.
+- It has convenient access to the local rustdoc cache, the checked-out Bevy repo, official Bevy examples, and Learn docs for the installed release. That makes it the fastest way to find patterns that match the version the project actually uses.
+- Prefer it early, before inventing an API shape from memory. The examples often show the right composition pattern even when the question starts as "how should this feature be designed?"
 
 ## Phases
 
