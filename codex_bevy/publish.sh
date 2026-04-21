@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Publish Bevy godogen skills into a target project directory.
-# Creates .agents/skills/ and copies an AGENTS.md.
+# Creates .agents/skills/, Codex hook config, and copies an AGENTS.md.
 #
 # Usage: ./publish.sh [--force] <target_dir>
 #   --force    Delete existing target contents before publishing
@@ -11,6 +11,53 @@ REPO_ROOT="$(cd "$(dirname "$0")" && pwd)"
 resolve_path() {
     local raw_path="$1"
     python3 -c 'import pathlib,sys; print(pathlib.Path(sys.argv[1]).expanduser().resolve())' "$raw_path"
+}
+
+ensure_codex_hooks_feature() {
+    local config_path="$1"
+
+    python3 - "$config_path" <<'PY'
+from pathlib import Path
+import sys
+
+path = Path(sys.argv[1])
+path.parent.mkdir(parents=True, exist_ok=True)
+
+text = path.read_text() if path.exists() else ""
+if not text.strip():
+    path.write_text("[features]\ncodex_hooks = true\n")
+    raise SystemExit
+
+lines = text.splitlines()
+features_start = None
+for idx, line in enumerate(lines):
+    if line.strip() == "[features]":
+        features_start = idx
+        break
+
+if features_start is None:
+    suffix = "" if text.endswith("\n") else "\n"
+    path.write_text(text + suffix + "[features]\ncodex_hooks = true\n")
+    raise SystemExit
+
+features_end = len(lines)
+for idx in range(features_start + 1, len(lines)):
+    stripped = lines[idx].strip()
+    if stripped.startswith("[") and stripped.endswith("]"):
+        features_end = idx
+        break
+
+for idx in range(features_start + 1, features_end):
+    stripped = lines[idx].lstrip()
+    if stripped.startswith("codex_hooks"):
+        indent = lines[idx][: len(lines[idx]) - len(stripped)]
+        lines[idx] = f"{indent}codex_hooks = true"
+        path.write_text("\n".join(lines) + "\n")
+        raise SystemExit
+
+lines.insert(features_start + 1, "codex_hooks = true")
+path.write_text("\n".join(lines) + "\n")
+PY
 }
 
 link_bevy_docs() {
@@ -77,13 +124,21 @@ echo "Linked bevy-help docs from source repo"
 cp "$REPO_ROOT/game.md" "$TARGET/AGENTS.md"
 echo "Created AGENTS.md"
 
+mkdir -p "$TARGET/.codex/hooks"
+cp "$REPO_ROOT/codex_hooks/hooks.json" "$TARGET/.codex/hooks.json"
+cp "$REPO_ROOT/codex_hooks/stop_post_task_gate.py" "$TARGET/.codex/hooks/stop_post_task_gate.py"
+cp "$REPO_ROOT/codex_hooks/verify_result.py" "$TARGET/.codex/hooks/verify_result.py"
+cp "$REPO_ROOT/codex_hooks/verify_result_prompt.md" "$TARGET/.codex/hooks/verify_result_prompt.md"
+ensure_codex_hooks_feature "$TARGET/.codex/config.toml"
+echo "Installed Codex stop hook"
+
 if [ ! -f "$TARGET/.gitignore" ]; then
     cat > "$TARGET/.gitignore" << 'GI_EOF'
 .agents
 AGENTS.md
+.codex
 /target
 /screenshots
-.vqa.log
 .bevy-help.log
 GI_EOF
     echo "Created .gitignore"

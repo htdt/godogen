@@ -223,9 +223,19 @@ ls ~/.local/share/godot/export_templates/*/android_debug.apk
 
 Set in environment:
 
-- `GOOGLE_API_KEY` — Gemini image generation (references, characters, precise work)
+- `GOOGLE_API_KEY` — Gemini image generation (references, characters, precise work) and the Codex Bevy post-task visual gate
 - `XAI_API_KEY` — xAI Grok image/video generation (textures, simple objects)
 - `TRIPO3D_API_KEY` — image-to-3D conversion (3D games only)
+
+## Codex Bevy Post-Task Gate
+
+`codex_bevy/publish.sh` installs a Codex `Stop` hook that verifies the latest `screenshots/result/{N}/` bundle with Gemini. The hook runs `.codex/hooks/verify_result.py` in the host Python environment and needs:
+
+```bash
+pip install google-genai pydantic
+```
+
+`ffprobe` (bundled with `ffmpeg`, already listed above) must be on `PATH` — the hook reads video fps and duration through it. `GOOGLE_API_KEY` is required at hook runtime.
 
 ## Notifications (optional)
 

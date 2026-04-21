@@ -23,7 +23,8 @@ This is not a published game repo. The files at the repo root describe how to wo
 The current source trees carry these runtime skills:
 
 - `claude/` and `codex/`: **godogen**, **godot-api**, **visual-qa**
-- `claude_bevy/` and `codex_bevy/`: **godogen**, **bevy-help**, **visual-qa**
+- `claude_bevy/`: **godogen**, **bevy-help**, **visual-qa**
+- `codex_bevy/`: **godogen**, **bevy-help**
 
 ## Editing Rules
 

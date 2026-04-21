@@ -16,6 +16,13 @@ Implementation workflow and debugging reference for real Bevy feature work after
 - It has convenient access to the local rustdoc cache, the checked-out Bevy repo, official Bevy examples, and Learn docs for the installed release. That makes it the fastest way to find patterns that match the version the project actually uses.
 - Prefer it early, before inventing an API shape from memory. The examples often show the right composition pattern even when the question starts as "how should this feature be designed?"
 
+## Visual Verification
+
+- Do not trust code alone. Look at screenshots, captured frames, and video after every visible change.
+- When code and media disagree, trust the media.
+- Bias toward failure. If the required behavior is not clearly visible, treat it as unfinished.
+- Hidden or inferred behavior does not count. The visible result has to prove the requirement.
+
 ## Phases
 
 ### Risk Slice
@@ -67,12 +74,25 @@ If the task has one risky or unclear part, isolate it first:
   3. `Cargo.toml` enables required Bevy image format features such as `jpeg` when imported assets reference `.jpg`
 - Preserve existing manifest features on incremental tasks. Dropping a needed asset feature can break runtime loads without compile errors.
 
+## Final Proof Bundle
+
+After the whole task is complete, create a fresh `screenshots/result/{N}/` directory, incrementing `N` for each new final-attempt bundle.
+
+It must contain:
+
+- `video.mp4`
+- the raw `frameXXX.png` sequence used to encode that video
+- `task.md` with the exact task the bundle is meant to prove. Use the original task on the first attempt; on later attempts, write the current task you are trying to prove.
+
+Encode `video.mp4` from the stored raw frames at the same fps they were captured. If the frame cadence and MP4 timing disagree, the bundle no longer proves the motion correctly.
+
 ## Stop Conditions
 
 - `cargo fmt` passes
 - `cargo check` passes
 - `cargo build` passes
 - A runtime launch validation has been completed on a real display path
+- A fresh `screenshots/result/{N}/` proof bundle exists for the current final attempt
 - `STRUCTURE.md` matches the code that shipped
 
 If headless launch is blocked by host display or compositor problems but build and desktop runtime are clean, accept the desktop run as decisive and record the headless blocker instead of distorting the app around workstation-specific failures.

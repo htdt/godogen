@@ -23,8 +23,7 @@ Read each stage file from `.agents/skills/godogen/` only when you reach that sta
 | `task-execution.md` | Task workflow + commands | Before first task |
 | `quirks.md` | Bevy gotchas | Before writing code |
 | `scene-generation.md` | Code-first world construction | When creating or replacing the default playable scene |
-| `capture.md` | Screenshot/video capture | Before automated screenshots or video |
-| `visual-qa.md` | Visual QA usage | After capture |
+| `capture.md` | Screenshot/video capture + final result bundle | Before automated screenshots or video |
 | *(bevy-help skill)* | Current Bevy API, examples, and architecture help | For any Bevy-specific question |
 
 ## Pipeline
@@ -48,7 +47,7 @@ User request
     +- Execute (see Execution below)
     |
     +- If final presentation media is required:
-    |   +- Read capture.md, produce PNG frames or stills, assemble final MP4 if needed
+    |   +- Read capture.md, produce a fresh screenshots/result/{N}/ bundle with raw frames, video.mp4, and task.md
     |
     +- Summary of completed game
 ```
@@ -68,7 +67,7 @@ Read `task-execution.md` before starting. Two phases:
 1. **Risk tasks** (if any) — implement each in isolation, verify, commit
 2. **Main build** — implement everything else, verify, present results, commit
 
-If `PLAN.md` calls for presentation media, finish through the Bevy capture flow in `capture.md`.
+If `PLAN.md` calls for presentation media, finish through the Bevy capture flow in `capture.md` and leave a fresh `screenshots/result/{N}/` proof bundle behind.
 
 ## Bevy Help
 
@@ -92,24 +91,10 @@ Keep important state in files so the pipeline can resume cleanly after long thre
 
 After completing each task: update `PLAN.md`, write discoveries to `MEMORY.md`, and commit. If the thread becomes noisy, summarize the important state into those files and continue from the artifacts instead of relying on conversational memory.
 
-## Visual QA
+## Visual Verification
 
-**Do not trust code alone — verify on screenshots.** Code that looks correct often has broken placement, wrong scale, missing elements, clipped geometry, or bad motion timing.
+**Do not trust code alone — verify on screenshots, captured frames, and video.** Code that looks correct often still ships broken placement, wrong scale, clipped geometry, missing elements, or bad motion timing.
 
-Two levels of validation:
+When code and media disagree, trust the media. Be skeptical: the job is to find what is still broken, not to argue that it is probably fine. If a requirement is not clearly visible, treat it as not done.
 
-- **Quick check** — inspect the screenshot yourself for small, targeted changes where you know exactly what to look for.
-- **VQA skill** — use the `visual-qa` skill for end-to-end validation, after major changes, or whenever you need a fresh assessment. Pass `--both` for Gemini plus native image analysis when higher confidence is worth the cost.
-
-Run Gemini-only VQA inline. For `--native` or `--both`, invoke `visual-qa` in a dedicated helper agent so image review starts from a fresh context.
-
-Read `visual-qa.md` for invocation modes and context passing. Save VQA output to `visual-qa/{N}.md`.
-
-Handling verdicts:
-
-- **pass/warning** — move on
-- **fail** — fix the issue. After 3 fix cycles:
-  - **Replan** — if the root cause is upstream (architecture, assets)
-  - **Escalate** — surface to the user if you cannot determine the fix
-
-Never silently ignore a fail verdict. If you believe it is a false positive, report that explicitly and let the user decide.
+Inspect captures directly while you work, then finish with a fresh `screenshots/result/{N}/` proof bundle containing `video.mp4`, the raw `frameXXX.png` sequence used to encode it, and `task.md` with the exact task that bundle proves.
