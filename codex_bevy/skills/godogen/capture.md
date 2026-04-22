@@ -1,6 +1,6 @@
 # Capture
 
-Headless screenshot and video capture for Bevy projects after the runtime loop is already proven.
+Headless screenshot and video capture for Bevy projects after the runtime loop is already proven. In the example commands, `{task}` is a short slug you pick for an intermediate capture run.
 
 ## Default Capture Shape
 
@@ -124,8 +124,8 @@ Reasons:
 Example command shape:
 
 ```bash
-cargo run --bin {capture_bin} -- frames screenshots/{task}/frames 120
-ffmpeg -y -framerate 30 -i screenshots/{task}/frames/frame_%05d.png \
+cargo run --bin {capture_bin} -- frames screenshots/{task} 120
+ffmpeg -y -framerate 30 -i screenshots/{task}/frame%05d.png \
     -c:v libx264 -pix_fmt yuv420p -preset medium -crf 22 -movflags +faststart \
     screenshots/{task}/capture.mp4
 ```
@@ -134,10 +134,10 @@ For noisy capture runs, use the same temp-log pattern and only read the capture 
 
 ```bash
 _log=$(mktemp)
-RUST_LOG=warn cargo run --bin {capture_bin} -- frames screenshots/{task}/frames 120 \
+RUST_LOG=warn cargo run --bin {capture_bin} -- frames screenshots/{task} 120 \
   >"$_log" 2>&1
 rg '^\[capture\]' "$_log"
-ffmpeg -y -framerate 30 -i screenshots/{task}/frames/frame_%05d.png \
+ffmpeg -y -framerate 30 -i screenshots/{task}/frame%05d.png \
     -c:v libx264 -pix_fmt yuv420p -preset medium -crf 22 -movflags +faststart \
     screenshots/{task}/capture.mp4
 ```

@@ -131,7 +131,7 @@ Raise `brightness` (candela per m²) rather than spawning filler point lights wh
 - `cargo check`
 - `cargo build`
 - local desktop smoke test: `cargo run`
-- headless interactive smoke test fallback: `xvfb-run timeout 10 ./target/debug/{package-name}`
+- headless interactive smoke test fallback: `timeout 10 xvfb-run ./target/debug/{package-name}`
 - if you need screenshots or video, use the dedicated offscreen capture entrypoint from `capture.md` instead of the interactive binary
 
 The smoke test only needs to prove that the app launches cleanly. Exit code `124` from `timeout` is acceptable once the window loop is running, but hierarchy warnings, missing asset errors, or camera/UI clear-order issues are not.
