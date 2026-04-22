@@ -47,7 +47,7 @@ User request
     +- Execute (see Execution below)
     |
     +- If final presentation media is required:
-    |   +- Read capture.md, produce a fresh screenshots/result/{N}/ bundle with raw frames, video.mp4, and task.md
+    |   +- Read capture.md, produce a fresh screenshots/result/{N}/ bundle with raw frames and video.mp4 (task.md at project root; task_add.md only for narrower slices)
     |
     +- Summary of completed game
 ```
@@ -101,4 +101,4 @@ If the context becomes polluted from debugging loops, manually compact with:
 
 When code and media disagree, trust the media. Be skeptical: the job is to find what is still broken, not to argue that it is probably fine. If a requirement is not clearly visible, treat it as not done.
 
-Inspect captures directly while you work, then finish with a fresh `screenshots/result/{N}/` proof bundle containing `video.mp4`, the raw `frameXXX.png` sequence used to encode it, and `task.md` with the exact task that bundle proves.
+Inspect captures directly while you work, then finish with a fresh `screenshots/result/{N}/` proof bundle containing `video.mp4` and the raw `frameXXX.png` sequence used to encode it. The original task literal lives in `task.md` at the project root; only add `task_add.md` inside the bundle if it proves a slice narrower than the root task.

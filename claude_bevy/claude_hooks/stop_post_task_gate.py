@@ -106,18 +106,24 @@ def summarize_issues(issues: list[dict[str, object]], limit: int = 4) -> str:
     return "\n".join(lines)
 
 
+def build_missing_task_reason(meta: dict[str, object]) -> str:
+    details = str(meta.get("message", "task.md is missing at project root.")).strip()
+    return (
+        "Before stopping, write `task.md` at the project root containing the original task "
+        "literal verbatim (no commentary, notes, or headers).\n\n"
+        f"Blocker: {details}"
+    )
+
+
 def build_missing_reason(meta: dict[str, object]) -> str:
     target_dir = next_result_hint(meta)
     details = str(meta.get("message", "No valid result bundle is available.")).strip()
     return (
-        "Before stopping, create a fresh final proof bundle.\n\n"
-        f"Required path: `{target_dir}/`\n"
-        "Required files:\n"
-        "- `video.mp4`\n"
+        f"Before stopping, write a fresh final proof bundle at `{target_dir}/`:\n"
+        "- `video.mp4` (30 fps, 15-30s, encoded from the stored frames)\n"
         "- raw `frameXXX.png` files used to encode that video\n"
-        "- `task.md` containing only the task text itself (no notes, comments, or headers)\n\n"
-        "Encode the video from the stored raw frames at matching fps.\n\n"
-        f"Current blocker: {details}"
+        "- `task_add.md` only if this bundle proves a slice narrower than the root `task.md`\n\n"
+        f"Blocker: {details}"
     )
 
 
@@ -125,34 +131,13 @@ def build_retry_reason(verify: dict[str, object]) -> str:
     next_dir = f"screenshots/result/{int(verify['result_index']) + 1}"
     issues = summarize_issues(list(verify.get("issues", [])))
     summary = str(verify.get("summary", "")).strip()
-    goal_assessment = str(verify.get("goal_assessment", "")).strip()
-    task_text = str(verify.get("task_text", "")).strip()
 
-    lines = [
-        f"The latest presentation bundle `{verify['result_dir_rel']}` does not prove the task is complete.",
-        "Work from screenshots and captured frames, not from code assumptions.",
-        "",
-        "Retry task:",
-    ]
-    if task_text:
-        lines.append(task_text)
-    else:
-        lines.append("Complete the current task and prove it in the next result bundle.")
-    lines.extend(
-        [
-            "",
-            "Fix the visible problems below, then create a fresh proof bundle:",
-            f"- `{next_dir}/video.mp4`",
-            f"- raw `frameXXX.png` files in `{next_dir}/`",
-            f"- `{next_dir}/task.md` containing only this retry task text (no notes, comments, or headers)",
-        ]
-    )
-    if summary:
-        lines.extend(["", f"Summary: {summary}"])
-    if goal_assessment:
-        lines.extend(["", f"Goal assessment: {goal_assessment}"])
+    lines = [f"Proof bundle `{verify['result_dir_rel']}` failed visual verification."]
     if issues:
         lines.extend(["", "Issues:", issues])
+    elif summary:
+        lines.extend(["", summary])
+    lines.extend(["", f"Fix these, then write a fresh bundle at `{next_dir}/`."])
     return "\n".join(lines)
 
 
@@ -234,7 +219,10 @@ def main() -> None:
             print(json.dumps(allow_stop(message)))
             return
 
-        print(json.dumps(block(build_missing_reason(meta))))
+        if meta.get("status") == "missing_task":
+            print(json.dumps(block(build_missing_task_reason(meta))))
+        else:
+            print(json.dumps(block(build_missing_reason(meta))))
         return
 
     state["missing_count"] = 0

@@ -18,6 +18,11 @@ from pydantic import BaseModel, Field
 DEFAULT_MODEL = "gemini-flash-latest"
 DEFAULT_REVIEW_FPS = 2.0
 DEFAULT_MAX_FRAMES = 61
+MIN_DURATION_SECONDS = 15.0
+MAX_DURATION_SECONDS = 30.0
+DURATION_TOLERANCE_SECONDS = 0.5
+REQUIRED_VIDEO_FPS = 30.0
+VIDEO_FPS_TOLERANCE = 0.5
 
 PROMPT_PATH = Path(__file__).with_name("verify_result_prompt.md")
 
@@ -170,6 +175,25 @@ def select_review_frames(
 
 def build_metadata(project_root: Path, review_fps: float, max_frames: int) -> dict[str, object]:
     results_root = project_root / "screenshots" / "result"
+    task_path = project_root / "task.md"
+    if not task_path.is_file():
+        return {
+            "ok": False,
+            "status": "missing_task",
+            "message": "task.md is missing at project root; write the original task literal there.",
+            "task_path": str(task_path),
+            "task_path_rel": "task.md",
+        }
+    task_text = task_path.read_text().strip()
+    if not task_text:
+        return {
+            "ok": False,
+            "status": "missing_task",
+            "message": "task.md at project root is empty; write the original task literal there.",
+            "task_path": str(task_path),
+            "task_path_rel": "task.md",
+        }
+
     result_dirs = list_result_dirs(results_root)
     if not result_dirs:
         return {
@@ -181,7 +205,7 @@ def build_metadata(project_root: Path, review_fps: float, max_frames: int) -> di
 
     result_dir = result_dirs[-1]
     video_path = result_dir / "video.mp4"
-    task_path = result_dir / "task.md"
+    task_add_path = result_dir / "task_add.md"
     frames = sorted(result_dir.glob("frame*.png"), key=natural_sort_key)
 
     if not video_path.is_file():
@@ -189,14 +213,6 @@ def build_metadata(project_root: Path, review_fps: float, max_frames: int) -> di
             "ok": False,
             "status": "invalid_result",
             "message": f"{video_path.relative_to(project_root)} is missing.",
-            "result_dir": str(result_dir),
-            "result_index": int(result_dir.name),
-        }
-    if not task_path.is_file():
-        return {
-            "ok": False,
-            "status": "invalid_result",
-            "message": f"{task_path.relative_to(project_root)} is missing.",
             "result_dir": str(result_dir),
             "result_index": int(result_dir.name),
         }
@@ -209,15 +225,13 @@ def build_metadata(project_root: Path, review_fps: float, max_frames: int) -> di
             "result_index": int(result_dir.name),
         }
 
-    task_text = task_path.read_text().strip()
-    if not task_text:
-        return {
-            "ok": False,
-            "status": "invalid_result",
-            "message": f"{task_path.relative_to(project_root)} is empty.",
-            "result_dir": str(result_dir),
-            "result_index": int(result_dir.name),
-        }
+    task_add_text: str | None = None
+    task_add_sha: str | None = None
+    if task_add_path.is_file():
+        candidate = task_add_path.read_text().strip()
+        if candidate:
+            task_add_text = candidate
+            task_add_sha = hashlib.sha256(candidate.encode("utf-8")).hexdigest()
 
     try:
         video_fps, duration_seconds = load_video_metadata(video_path)
@@ -243,6 +257,35 @@ def build_metadata(project_root: Path, review_fps: float, max_frames: int) -> di
             "result_index": int(result_dir.name),
         }
 
+    if (
+        duration_seconds < MIN_DURATION_SECONDS - DURATION_TOLERANCE_SECONDS
+        or duration_seconds > MAX_DURATION_SECONDS + DURATION_TOLERANCE_SECONDS
+    ):
+        return {
+            "ok": False,
+            "status": "invalid_result",
+            "message": (
+                f"video.mp4 in {result_dir.relative_to(project_root)} is "
+                f"{duration_seconds:.2f}s; the final proof must be "
+                f"{MIN_DURATION_SECONDS:.0f}-{MAX_DURATION_SECONDS:.0f}s long."
+            ),
+            "result_dir": str(result_dir),
+            "result_index": int(result_dir.name),
+        }
+
+    if abs(video_fps - REQUIRED_VIDEO_FPS) > VIDEO_FPS_TOLERANCE:
+        return {
+            "ok": False,
+            "status": "invalid_result",
+            "message": (
+                f"video.mp4 in {result_dir.relative_to(project_root)} is encoded at "
+                f"{video_fps:.3f} fps; the final proof must be exactly "
+                f"{REQUIRED_VIDEO_FPS:.0f} fps so it plays back smoothly."
+            ),
+            "result_dir": str(result_dir),
+            "result_index": int(result_dir.name),
+        }
+
     selected_frames, selected_times = select_review_frames(frames, video_fps, review_fps, max_frames)
     task_sha = hashlib.sha256(task_text.encode("utf-8")).hexdigest()
     video_sha = sha256_file(video_path)
@@ -256,11 +299,22 @@ def build_metadata(project_root: Path, review_fps: float, max_frames: int) -> di
         reference_rel = str(reference_path.relative_to(project_root))
         reference_sha = sha256_file(reference_path)
 
+    current_index = int(result_dir.name)
+    previous_verify: dict[str, object] | None = None
+    if current_index > 1:
+        prev_verify_path = results_root / str(current_index - 1) / "verify.json"
+        if prev_verify_path.is_file():
+            try:
+                previous_verify = json.loads(prev_verify_path.read_text())
+            except json.JSONDecodeError:
+                previous_verify = None
+
     fingerprint = hashlib.sha256(
         "\n".join(
             [
                 result_dir.name,
                 task_sha,
+                task_add_sha or "no-task-add",
                 video_sha,
                 str(len(frames)),
                 f"{video_fps:.6f}",
@@ -275,12 +329,16 @@ def build_metadata(project_root: Path, review_fps: float, max_frames: int) -> di
         "project_root": str(project_root),
         "result_dir": str(result_dir),
         "result_dir_rel": str(result_dir.relative_to(project_root)),
-        "result_index": int(result_dir.name),
+        "result_index": current_index,
         "video_path": str(video_path),
         "video_path_rel": str(video_path.relative_to(project_root)),
         "task_path": str(task_path),
         "task_path_rel": str(task_path.relative_to(project_root)),
         "task_text": task_text,
+        "task_add_path": str(task_add_path) if task_add_text else None,
+        "task_add_path_rel": str(task_add_path.relative_to(project_root)) if task_add_text else None,
+        "task_add_text": task_add_text,
+        "task_add_sha256": task_add_sha,
         "frame_count": len(frames),
         "selected_frame_count": len(selected_frames),
         "selected_frames": [str(frame) for frame in selected_frames],
@@ -295,6 +353,7 @@ def build_metadata(project_root: Path, review_fps: float, max_frames: int) -> di
         "reference_path": reference_str,
         "reference_path_rel": reference_rel,
         "reference_sha256": reference_sha,
+        "previous_verify": previous_verify,
         "fingerprint": fingerprint,
     }
 
@@ -310,17 +369,57 @@ def load_verdict(response: object) -> VerificationVerdict:
     return VerificationVerdict.model_validate(json.loads(text))
 
 
+def _format_previous_verify(previous_verify: dict[str, object]) -> str:
+    prev_index = str(previous_verify.get("result_index", "")).strip()
+    prev_verdict = str(previous_verify.get("verdict", "")).strip().lower() or "n/a"
+    prev_summary = str(previous_verify.get("summary", "")).strip()
+    prev_issues_raw = previous_verify.get("issues") or []
+    prev_issues: list[str] = []
+    for issue in prev_issues_raw[:8]:
+        if not isinstance(issue, dict):
+            continue
+        sev = str(issue.get("severity", "note")).upper()
+        title = str(issue.get("title", "Issue"))
+        frames = str(issue.get("frames", "")).strip()
+        description = str(issue.get("description", "")).strip()
+        frames_part = f" ({frames})" if frames else ""
+        desc_part = f": {description}" if description else ""
+        prev_issues.append(f"- [{sev}] {title}{frames_part}{desc_part}")
+
+    header = f"## Previous Verify Context (bundle {prev_index}, verdict: {prev_verdict})"
+    lines: list[str] = [header, ""]
+    if prev_summary:
+        lines.append(f"Summary: {prev_summary}")
+        lines.append("")
+    if prev_issues:
+        lines.append("Issues previously flagged:")
+        lines.extend(prev_issues)
+    else:
+        lines.append("(no prior issues were recorded)")
+    return "\n".join(lines)
+
+
 def verify_result(metadata: dict[str, object], model: str) -> dict[str, object]:
     reference_path_value = metadata.get("reference_path")
     has_reference = bool(reference_path_value)
+    task_add_text = metadata.get("task_add_text")
+    previous_verify = metadata.get("previous_verify")
 
     prompt = PROMPT_PATH.read_text().strip()
-    prompt += "\n\n## Task Text\n\n"
+    prompt += "\n\n## Task (Original)\n\n"
     prompt += str(metadata["task_text"]).strip()
+    if task_add_text:
+        prompt += (
+            "\n\n## Focus of This Attempt\n\n"
+            "This bundle is scoped to the slice below, narrower than the original task.\n\n"
+        )
+        prompt += str(task_add_text).strip()
+    if isinstance(previous_verify, dict):
+        prompt += "\n\n" + _format_previous_verify(previous_verify)
     prompt += "\n\n## Sampling Metadata\n\n"
     prompt += f"- Source bundle: {metadata['result_dir_rel']}\n"
-    prompt += f"- Source video fps: {float(metadata['video_fps']):.3f}\n"
-    prompt += f"- Source video duration: {float(metadata['duration_seconds']):.3f}s\n"
+    prompt += f"- Source video fps: {float(metadata['video_fps']):.3f} (required: {REQUIRED_VIDEO_FPS:.0f})\n"
+    prompt += f"- Source video duration: {float(metadata['duration_seconds']):.3f}s (expected window: {MIN_DURATION_SECONDS:.0f}-{MAX_DURATION_SECONDS:.0f}s)\n"
     prompt += f"- Review fps: {float(metadata['review_fps']):.3f}\n"
     prompt += f"- Raw frame count: {int(metadata['frame_count'])}\n"
     prompt += f"- Selected frame count: {int(metadata['selected_frame_count'])}\n"
@@ -355,12 +454,13 @@ def verify_result(metadata: dict[str, object], model: str) -> dict[str, object]:
 
     verdict = load_verdict(response)
     verify_path = Path(str(metadata["result_dir"])) / "verify.json"
+    metadata_for_payload = {key: value for key, value in metadata.items() if key != "previous_verify"}
     payload = {
         "ok": True,
         "status": "verified",
         "verified_at": iso_now(),
         "model": model,
-        **metadata,
+        **metadata_for_payload,
         "verdict": verdict.verdict,
         "goal_assessment": verdict.goal_assessment,
         "issues": [issue.model_dump() for issue in verdict.issues],

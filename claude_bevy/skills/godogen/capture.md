@@ -92,11 +92,21 @@ The final deliverable is a proof bundle under `screenshots/result/{N}/`, where `
 
 Required contents:
 
-- `video.mp4`
+- `video.mp4` — encoded at exactly 30 fps and between 15s and 30s long. The verify gate hard-rejects bundles outside that window or at the wrong frame rate before it inspects frames.
 - the raw `frameXXX.png` files used to encode that video, stored in the same folder
-- `task.md` containing only the task text itself — no commentary, notes, logs, or section headers
+- `task_add.md` — optional; include only when the bundle proves a slice narrower than the root `task.md` (e.g. a single feature in isolation). Omit it when the bundle covers the full task.
 
-Recommended command shape:
+The original task literal lives at `task.md` in the project root, written once. The verify gate reads it every run; do not duplicate it into the bundle.
+
+The clip has to *prove the task* across its full duration:
+
+- Show the implemented behavior progressing from start to finish, not in one fleeting moment.
+- Vary what is on screen. A clip that loops the same idle pose, replays the same camera orbit, or sits on a single static frame for the whole window proves nothing and fails verification.
+- No dead time. A few good seconds followed by a stuck entity, frozen camera, blank window, or broken state for the rest of the clip is a clear failure, not a partial pass. The verifier treats any sustained degenerate window as an overall fail.
+
+Plan the capture so something task-relevant is happening across the whole clip — scripted action, varied camera, multiple entities exercised — instead of relying on one good moment.
+
+Recommended command shape (30fps × 30s = 900 frames; for the 15s minimum use 450):
 
 ```bash
 RESULT=screenshots/result/{N}

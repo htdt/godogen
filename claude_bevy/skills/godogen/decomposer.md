@@ -85,7 +85,7 @@ Produce `PLAN.md`:
     - Implement a deterministic Bevy capture path (dedicated capture bin or equivalent), ~900 frames at 30 FPS
     - `{N}` is a simple integer counter; increment it for each new final attempt
     - Store the raw `frameXXX.png` sequence in that folder and encode `video.mp4` from the same sequence at matching fps
-    - Write `task.md` with the exact task the bundle is proving
+    - The original task lives at `task.md` in the project root (written once). Add `task_add.md` inside the bundle only if this attempt proves a narrower feature slice.
     - **3D:** smooth camera work, good lighting, post-processing
     - **2D:** camera pans, zoom transitions, tight viewport framing
     - Assemble the stored PNG frames into `video.mp4` with `ffmpeg`
