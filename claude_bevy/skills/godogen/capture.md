@@ -24,6 +24,64 @@ Practical fallback order:
 2. If an interactive smoke test must run without a display, try `xvfb-run` as a workstation workaround.
 3. If the goal is screenshots or video, switch to the dedicated offscreen capture binary instead of trying to keep the interactive window path alive under virtual display plumbing.
 
+## Minimum Wiring
+
+Headless app skeleton for `src/bin/{capture_bin}.rs`. For the full patterns see `bevy/examples/window/screenshot.rs` (still image path) and `bevy/examples/app/headless_renderer.rs` (headless app runner and GPU readback).
+
+```rust
+use bevy::{
+    app::ScheduleRunnerPlugin,
+    camera::RenderTarget,
+    image::TextureFormat,
+    prelude::*,
+    render::view::screenshot::{save_to_disk, Screenshot},
+    time::TimeUpdateStrategy,
+    window::ExitCondition,
+    winit::WinitPlugin,
+};
+use std::time::Duration;
+
+#[derive(Resource, Clone)]
+struct CaptureTarget(Handle<Image>);
+
+fn main() {
+    let mut app = App::new();
+
+    // Pre-allocate the render target before any system that reads its handle.
+    // `new_target_texture` already sets TEXTURE_BINDING | COPY_DST | RENDER_ATTACHMENT.
+    let image = Image::new_target_texture(1280, 720, TextureFormat::bevy_default(), None);
+    let handle = app.world_mut().resource_mut::<Assets<Image>>().add(image);
+    app.insert_resource(CaptureTarget(handle));
+
+    app.add_plugins(
+        DefaultPlugins
+            .set(WindowPlugin {
+                primary_window: None,
+                exit_condition: ExitCondition::DontExit,
+                ..default()
+            })
+            .disable::<WinitPlugin>(),
+    )
+    .add_plugins(ScheduleRunnerPlugin::run_loop(Duration::ZERO))
+    .insert_resource(TimeUpdateStrategy::ManualDuration(Duration::from_secs_f32(
+        1.0 / 30.0,
+    )))
+    .run();
+}
+
+// Scene camera renders into the target:
+// commands.spawn((
+//     Camera3d::default(),
+//     Camera { target: RenderTarget::Image(target.0.clone().into()), ..default() },
+// ));
+
+// Single still, triggered once the scene has settled:
+// commands.spawn(Screenshot::image(target.0.clone()))
+//     .observe(save_to_disk("screenshots/still.png"));
+```
+
+`Screenshot::image(handle).observe(save_to_disk(path))` is the proven still path. For an N-frame sequence, trigger one `Screenshot::image` per tick against the same handle, numbering the output filenames; the observer writes each PNG when its readback lands.
+
 ## Screenshot First
 
 Prove one still image before adding video:

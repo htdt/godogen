@@ -99,6 +99,20 @@ This matches the local Bevy example `examples/camera/2d_on_ui.rs`.
 
 If the first smoke test produces `B0004` warnings, check parent anchors first; they usually need `Visibility` in addition to `Transform`.
 
+## Lighting
+
+Bevy 0.18 splits ambient light into two types. `GlobalAmbientLight` is a `Resource`, auto-inserted by `LightPlugin`, and fills the whole scene. `AmbientLight` is a `Component` that lives on a camera entity and overrides the global value for that camera only (it carries `#[require(Camera)]`).
+
+```rust
+commands.insert_resource(GlobalAmbientLight {
+    color: Color::WHITE,
+    brightness: 200.0,
+    ..default()
+});
+```
+
+Raise `brightness` (candela per m²) rather than spawning filler point lights when a scene reads as too dark. Spawn a `DirectionalLight` or `PointLight` alongside it for shape and shadows. See `bevy/examples/3d/lighting.rs` for the canonical pattern.
+
 ## Imported Assets vs Generated Layout
 
 - Generated layout stays code-first.
