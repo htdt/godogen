@@ -4,7 +4,7 @@ Analyze a game for implementation risks and define verification criteria. Output
 
 ## Runtime Limitations
 
-This pipeline does not ship audio or Android builds. If the brief asks for either, drop those features from the plan and note the omission in the game description section of `PLAN.md`.
+This pipeline does not ship audio or Android builds. If the brief asks for either, drop those features from the plan and note the omission in `task.md`.
 
 ## Workflow
 
@@ -12,7 +12,7 @@ This pipeline does not ship audio or Android builds. If the brief asks for eithe
 2. **Read the game description** — core technical requirements.
 3. **Scan for risks** — identify features needing isolation (see taxonomy below).
 4. **Define verification criteria** — risk-specific, general, and final.
-5. **Write `PLAN.md`.**
+5. **Write `task.md`** at the project root (original description verbatim, minus any dropped features) **and `PLAN.md`.**
 
 ## Risk Taxonomy
 
@@ -52,14 +52,12 @@ Whenever a requirement mentions smooth motion, state handoff (idle->walk, walk->
 
 ## Output Format
 
-Produce `PLAN.md`:
+Write `task.md` at the project root containing the original description verbatim, minus any features dropped under Runtime Limitations. No commentary, notes, or headers.
+
+Then produce `PLAN.md`:
 
 ````markdown
 # Game Plan: {Name}
-
-## Game Description
-
-{Original description, verbatim.}
 
 ## Risk Tasks
 
@@ -85,7 +83,7 @@ Produce `PLAN.md`:
     - Implement a deterministic Bevy capture path (dedicated capture bin or equivalent), ~900 frames at 30 FPS
     - `{N}` is a simple integer counter; increment it for each new final attempt
     - Store the raw `frameXXX.png` sequence in that folder and encode `video.mp4` from the same sequence at matching fps
-    - The original task lives at `task.md` in the project root (written once). Add `task_add.md` inside the bundle only if this attempt proves a narrower feature slice.
+    - Add `task_add.md` inside the bundle only if this attempt proves a narrower feature slice.
     - **3D:** smooth camera work, good lighting, post-processing
     - **2D:** camera pans, zoom transitions, tight viewport framing
     - Assemble the stored PNG frames into `video.mp4` with `ffmpeg`

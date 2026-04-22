@@ -8,7 +8,7 @@ The caller provides:
 - `budget_cents` — total budget (or remaining budget for iterations)
 - For iterations: a specific task description (e.g. "regenerate car model" or "add missing explosion sprite")
 
-The game description is in `PLAN.md` under **Game Description**.
+The game description is in `task.md` at the project root.
 
 ## Setup
 
