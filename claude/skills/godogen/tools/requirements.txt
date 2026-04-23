@@ -1,9 +1,9 @@
-xai-sdk
-google-genai
-requests
-numpy
-pillow
-rembg
-pymatting
-onnxruntime-gpu
+xai-sdk>=0.1.0
+google-genai>=1.0.0
+requests>=2.31.0
+numpy>=1.26.0
+pillow>=10.0.0
+rembg>=2.0.50
+pymatting>=1.1.12
+onnxruntime-gpu>=1.17.0
 nvidia-cudnn-cu12==9.*
