@@ -80,7 +80,7 @@ Then produce `PLAN.md`:
   - No visual glitches, clipping, or placeholder assets
   - reference.png consistency: color palette, scale, camera angle, visual density
   - **Presentation proof bundle:** latest final-attempt folder under `screenshots/result/{N}/`
-    - Implement a deterministic Bevy capture path (dedicated capture bin or equivalent), ~900 frames at 30 FPS
+    - Implement a deterministic Bevy capture path (dedicated capture bin or equivalent), defaulting to ~450 frames at 30 FPS; use ~900 frames only when 30s is genuinely needed for coverage
     - `{N}` is a simple integer counter; increment it for each new final attempt
     - Store the raw `frameXXX.png` sequence in that folder and encode `video.mp4` from the same sequence at matching fps
     - Add `task_add.md` inside the bundle only if this attempt proves a narrower feature slice.

@@ -11,7 +11,7 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
-MAX_RETRIES = 10
+MAX_RETRIES = 5
 
 
 def iso_now() -> str:
@@ -123,7 +123,7 @@ def build_missing_reason(meta: dict[str, object]) -> str:
     details = str(meta.get("message", "No valid result bundle is available.")).strip()
     return (
         f"Before stopping, write a fresh final proof bundle at `{target_dir}/`:\n"
-        "- `video.mp4` (30 fps, 15-30s, encoded from the stored frames)\n"
+        "- `video.mp4` (30 fps, prefer 15s / 450 frames; use up to 30s / 900 frames only when needed, encoded from the stored frames)\n"
         "- raw `frameXXX.png` files used to encode that video\n"
         "- `task_add.md` only if this bundle proves a slice narrower than the root `task.md`\n\n"
         f"Blocker: {details}"

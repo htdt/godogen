@@ -47,12 +47,6 @@ struct CaptureTarget(Handle<Image>);
 fn main() {
     let mut app = App::new();
 
-    // Pre-allocate the render target before any system that reads its handle.
-    // `new_target_texture` already sets TEXTURE_BINDING | COPY_DST | RENDER_ATTACHMENT.
-    let image = Image::new_target_texture(1280, 720, TextureFormat::bevy_default(), None);
-    let handle = app.world_mut().resource_mut::<Assets<Image>>().add(image);
-    app.insert_resource(CaptureTarget(handle));
-
     app.add_plugins(
         DefaultPlugins
             .set(WindowPlugin {
@@ -65,8 +59,16 @@ fn main() {
     .add_plugins(ScheduleRunnerPlugin::run_loop(Duration::ZERO))
     .insert_resource(TimeUpdateStrategy::ManualDuration(Duration::from_secs_f32(
         1.0 / 30.0,
-    )))
-    .run();
+    )));
+
+    // Pre-allocate the render target before any system that reads its handle.
+    // DefaultPlugins must be installed first so ImagePlugin has initialized Assets<Image>.
+    // `new_target_texture` already sets TEXTURE_BINDING | COPY_DST | RENDER_ATTACHMENT.
+    let image = Image::new_target_texture(1280, 720, TextureFormat::bevy_default(), None);
+    let handle = app.world_mut().resource_mut::<Assets<Image>>().add(image);
+    app.insert_resource(CaptureTarget(handle));
+
+    app.run();
 }
 
 // Scene camera renders into the target:
@@ -150,7 +152,7 @@ The final deliverable is a proof bundle under `screenshots/result/{N}/`, where `
 
 Required contents:
 
-- `video.mp4` — encoded at exactly 30 fps and between 15s and 30s long. The verify gate hard-rejects bundles outside that window or at the wrong frame rate before it inspects frames.
+- `video.mp4` — encoded at exactly 30 fps and between 15s and 30s long. Prefer 15s / 450 frames to keep verification cheap; use up to 30s / 900 frames only when the task needs the extra time to prove behavior. The verify gate hard-rejects bundles outside that window or at the wrong frame rate before it inspects frames.
 - the raw `frameXXX.png` files used to encode that video, stored in the same folder
 - `task_add.md` — optional; include only when the bundle proves a slice narrower than the root `task.md` (e.g. a single feature in isolation). Omit it when the bundle covers the full task.
 
@@ -164,15 +166,17 @@ The clip has to *prove the task* across its full duration:
 
 Plan the capture so something task-relevant is happening across the whole clip — scripted action, varied camera, multiple entities exercised — instead of relying on one good moment.
 
-Recommended command shape (30fps × 30s = 900 frames; for the 15s minimum use 450):
+Recommended command shape (30 fps x 15s = 450 frames):
 
 ```bash
 RESULT=screenshots/result/{N}
-cargo run --bin {capture_bin} -- frames "$RESULT" 900
+cargo run --bin {capture_bin} -- frames "$RESULT" 450
 ffmpeg -y -framerate 30 -i "$RESULT/frame%05d.png" \
     -c:v libx264 -pix_fmt yuv420p -preset medium -crf 22 -movflags +faststart \
     "$RESULT/video.mp4"
 ```
+
+Use `900` frames only when a 30s clip is genuinely needed for coverage.
 
 The encoded MP4 must use the same fps as the captured frame sequence. If those disagree, the resulting motion proof is inaccurate.
 
