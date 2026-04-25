@@ -16,7 +16,7 @@ from google.genai import types
 from pydantic import BaseModel, Field
 
 DEFAULT_MODEL = "gemini-flash-latest"
-DEFAULT_REVIEW_FPS = 5.0
+DEFAULT_REVIEW_FPS = 2.0
 DEFAULT_MAX_FRAMES = 150
 MIN_DURATION_SECONDS = 15.0
 MAX_DURATION_SECONDS = 30.0

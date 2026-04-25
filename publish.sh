@@ -2,8 +2,13 @@
 # Publish Godogen runtime files into a target game repo.
 #
 # Usage:
-#   ./publish.sh --engine godot|bevy --agent claude|codex --out <target_dir> [--force]
-#   ./publish.sh --engine godot|bevy --agent claude|codex <target_dir> [--force]
+#   ./publish.sh --engine godot|bevy --agent claude|codex --out <target_dir> [--force] [--verify-feedback-to-cli]
+#   ./publish.sh --engine godot|bevy --agent claude|codex <target_dir> [--force] [--verify-feedback-to-cli]
+#
+# By default, the visual-verification stop hook just posts the report to Telegram and
+# allows the agent to stop on a fail verdict. Pass --verify-feedback-to-cli to also
+# block the stop and feed Gemini's findings back into the agent for retries (the prior
+# behavior). Telegram receives the report in both modes.
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "$0")" && pwd)"
@@ -12,9 +17,10 @@ ENGINE=""
 AGENT=""
 OUT=""
 FORCE=0
+VERIFY_FEEDBACK_TO_CLI=0
 
 usage() {
-    sed -n '1,8p' "$0" >&2
+    sed -n '1,12p' "$0" >&2
 }
 
 resolve_path() {
@@ -302,6 +308,10 @@ while [ $# -gt 0 ]; do
             FORCE=1
             shift
             ;;
+        --verify-feedback-to-cli)
+            VERIFY_FEEDBACK_TO_CLI=1
+            shift
+            ;;
         -h|--help)
             usage
             exit 0
@@ -442,7 +452,8 @@ render_dir "$TARGET/$HOOK_CONFIG_DIR/hooks" \
     "AGENT_ID=$AGENT" \
     "AGENT_NAME=$AGENT_NAME" \
     "HOOK_CONFIG_DIR=$HOOK_CONFIG_DIR" \
-    "ENGINE_NAME=${ENGINE^}"
+    "ENGINE_NAME=${ENGINE^}" \
+    "VERIFY_FEEDBACK_TO_CLI=$VERIFY_FEEDBACK_TO_CLI"
 chmod +x "$TARGET/$HOOK_CONFIG_DIR/hooks/stop_post_task_gate.py" "$TARGET/$HOOK_CONFIG_DIR/hooks/capture_result.sh"
 
 if [ "$AGENT" = "codex" ]; then

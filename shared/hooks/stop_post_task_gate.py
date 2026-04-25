@@ -12,6 +12,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 MAX_RETRIES = 5
+VERIFY_FEEDBACK_TO_CLI = "${VERIFY_FEEDBACK_TO_CLI}" == "1"
 
 
 def iso_now() -> str:
@@ -158,12 +159,20 @@ def send_telegram_result(verify: dict[str, object]) -> None:
     if not telegram_ready():
         return
 
+    verdict = str(verify.get("verdict", "unknown")).upper()
+    bundle = str(verify.get("result_dir_rel", "")).strip()
     summary = str(verify.get("summary", "")).strip()
-    caption_lines = [
-        f"Verdict: {str(verify.get('verdict', 'unknown')).upper()}",
-        f"Summary: {summary}",
-    ]
-    caption = "\n".join(caption_lines)
+    issues = list(verify.get("issues") or [])
+
+    lines = [f"Verdict: {verdict}"]
+    if bundle:
+        lines.append(f"Bundle: {bundle}")
+    if summary:
+        lines.append(f"Summary: {summary}")
+    if issues:
+        lines.extend(["", "Issues:", summarize_issues(issues, limit=6)])
+
+    caption = "\n".join(lines)
     if len(caption) > 950:
         caption = caption[:947] + "..."
 
@@ -267,6 +276,16 @@ def main() -> None:
         state["retry_count"] = 0
         save_json(state_path, state)
         print(json.dumps({}))
+        return
+
+    if not VERIFY_FEEDBACK_TO_CLI:
+        state["retry_count"] = 0
+        save_json(state_path, state)
+        message = (
+            f"Visual gate verdict: FAIL on {verify['result_dir_rel']}. "
+            "Details posted to Telegram."
+        )
+        print(json.dumps(allow_stop(message)))
         return
 
     retry_count = int(state.get("retry_count", 0)) + 1
