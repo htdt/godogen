@@ -174,9 +174,6 @@ Required contents:
 
 - `video.mp4` — encoded at exactly 30 fps and between 15s and 30s long. Prefer 15s / 450 frames; use up to 30s / 900 frames only when the task needs the extra time to prove behavior.
 - the raw `frameXXX.png` files used to encode that video, stored in the same folder
-- `task_add.md` — optional; include only when the bundle proves a slice narrower than the root `task.md`. Omit it when the bundle covers the full task.
-
-The original task literal lives at `task.md` in the project root, written once; do not duplicate it into the bundle.
 
 The clip has to prove the task across its full duration:
 

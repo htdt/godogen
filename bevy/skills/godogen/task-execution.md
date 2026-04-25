@@ -76,15 +76,12 @@ If the task has one risky or unclear part, isolate it first:
 
 ## Final Proof Bundle
 
-Write `task.md` at the project root once, containing the original task literal verbatim — no commentary, notes, or headers. It is the single source of truth for what is being built and is not rewritten on retries.
-
 After the whole task is complete, create a fresh `screenshots/result/{N}/` directory, incrementing `N` for each new final-attempt bundle.
 
 It must contain:
 
 - `video.mp4` — encoded at 30 fps and between 15s and 30s long. Prefer 15s / 450 frames; use up to 30s / 900 frames only when the task needs the extra time to prove behavior.
 - the raw `frameXXX.png` sequence used to encode that video
-- `task_add.md` — add this file only when the bundle proves a slice narrower than the root `task.md` (for example, a single feature in isolation). Omit it when the bundle covers the full task.
 
 The clip must demonstrate the task across its full chosen duration, not in one good moment. A scene that loops the same animation, holds a single static frame, or sits idle is not proof. A bundle where the opening seconds look correct and the rest degenerates into stuck or broken state is treated as a clear failure, not a partial pass. See the Final Result Bundle section in `capture.md` for the full coverage rules.
 
@@ -96,7 +93,6 @@ Encode `video.mp4` from the stored raw frames at the same fps they were captured
 - `cargo check` passes
 - `cargo build` passes
 - A runtime launch validation has been completed on a real display path
-- `task.md` exists at the project root with the original task literal
 - A fresh `screenshots/result/{N}/` proof bundle exists for the current final attempt
 - `STRUCTURE.md` matches the code that shipped
 

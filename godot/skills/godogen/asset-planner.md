@@ -8,8 +8,6 @@ The caller provides:
 - `budget_cents` — total budget (or remaining budget for iterations)
 - For iterations: a specific task description (e.g. "regenerate car model" or "add missing explosion sprite")
 
-The game description is in `task.md` at the project root.
-
 ## Setup
 
 Read `${GODOGEN_SKILL_DIR}/asset-gen.md` for CLI reference and prompt templates.

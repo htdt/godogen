@@ -1,6 +1,6 @@
 # Godogen — From Prompt to Playable Game
 
-Godogen is an autonomous development pipeline for turning a natural-language game brief into a playable Godot or Bevy project. It plans the game, generates visual direction and assets, writes code, captures media from the running engine, and verifies the final result visually.
+Godogen is an autonomous development pipeline for turning a natural-language game brief into a playable Godot or Bevy project. It plans the game, generates visual direction and assets, writes code, and captures media from the running engine for visual review.
 
 It is not a game engine, a code generator, or an asset marketplace. It is a source repo for runtime skills that are published into a fresh game repo and then executed by Claude Code or Codex.
 
@@ -28,14 +28,14 @@ Publishing writes `CLAUDE.md` plus `.claude/skills/` for Claude Code, or `AGENTS
 The `godogen` skill orchestrates the run and loads stage-specific files only when they are needed:
 
 1. **Visual target** — generate `reference.png` and write art direction into `ASSETS.md`.
-2. **Decomposition** — write `task.md` and `PLAN.md`, isolating only genuinely risky features.
+2. **Decomposition** — write `PLAN.md`, isolating only genuinely risky features.
 3. **Scaffold** — create or update the engine project shell and `STRUCTURE.md`.
 4. **Asset planning and generation** — spend the user-provided budget on the assets that matter most.
 5. **Task execution** — implement risk slices first, then the main build.
 6. **Capture** — create a fresh `screenshots/result/{N}/` bundle with raw `frameXXX.png` files and `video.mp4`.
 7. **Telegram push** — the shared stop hook pushes the latest proof video to Telegram when `tg-push` and `TG_*` env vars are configured; otherwise it no-ops.
 
-The document protocol is deliberate. `task.md`, `PLAN.md`, `STRUCTURE.md`, `ASSETS.md`, and `MEMORY.md` survive context compaction and let the run resume from files instead of conversational memory.
+The document protocol is deliberate. `PLAN.md`, `STRUCTURE.md`, `ASSETS.md`, and `MEMORY.md` survive context compaction and let the run resume from files instead of conversational memory.
 
 ## Engine Support
 
@@ -43,7 +43,7 @@ Godot output is a Godot 4 C#/.NET project. The Godot runtime skill uses scene bu
 
 Bevy output is a Rust/Bevy project. The Bevy runtime skill uses code-first scene construction, local Bevy rustdoc/examples through `bevy-help`, and a dedicated capture path for final proof bundles.
 
-Both engines share the same final-bundle contract: `task.md` at project root plus the latest numeric `screenshots/result/{N}/` folder.
+Both engines share the same final-bundle contract: the latest numeric `screenshots/result/{N}/` folder containing `video.mp4` plus its raw `frameXXX.png` sequence.
 
 ## What Makes This Different
 

@@ -4,7 +4,7 @@ Analyze a game for implementation risks and define verification criteria. Output
 
 ## Runtime Limitations
 
-This pipeline does not ship audio. If the brief asks for audio, drop that feature from the plan and note the omission in `task.md`.
+This pipeline does not ship audio. If the brief asks for audio, drop that feature from the plan and tell the user what was dropped.
 
 Android APK export is supported for Godot. If the brief asks for Android, keep that requirement and include an Android export step in the plan.
 
@@ -14,7 +14,7 @@ Android APK export is supported for Godot. If the brief asks for Android, keep t
 2. **Read the game description** — core technical requirements.
 3. **Scan for risks** — identify features needing isolation (see taxonomy below).
 4. **Define verification criteria** — risk-specific, general, and final.
-5. **Write `task.md`** at the project root (original description verbatim, minus any dropped features) **and `PLAN.md`.**
+5. **Write `PLAN.md`.**
 
 ## Risk Taxonomy
 
@@ -55,9 +55,7 @@ Whenever a requirement mentions smooth motion, state handoff (idle->walk, walk->
 
 ## Output Format
 
-Write `task.md` at the project root containing the original description verbatim, minus any features dropped under Runtime Limitations. No commentary, notes, or headers.
-
-Then produce `PLAN.md`:
+Produce `PLAN.md`:
 
 ````markdown
 # Game Plan: {Name}
@@ -86,7 +84,6 @@ Then produce `PLAN.md`:
     - Implement a deterministic Godot capture path with a dedicated `test/Presentation.cs` `SceneTree` script or equivalent, defaulting to ~450 frames at 30 FPS; use ~900 frames only when 30s is genuinely needed for coverage
     - `{N}` is a simple integer counter; increment it for each new final attempt
     - Store the raw `frameXXX.png` sequence in that folder and encode `video.mp4` from the same sequence at matching fps
-    - Add `task_add.md` inside the bundle only if this attempt proves a narrower feature slice.
     - **3D:** smooth camera work, good lighting, post-processing
     - **2D:** camera pans, zoom transitions, tight viewport framing
     - Assemble the stored PNG frames into `video.mp4` with `ffmpeg`
