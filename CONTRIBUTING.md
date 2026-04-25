@@ -40,7 +40,7 @@ Once approved, open a PR that references the issue. Keep it focused on what was 
 - Improve output quality in a measurable way (better scenes, fewer broken scripts, more reliable asset generation).
 - Reduce token usage or API costs without sacrificing quality.
 - Improve reliability of the pipeline (fewer crashes, better error recovery).
-- Improve or correct the GDScript docs / API reference.
+- Improve or correct the Godot, Bevy, or asset-generation reference material.
 
 **We'll likely close contributions that:**
 

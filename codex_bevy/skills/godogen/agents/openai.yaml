@@ -1,7 +1,0 @@
-interface:
-  display_name: "Godogen (Bevy)"
-  short_description: "Generate or update complete Bevy games"
-  default_prompt: "Use $godogen to build or update this Bevy game from a natural-language design brief."
-
-policy:
-  allow_implicit_invocation: false

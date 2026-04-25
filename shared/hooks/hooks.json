@@ -1,0 +1,16 @@
+{
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$(git rev-parse --show-toplevel)/${HOOK_CONFIG_DIR}/hooks/stop_post_task_gate.py\"",
+            "statusMessage": "Verifying latest presentation bundle",
+            "timeout": 600
+          }
+        ]
+      }
+    ]
+  }
+}

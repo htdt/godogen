@@ -4,3 +4,5 @@
 .playwright-cli/
 .playwright
 **/__pycache__
+godot/skills/godot-api/doc_api/
+godot/skills/godot-api/doc_source/

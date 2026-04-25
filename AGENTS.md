@@ -1,36 +1,43 @@
 # Godogen Source Repo
 
-This repository contains four source trees:
+This repository is not a published game repo. It is the source for runtime skills and game-repo templates that are rendered by engine and host agent.
 
-- `claude/` — Claude Code Godot source tree
-- `claude_bevy/` — Claude Code Bevy source tree
-- `codex/` — Codex Godot source tree
-- `codex_bevy/` — Codex Bevy source tree
+## Source Layout
 
-This is not a published game repo. The files at the repo root describe how to work on the source trees themselves.
+- `shared/` — engine-agnostic `godogen` files, shared hook templates, and common game-repo instructions
+- `godot/` — Godot-specific `godogen` files, `godot-api`, Godot capture hook helpers, and Godot game-repo instructions
+- `bevy/` — Bevy-specific `godogen` files, `bevy-help`, Bevy capture hook helpers, and Bevy game-repo instructions
+- `publish.sh` — renders a runtime repo with `--engine {godot,bevy}` and `--agent {claude,codex}`
+
+Claude vs Codex is a publish-time render choice, not a source-tree split.
 
 ## Source vs Runtime
 
-- `*/game.md` files are runtime instruction templates:
-  `claude/game.md` and `claude_bevy/game.md` become `CLAUDE.md`; `codex/game.md` and `codex_bevy/game.md` become `AGENTS.md` in published repos.
-- `*/publish.sh` publishes runtime skills:
-  `claude/` and `claude_bevy/` publish to `.claude/skills/`; `codex/` and `codex_bevy/` publish to `.agents/skills/`.
-- `claude/` and `codex/` target Godot; `claude_bevy/` and `codex_bevy/` target Bevy.
-- Root docs such as `README.md` and `setup.md` describe the combined repo and shared workstation setup.
+- `*/game-*.md` files render to `CLAUDE.md` or `AGENTS.md` in published game repos.
+- Runtime skills render to `.claude/skills/` for Claude Code and `.agents/skills/` for Codex.
+- Runtime hooks render to `.claude/hooks/` or `.codex/hooks/`.
+- Codex `agents/openai.yaml` files are generated from each skill's rendered `SKILL.md` frontmatter.
+- Do not create or maintain `.claude/skills/` or `.agents/skills/` in this source repo.
 
 ## Skills
 
-The current source trees carry these runtime skills:
+Published Godot repos carry:
 
-- `claude/` and `codex/`: **godogen**, **godot-api**, **visual-qa**
-- `claude_bevy/` and `codex_bevy/`: **godogen**, **bevy-help**
+- **godogen**
+- **godot-api**
+
+Published Bevy repos carry:
+
+- **godogen**
+- **bevy-help**
+
+The old Godot `visual-qa` runtime skill is intentionally removed. Both engines use the shared final proof-bundle verification hook.
 
 ## Editing Rules
 
-- User must specify the target source tree.
-- Variant-specific work stays in the matching subtree: `claude/`, `claude_bevy/`, `codex/`, or `codex_bevy/`.
-- Shared docs and shared repo policy live at the repo root.
-- Do not align the behavior across both variants unless asked.
-- Do not create or maintain `.claude/skills/` or `.agents/skills/` in this source repo.
-- If you change a Codex skill's user-facing purpose, also update its `agents/openai.yaml` metadata.
-- When writing skills: don't give obvious guidance. The agent is a highly capable LLM — handholding only pollutes the context.
+- User must specify the target engine (`godot`, `bevy`, or `shared`) unless the change is clearly root documentation or publish plumbing.
+- Engine-specific work stays in the matching subtree: `godot/` or `bevy/`.
+- Shared behavior stays in `shared/` only when it is genuinely engine-agnostic.
+- Do not align Godot and Bevy behavior unless asked or the file belongs under `shared/`.
+- If you change a skill's user-facing purpose, update its `SKILL.md` frontmatter. Do not hand-edit generated `agents/openai.yaml`.
+- When writing skills: don't give obvious guidance. The agent is a highly capable LLM; handholding only pollutes the context.
