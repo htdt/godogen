@@ -152,17 +152,17 @@ The final deliverable is a proof bundle under `screenshots/result/{N}/`, where `
 
 Required contents:
 
-- `video.mp4` — encoded at exactly 30 fps and between 15s and 30s long. Prefer 15s / 450 frames to keep verification cheap; use up to 30s / 900 frames only when the task needs the extra time to prove behavior. The verify gate hard-rejects bundles outside that window or at the wrong frame rate before it inspects frames.
+- `video.mp4` — encoded at exactly 30 fps and between 15s and 30s long. Prefer 15s / 450 frames; use up to 30s / 900 frames only when the task needs the extra time to prove behavior.
 - the raw `frameXXX.png` files used to encode that video, stored in the same folder
 - `task_add.md` — optional; include only when the bundle proves a slice narrower than the root `task.md` (e.g. a single feature in isolation). Omit it when the bundle covers the full task.
 
-The original task literal lives at `task.md` in the project root, written once. The verify gate reads it every run; do not duplicate it into the bundle.
+The original task literal lives at `task.md` in the project root, written once; do not duplicate it into the bundle.
 
 The clip has to *prove the task* across its full duration:
 
 - Show the implemented behavior progressing from start to finish, not in one fleeting moment.
-- Vary what is on screen. A clip that loops the same idle pose, replays the same camera orbit, or sits on a single static frame for the whole window proves nothing and fails verification.
-- No dead time. A few good seconds followed by a stuck entity, frozen camera, blank window, or broken state for the rest of the clip is a clear failure, not a partial pass. The verifier treats any sustained degenerate window as an overall fail.
+- Vary what is on screen. A clip that loops the same idle pose, replays the same camera orbit, or sits on a single static frame for the whole window proves nothing.
+- No dead time. A few good seconds followed by a stuck entity, frozen camera, blank window, or broken state for the rest of the clip is a clear failure, not a partial pass.
 
 Plan the capture so something task-relevant is happening across the whole clip — scripted action, varied camera, multiple entities exercised — instead of relying on one good moment.
 

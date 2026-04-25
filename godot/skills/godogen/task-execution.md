@@ -70,7 +70,7 @@ After the whole task is complete, create a fresh `screenshots/result/{N}/` direc
 
 It must contain:
 
-- `video.mp4` - encoded at 30 fps and between 15s and 30s long. Prefer 15s / 450 frames; use up to 30s / 900 frames only when the task needs the extra time to prove behavior. Wrong frame rate or duration outside that range is auto-rejected by the verify gate.
+- `video.mp4` - encoded at 30 fps and between 15s and 30s long. Prefer 15s / 450 frames; use up to 30s / 900 frames only when the task needs the extra time to prove behavior.
 - the raw `frameXXX.png` sequence used to encode that video
 - `task_add.md` - add this file only when the bundle proves a slice narrower than the root `task.md`. Omit it when the bundle covers the full task.
 

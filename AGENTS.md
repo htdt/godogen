@@ -13,7 +13,7 @@ Claude vs Codex is a publish-time render choice, not a source-tree split.
 
 ## Source vs Runtime
 
-- `*/game-*.md` files render to `CLAUDE.md` or `AGENTS.md` in published game repos.
+- `godot/game-engine.md` and `bevy/game-engine.md` render to `CLAUDE.md` or `AGENTS.md` in published game repos.
 - Runtime skills render to `.claude/skills/` for Claude Code and `.agents/skills/` for Codex.
 - Runtime hooks render to `.claude/hooks/` or `.codex/hooks/`.
 - Codex `agents/openai.yaml` files are generated from each skill's rendered `SKILL.md` frontmatter.
@@ -31,11 +31,8 @@ Published Bevy repos carry:
 - **godogen**
 - **bevy-help**
 
-The old Godot `visual-qa` runtime skill is intentionally removed. Both engines use the shared final proof-bundle verification hook.
-
 ## Editing Rules
 
-- User must specify the target engine (`godot`, `bevy`, or `shared`) unless the change is clearly root documentation or publish plumbing.
 - Engine-specific work stays in the matching subtree: `godot/` or `bevy/`.
 - Shared behavior stays in `shared/` only when it is genuinely engine-agnostic.
 - Do not align Godot and Bevy behavior unless asked or the file belongs under `shared/`.

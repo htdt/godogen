@@ -2,13 +2,11 @@
 # Publish Godogen runtime files into a target game repo.
 #
 # Usage:
-#   ./publish.sh --engine godot|bevy --agent claude|codex --out <target_dir> [--force] [--verify-feedback-to-cli]
-#   ./publish.sh --engine godot|bevy --agent claude|codex <target_dir> [--force] [--verify-feedback-to-cli]
+#   ./publish.sh --engine godot|bevy --agent claude|codex --out <target_dir> [--force]
+#   ./publish.sh --engine godot|bevy --agent claude|codex <target_dir> [--force]
 #
-# By default, the visual-verification stop hook just posts the report to Telegram and
-# allows the agent to stop on a fail verdict. Pass --verify-feedback-to-cli to also
-# block the stop and feed Gemini's findings back into the agent for retries (the prior
-# behavior). Telegram receives the report in both modes.
+# The Stop hook is best-effort: when `tg-push` and TG_* env vars are present at runtime
+# it pushes the latest screenshots/result/{N}/video.mp4 to Telegram, otherwise it no-ops.
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "$0")" && pwd)"
@@ -17,10 +15,9 @@ ENGINE=""
 AGENT=""
 OUT=""
 FORCE=0
-VERIFY_FEEDBACK_TO_CLI=0
 
 usage() {
-    sed -n '1,12p' "$0" >&2
+    sed -n '1,9p' "$0" >&2
 }
 
 resolve_path() {
@@ -168,7 +165,7 @@ command = 'python3 "$CLAUDE_PROJECT_DIR"/.claude/hooks/stop_post_task_gate.py'
 gate_entry = {
     "type": "command",
     "command": command,
-    "timeout": 600,
+    "timeout": 60,
 }
 
 for entry in stop_entries:
@@ -308,10 +305,6 @@ while [ $# -gt 0 ]; do
             FORCE=1
             shift
             ;;
-        --verify-feedback-to-cli)
-            VERIFY_FEEDBACK_TO_CLI=1
-            shift
-            ;;
         -h|--help)
             usage
             exit 0
@@ -431,29 +424,21 @@ fi
 
 mkdir -p "$TMP/game"
 cp "$REPO_ROOT/$ENGINE/game-engine.md" "$TMP/game/game-engine.md"
-cp "$REPO_ROOT/shared/game-common.md" "$TMP/game/game-common.md"
 render_dir "$TMP/game" \
     "AGENT_NAME=$AGENT_NAME" \
     "GODOGEN_COMMAND=$GODOGEN_COMMAND"
-{
-    cat "$TMP/game/game-engine.md"
-    printf '\n\n'
-    cat "$TMP/game/game-common.md"
-} > "$TARGET/$MANIFEST"
+cp "$TMP/game/game-engine.md" "$TARGET/$MANIFEST"
 echo "Created $MANIFEST"
 
 mkdir -p "$TARGET/$HOOK_CONFIG_DIR/hooks"
 rsync -a "$REPO_ROOT/shared/hooks/stop_post_task_gate.py" \
-    "$REPO_ROOT/shared/hooks/verify_result.py" \
-    "$REPO_ROOT/shared/hooks/verify_result_prompt.md" \
     "$TARGET/$HOOK_CONFIG_DIR/hooks/"
 rsync -a "$REPO_ROOT/$ENGINE/hooks/" "$TARGET/$HOOK_CONFIG_DIR/hooks/"
 render_dir "$TARGET/$HOOK_CONFIG_DIR/hooks" \
     "AGENT_ID=$AGENT" \
     "AGENT_NAME=$AGENT_NAME" \
     "HOOK_CONFIG_DIR=$HOOK_CONFIG_DIR" \
-    "ENGINE_NAME=${ENGINE^}" \
-    "VERIFY_FEEDBACK_TO_CLI=$VERIFY_FEEDBACK_TO_CLI"
+    "ENGINE_NAME=${ENGINE^}"
 chmod +x "$TARGET/$HOOK_CONFIG_DIR/hooks/stop_post_task_gate.py" "$TARGET/$HOOK_CONFIG_DIR/hooks/capture_result.sh"
 
 if [ "$AGENT" = "codex" ]; then

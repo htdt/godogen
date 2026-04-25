@@ -6,8 +6,8 @@
           {
             "type": "command",
             "command": "python3 \"$(git rev-parse --show-toplevel)/${HOOK_CONFIG_DIR}/hooks/stop_post_task_gate.py\"",
-            "statusMessage": "Verifying latest presentation bundle",
-            "timeout": 600
+            "statusMessage": "Pushing latest proof video to Telegram",
+            "timeout": 60
           }
         ]
       }

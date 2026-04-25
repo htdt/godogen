@@ -8,7 +8,7 @@ It is not a game engine, a code generator, or an asset marketplace. It is a sour
 
 The repo is organized by engine:
 
-- `shared/` — engine-agnostic `godogen` stages, shared verification hooks, and common published-repo instructions
+- `shared/` — engine-agnostic `godogen` stages, the shared `Stop` hook, and common published-repo instructions
 - `godot/` — Godot-specific `godogen` stages and `godot-api`
 - `bevy/` — Bevy-specific `godogen` stages and `bevy-help`
 
@@ -33,7 +33,7 @@ The `godogen` skill orchestrates the run and loads stage-specific files only whe
 4. **Asset planning and generation** — spend the user-provided budget on the assets that matter most.
 5. **Task execution** — implement risk slices first, then the main build.
 6. **Capture** — create a fresh `screenshots/result/{N}/` bundle with raw `frameXXX.png` files and `video.mp4`.
-7. **Verification** — the shared stop hook checks the latest proof bundle with Gemini and blocks completion when the visible result fails.
+7. **Telegram push** — the shared stop hook pushes the latest proof video to Telegram when `tg-push` and `TG_*` env vars are configured; otherwise it no-ops.
 
 The document protocol is deliberate. `task.md`, `PLAN.md`, `STRUCTURE.md`, `ASSETS.md`, and `MEMORY.md` survive context compaction and let the run resume from files instead of conversational memory.
 
@@ -43,11 +43,11 @@ Godot output is a Godot 4 C#/.NET project. The Godot runtime skill uses scene bu
 
 Bevy output is a Rust/Bevy project. The Bevy runtime skill uses code-first scene construction, local Bevy rustdoc/examples through `bevy-help`, and a dedicated capture path for final proof bundles.
 
-Both engines share the same final verification contract: `task.md` at project root plus the latest numeric `screenshots/result/{N}/` folder.
+Both engines share the same final-bundle contract: `task.md` at project root plus the latest numeric `screenshots/result/{N}/` folder.
 
 ## What Makes This Different
 
-**Visual verification, not just code generation.** The pipeline captures actual frames from the game and verifies them with a vision model. It catches bugs that text-only analysis misses: z-fighting, floating objects, missing materials, clipped UI, frozen motion, and placeholder remnants.
+**Capture-first proof.** The pipeline captures actual frames from the game and assembles them into a final proof bundle, so the run is judged on what the game looks like rather than on what the code claims.
 
 **Progressive loading.** The orchestrator reads only the stage file it needs at the moment. Support skills keep large engine references out of the main context.
 

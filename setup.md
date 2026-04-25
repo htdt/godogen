@@ -77,7 +77,7 @@ Requires Python 3.10+.
 ```bash
 python3 --version
 pip install -r shared/skills/godogen/tools/requirements.txt
-pip install google-genai pydantic
+pip install google-genai
 ```
 
 In a published game repo, the same asset-generation requirements file lives at:
@@ -85,7 +85,7 @@ In a published game repo, the same asset-generation requirements file lives at:
 - `.claude/skills/godogen/tools/requirements.txt` for Claude Code
 - `.agents/skills/godogen/tools/requirements.txt` for Codex
 
-The `google-genai` and `pydantic` packages are needed by the published post-task verification hook.
+`google-genai` is required by `asset_gen.py` for Gemini image generation.
 
 ## Godot (.NET edition)
 
@@ -207,23 +207,13 @@ ls ~/.local/share/godot/export_templates/*/android_debug.apk
 
 Set in environment:
 
-- `GOOGLE_API_KEY` — Gemini image generation and post-task visual verification
+- `GOOGLE_API_KEY` — Gemini image generation
 - `XAI_API_KEY` — xAI Grok image/video generation
 - `TRIPO3D_API_KEY` — image-to-3D conversion
 
-## Post-Task Gate
+## Post-Task Telegram Push (optional)
 
-Published repos install a `Stop` hook that verifies the latest `screenshots/result/{N}/` bundle with Gemini. It runs `verify_result.py` from `.claude/hooks/` or `.codex/hooks/` and requires:
-
-```bash
-pip install google-genai pydantic
-```
-
-`ffprobe` (bundled with `ffmpeg`) must be on `PATH`. `GOOGLE_API_KEY` is required at hook runtime.
-
-## Notifications (optional)
-
-[tg-push](https://github.com/htdt/tg-push) is a single-shot CLI that sends text plus an optional image or video to Telegram.
+Published repos install a `Stop` hook that pushes the latest `screenshots/result/{N}/video.mp4` to Telegram. The hook is best-effort: it no-ops unless [tg-push](https://github.com/htdt/tg-push) is on `PATH` and both `TG_BOT_TOKEN` and `TG_CHAT_ID` are set.
 
 ```bash
 pipx install tg-push

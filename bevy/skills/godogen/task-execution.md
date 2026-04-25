@@ -82,11 +82,11 @@ After the whole task is complete, create a fresh `screenshots/result/{N}/` direc
 
 It must contain:
 
-- `video.mp4` — encoded at 30 fps and between 15s and 30s long. Prefer 15s / 450 frames; use up to 30s / 900 frames only when the task needs the extra time to prove behavior. Wrong frame rate or duration outside that range is auto-rejected by the verify gate.
+- `video.mp4` — encoded at 30 fps and between 15s and 30s long. Prefer 15s / 450 frames; use up to 30s / 900 frames only when the task needs the extra time to prove behavior.
 - the raw `frameXXX.png` sequence used to encode that video
 - `task_add.md` — add this file only when the bundle proves a slice narrower than the root `task.md` (for example, a single feature in isolation). Omit it when the bundle covers the full task.
 
-The clip must demonstrate the task across its full chosen duration, not in one good moment. A scene that loops the same animation, holds a single static frame, or sits idle is not proof. A bundle where the opening seconds look correct and the rest degenerates into stuck or broken state is treated as a clear failure, not a partial pass. See the Final Result Bundle section in `capture.md` for the full coverage rules the verifier enforces.
+The clip must demonstrate the task across its full chosen duration, not in one good moment. A scene that loops the same animation, holds a single static frame, or sits idle is not proof. A bundle where the opening seconds look correct and the rest degenerates into stuck or broken state is treated as a clear failure, not a partial pass. See the Final Result Bundle section in `capture.md` for the full coverage rules.
 
 Encode `video.mp4` from the stored raw frames at the same fps they were captured. If the frame cadence and MP4 timing disagree, the bundle no longer proves the motion correctly.
 
