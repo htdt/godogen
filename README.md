@@ -16,16 +16,7 @@ The source is organized along the engine axis:
 - `godot/` — Godot-specific `godogen` stages, Godot capture helpers, and the `godot-api` skill
 - `bevy/` — Bevy-specific `godogen` stages, Bevy capture helpers, and the `bevy-help` skill
 
-Claude Code vs Codex is a publish-time render choice, not a separate source tree. The root [publish.sh](publish.sh) renders the right runtime layout:
-
-```bash
-./publish.sh --engine godot --agent claude --out ~/my-godot-game  # CLAUDE.md + .claude/skills/
-./publish.sh --engine godot --agent codex  --out ~/my-godot-game  # AGENTS.md + .agents/skills/
-./publish.sh --engine bevy  --agent claude --out ~/my-bevy-game
-./publish.sh --engine bevy  --agent codex  --out ~/my-bevy-game
-```
-
-Pass `--force` to wipe existing contents at the target before publishing — use this when re-publishing over a previous run.
+Claude Code vs Codex is a publish-time render choice, not a separate source tree. The root [publish.sh](publish.sh) renders the right runtime layout for the chosen engine and host agent.
 
 ## What skills do
 
@@ -58,11 +49,13 @@ Pass `--force` to wipe existing contents at the target before publishing — use
 Pick the engine and host agent:
 
 ```bash
-./publish.sh --engine godot --agent claude --out ~/my-game
-./publish.sh --engine godot --agent codex  --out ~/my-game
+./publish.sh --engine godot --agent claude --out ~/my-game  # CLAUDE.md + .claude/skills/
+./publish.sh --engine godot --agent codex  --out ~/my-game  # AGENTS.md + .agents/skills/
 ./publish.sh --engine bevy  --agent claude --out ~/my-game
 ./publish.sh --engine bevy  --agent codex  --out ~/my-game
 ```
+
+Pass `--force` to wipe existing contents at the target before publishing — use this when re-publishing over a previous run.
 
 ### Bevy docs setup
 
