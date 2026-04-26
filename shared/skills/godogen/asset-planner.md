@@ -26,7 +26,7 @@ Read `STRUCTURE.md` (especially **Asset Hints**) and `PLAN.md` (especially **Ass
 
 The scaffold's Asset Hints describe what the architecture needs. The decomposer's Assets needed fields describe what each task needs. Reconcile both — they may overlap or one may mention assets the other missed.
 
-For Bevy projects, keep runtime-loaded outputs under `assets/`. When a task needs to load a generated file at runtime, record both the repo path and the Bevy `AssetServer` path relative to `assets/`.
+Keep runtime-loaded outputs under `assets/` so the engine can load them at runtime.
 
 ### 2. Prioritize and budget
 
@@ -151,16 +151,14 @@ One reference per character anchors all animations. **Loops** (idle, walk) repea
 
 **Generation order:** roots first (parallel) → extract frames + loop trim → chains (parallel) → extract → batch rembg all.
 
-For runtime loading, Bevy strips the `assets/` prefix. `assets/img/car.png` becomes the load path `img/car.png`.
-
 ### 6. Update PLAN.md with asset assignments
 
 After generating assets, read PLAN.md and add concrete asset assignments to each task that needs them. For tasks with an **Assets needed** field, replace or augment it with an **Assets:** field listing the actual generated files:
 
 ```markdown
 - **Assets:**
-  - `car` GLB model (`assets/glb/car.glb`, Bevy load path `glb/car.glb`) — scale to 4m long
-  - `grass` texture (`assets/img/grass.png`, Bevy load path `img/grass.png`) — tile every 2m via UV scale
+  - `car` GLB model (`assets/glb/car.glb`) — scale to 4m long
+  - `grass` texture (`assets/img/grass.png`) — tile every 2m via UV scale
 ```
 
 This ensures no asset is lost in the process — every generated file is assigned to the task that uses it. An asset may appear in multiple tasks.

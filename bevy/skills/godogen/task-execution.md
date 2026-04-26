@@ -70,7 +70,7 @@ If the task has one risky or unclear part, isolate it first:
 - When a GLTF or texture appears white, missing, or partially loaded, inspect runtime logs before rewriting spawn code.
 - Check three things first:
   1. the file lives under `assets/`
-  2. the load path matches Bevy's runtime-relative asset path
+  2. the load path strips the `assets/` prefix — `assets/img/car.png` is loaded as `img/car.png`
   3. `Cargo.toml` enables required Bevy image format features such as `jpeg` when imported assets reference `.jpg`
 - Preserve existing manifest features on incremental tasks. Dropping a needed asset feature can break runtime loads without compile errors.
 
