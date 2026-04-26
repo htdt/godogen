@@ -10,6 +10,7 @@
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "$0")" && pwd)"
+HELPERS="$REPO_ROOT/scripts/publish"
 
 ENGINE=""
 AGENT=""
@@ -21,237 +22,7 @@ usage() {
 }
 
 resolve_path() {
-    local raw_path="$1"
-    python3 -c 'import pathlib,sys; print(pathlib.Path(sys.argv[1]).expanduser().resolve())' "$raw_path"
-}
-
-render_dir() {
-    local root="$1"
-    shift
-    python3 - "$root" "$@" <<'PY'
-from pathlib import Path
-import os
-import sys
-
-root = Path(sys.argv[1])
-pairs = sys.argv[2:]
-replacements = {}
-for pair in pairs:
-    key, value = pair.split("=", 1)
-    replacements["${" + key + "}"] = value
-
-for path in root.rglob("*"):
-    if not path.is_file() or path.is_symlink():
-        continue
-    try:
-        text = path.read_text()
-    except UnicodeDecodeError:
-        continue
-    original = text
-    for token, value in replacements.items():
-        text = text.replace(token, value)
-    if text != original:
-        path.write_text(text)
-PY
-}
-
-generate_codex_metadata() {
-    local skills_root="$1"
-    python3 - "$skills_root" <<'PY'
-from __future__ import annotations
-
-from pathlib import Path
-import json
-import re
-import sys
-
-skills_root = Path(sys.argv[1])
-
-
-def parse_frontmatter(path: Path) -> dict[str, str | bool]:
-    text = path.read_text()
-    if not text.startswith("---\n"):
-        return {}
-    end = text.find("\n---", 4)
-    if end == -1:
-        return {}
-    lines = text[4:end].splitlines()
-    data: dict[str, str | bool] = {}
-    idx = 0
-    while idx < len(lines):
-        line = lines[idx]
-        if not line.strip() or ":" not in line:
-            idx += 1
-            continue
-        key, value = line.split(":", 1)
-        key = key.strip()
-        value = value.strip()
-        if value == "|":
-            idx += 1
-            block: list[str] = []
-            while idx < len(lines):
-                candidate = lines[idx]
-                if candidate and not candidate.startswith(" ") and ":" in candidate:
-                    break
-                block.append(candidate[2:] if candidate.startswith("  ") else candidate)
-                idx += 1
-            data[key] = "\n".join(block).strip()
-            continue
-        if value.lower() in {"true", "false"}:
-            data[key] = value.lower() == "true"
-        else:
-            data[key] = value.strip('"').strip("'")
-        idx += 1
-    return data
-
-
-def title_from_name(name: str) -> str:
-    return " ".join(part.capitalize() for part in re.split(r"[-_]+", name) if part)
-
-
-for skill_dir in sorted(path for path in skills_root.iterdir() if path.is_dir()):
-    skill_file = skill_dir / "SKILL.md"
-    if not skill_file.is_file():
-        continue
-    meta = parse_frontmatter(skill_file)
-    name = str(meta.get("name") or skill_dir.name)
-    description = str(meta.get("description") or "").strip()
-    first_description = " ".join(description.split())
-    if len(first_description) > 120:
-        first_description = first_description[:117].rstrip() + "..."
-    display_name = str(meta.get("display_name") or title_from_name(name))
-    short_description = str(meta.get("short_description") or first_description or display_name)
-    default_prompt = str(meta.get("default_prompt") or f"Use ${name} when this skill is relevant.")
-
-    lines = [
-        "interface:",
-        f"  display_name: {json.dumps(display_name)}",
-        f"  short_description: {json.dumps(short_description)}",
-        f"  default_prompt: {json.dumps(default_prompt)}",
-    ]
-    if "allow_implicit_invocation" in meta:
-        value = "true" if bool(meta["allow_implicit_invocation"]) else "false"
-        lines.extend(["", "policy:", f"  allow_implicit_invocation: {value}"])
-
-    agents_dir = skill_dir / "agents"
-    agents_dir.mkdir(parents=True, exist_ok=True)
-    (agents_dir / "openai.yaml").write_text("\n".join(lines) + "\n")
-PY
-}
-
-merge_claude_stop_hook() {
-    local settings_path="$1"
-
-    python3 - "$settings_path" <<'PY'
-import json
-import sys
-from pathlib import Path
-
-path = Path(sys.argv[1])
-path.parent.mkdir(parents=True, exist_ok=True)
-
-data = {}
-if path.exists():
-    raw = path.read_text().strip()
-    if raw:
-        data = json.loads(raw)
-        if not isinstance(data, dict):
-            raise SystemExit(f"error: {path} is not a JSON object")
-
-hooks = data.setdefault("hooks", {})
-stop_entries = hooks.setdefault("Stop", [])
-
-command = 'python3 "$CLAUDE_PROJECT_DIR"/.claude/hooks/stop_post_task_gate.py'
-gate_entry = {
-    "type": "command",
-    "command": command,
-    "timeout": 60,
-}
-
-for entry in stop_entries:
-    inner = entry.get("hooks") if isinstance(entry, dict) else None
-    if not isinstance(inner, list):
-        continue
-    for idx, hook in enumerate(inner):
-        if isinstance(hook, dict) and hook.get("command") == command:
-            inner[idx] = gate_entry
-            path.write_text(json.dumps(data, indent=2) + "\n")
-            raise SystemExit
-
-stop_entries.append({"hooks": [gate_entry]})
-path.write_text(json.dumps(data, indent=2) + "\n")
-PY
-}
-
-ensure_codex_hooks_feature() {
-    local config_path="$1"
-
-    python3 - "$config_path" <<'PY'
-from pathlib import Path
-import sys
-
-path = Path(sys.argv[1])
-path.parent.mkdir(parents=True, exist_ok=True)
-
-text = path.read_text() if path.exists() else ""
-if not text.strip():
-    path.write_text("[features]\ncodex_hooks = true\n")
-    raise SystemExit
-
-lines = text.splitlines()
-features_start = None
-for idx, line in enumerate(lines):
-    if line.strip() == "[features]":
-        features_start = idx
-        break
-
-if features_start is None:
-    suffix = "" if text.endswith("\n") else "\n"
-    path.write_text(text + suffix + "[features]\ncodex_hooks = true\n")
-    raise SystemExit
-
-features_end = len(lines)
-for idx in range(features_start + 1, len(lines)):
-    stripped = lines[idx].strip()
-    if stripped.startswith("[") and stripped.endswith("]"):
-        features_end = idx
-        break
-
-for idx in range(features_start + 1, features_end):
-    stripped = lines[idx].lstrip()
-    if stripped.startswith("codex_hooks"):
-        indent = lines[idx][: len(lines[idx]) - len(stripped)]
-        lines[idx] = f"{indent}codex_hooks = true"
-        path.write_text("\n".join(lines) + "\n")
-        raise SystemExit
-
-lines.insert(features_start + 1, "codex_hooks = true")
-path.write_text("\n".join(lines) + "\n")
-PY
-}
-
-inject_claude_lookup_frontmatter() {
-    local skill_file="$1"
-    python3 - "$skill_file" <<'PY'
-from pathlib import Path
-import sys
-
-path = Path(sys.argv[1])
-text = path.read_text()
-if not text.startswith("---\n"):
-    raise SystemExit
-end = text.find("\n---", 4)
-if end == -1:
-    raise SystemExit
-frontmatter = text[4:end]
-body = text[end:]
-
-claude_keys = ("context:", "model:", "agent:")
-lines = frontmatter.splitlines()
-keep = [line for line in lines if not any(line.lstrip().startswith(key) for key in claude_keys)]
-keep.extend(["context: fork", "model: sonnet", "agent: Explore"])
-path.write_text("---\n" + "\n".join(keep) + body)
-PY
+    python3 -c 'import pathlib,sys; print(pathlib.Path(sys.argv[1]).expanduser().resolve())' "$1"
 }
 
 link_bevy_docs() {
@@ -289,31 +60,12 @@ link_bevy_docs() {
 
 while [ $# -gt 0 ]; do
     case "$1" in
-        --engine)
-            ENGINE="${2:-}"
-            shift 2
-            ;;
-        --agent)
-            AGENT="${2:-}"
-            shift 2
-            ;;
-        --out)
-            OUT="${2:-}"
-            shift 2
-            ;;
-        --force)
-            FORCE=1
-            shift
-            ;;
-        -h|--help)
-            usage
-            exit 0
-            ;;
-        -*)
-            echo "error: unknown option $1" >&2
-            usage
-            exit 1
-            ;;
+        --engine) ENGINE="${2:-}"; shift 2 ;;
+        --agent)  AGENT="${2:-}";  shift 2 ;;
+        --out)    OUT="${2:-}";    shift 2 ;;
+        --force)  FORCE=1;         shift   ;;
+        -h|--help) usage; exit 0 ;;
+        -*) echo "error: unknown option $1" >&2; usage; exit 1 ;;
         *)
             if [ -n "$OUT" ]; then
                 echo "error: target specified more than once" >&2
@@ -327,11 +79,7 @@ done
 
 case "$ENGINE" in
     godot|bevy) ;;
-    *)
-        echo "error: --engine must be godot or bevy" >&2
-        usage
-        exit 1
-        ;;
+    *) echo "error: --engine must be godot or bevy" >&2; usage; exit 1 ;;
 esac
 
 case "$AGENT" in
@@ -353,11 +101,7 @@ case "$AGENT" in
         GODOT_API_COMMAND="\$godot-api"
         BEVY_HELP_COMMAND="\$bevy-help"
         ;;
-    *)
-        echo "error: --agent must be claude or codex" >&2
-        usage
-        exit 1
-        ;;
+    *) echo "error: --agent must be claude or codex" >&2; usage; exit 1 ;;
 esac
 
 if [ -z "$OUT" ]; then
@@ -389,7 +133,7 @@ else
         "$REPO_ROOT/bevy/skills/bevy-help" "$TMP/skills/"
 fi
 
-render_dir "$TMP" \
+python3 "$HELPERS/render_dir.py" "$TMP" \
     "AGENT_ID=$AGENT" \
     "AGENT_NAME=$AGENT_NAME" \
     "SKILLS_DIR=$SKILLS_DIR_REL" \
@@ -403,13 +147,11 @@ render_dir "$TMP" \
     "BEVY_HELP_COMMAND=$BEVY_HELP_COMMAND"
 
 if [ "$AGENT" = "codex" ]; then
-    generate_codex_metadata "$TMP/skills"
+    python3 "$HELPERS/generate_codex_metadata.py" "$TMP/skills"
+elif [ "$ENGINE" = "godot" ]; then
+    python3 "$HELPERS/inject_claude_lookup_frontmatter.py" "$TMP/skills/godot-api/SKILL.md"
 else
-    if [ "$ENGINE" = "godot" ]; then
-        inject_claude_lookup_frontmatter "$TMP/skills/godot-api/SKILL.md"
-    else
-        inject_claude_lookup_frontmatter "$TMP/skills/bevy-help/SKILL.md"
-    fi
+    python3 "$HELPERS/inject_claude_lookup_frontmatter.py" "$TMP/skills/bevy-help/SKILL.md"
 fi
 
 echo "Publishing $ENGINE/$AGENT to: $TARGET"
@@ -424,7 +166,7 @@ fi
 
 mkdir -p "$TMP/game"
 cp "$REPO_ROOT/$ENGINE/game-engine.md" "$TMP/game/game-engine.md"
-render_dir "$TMP/game" \
+python3 "$HELPERS/render_dir.py" "$TMP/game" \
     "AGENT_NAME=$AGENT_NAME" \
     "GODOGEN_COMMAND=$GODOGEN_COMMAND"
 cp "$TMP/game/game-engine.md" "$TARGET/$MANIFEST"
@@ -434,7 +176,7 @@ mkdir -p "$TARGET/$HOOK_CONFIG_DIR/hooks"
 rsync -a "$REPO_ROOT/shared/hooks/stop_post_task_gate.py" \
     "$TARGET/$HOOK_CONFIG_DIR/hooks/"
 rsync -a "$REPO_ROOT/$ENGINE/hooks/" "$TARGET/$HOOK_CONFIG_DIR/hooks/"
-render_dir "$TARGET/$HOOK_CONFIG_DIR/hooks" \
+python3 "$HELPERS/render_dir.py" "$TARGET/$HOOK_CONFIG_DIR/hooks" \
     "AGENT_ID=$AGENT" \
     "AGENT_NAME=$AGENT_NAME" \
     "HOOK_CONFIG_DIR=$HOOK_CONFIG_DIR" \
@@ -443,15 +185,15 @@ chmod +x "$TARGET/$HOOK_CONFIG_DIR/hooks/stop_post_task_gate.py" "$TARGET/$HOOK_
 
 if [ "$AGENT" = "codex" ]; then
     cp "$REPO_ROOT/shared/hooks/hooks.json" "$TARGET/$HOOK_CONFIG_DIR/hooks.json"
-    render_dir "$TARGET/$HOOK_CONFIG_DIR" \
+    python3 "$HELPERS/render_dir.py" "$TARGET/$HOOK_CONFIG_DIR" \
         "AGENT_ID=$AGENT" \
         "AGENT_NAME=$AGENT_NAME" \
         "HOOK_CONFIG_DIR=$HOOK_CONFIG_DIR" \
         "ENGINE_NAME=${ENGINE^}"
-    ensure_codex_hooks_feature "$TARGET/$HOOK_CONFIG_DIR/config.toml"
+    python3 "$HELPERS/ensure_codex_hooks_feature.py" "$TARGET/$HOOK_CONFIG_DIR/config.toml"
     echo "Installed Codex stop hook"
 else
-    merge_claude_stop_hook "$TARGET/$HOOK_CONFIG_DIR/settings.json"
+    python3 "$HELPERS/merge_claude_stop_hook.py" "$TARGET/$HOOK_CONFIG_DIR/settings.json"
     echo "Installed Claude Code stop hook"
 fi
 

@@ -1,11 +1,10 @@
 # Changelog
 
-**2026-04-24 — Source consolidation**
+**2026-04-26 — Bevy support**
 - Added Bevy as a first-class engine alongside Godot
 - Replaced the four Claude/Codex source trees with `shared/`, `godot/`, and `bevy/`
 - Added one root `publish.sh` switcher: `--engine godot|bevy` × `--agent claude|codex`
-- Codex `agents/openai.yaml` metadata is generated from rendered `SKILL.md` frontmatter
-- Dropped the Gemini visual-verification hook — the agent already inspects its own captured frames; the stop hook pushes the latest proof video to Telegram
+- Dropped Gemini verification — Opus 4.7 / GPT 5.5 self-verify from captured frames; external pass added no signal; the stop hook pushes the latest proof video to Telegram
 
 **2026-04-14 — Codex support**
 - Added a parallel Codex source tree alongside the existing Claude Code one
