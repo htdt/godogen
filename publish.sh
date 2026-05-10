@@ -184,13 +184,7 @@ python3 "$HELPERS/render_dir.py" "$TARGET/$HOOK_CONFIG_DIR/hooks" \
 chmod +x "$TARGET/$HOOK_CONFIG_DIR/hooks/stop_post_task_gate.py" "$TARGET/$HOOK_CONFIG_DIR/hooks/capture_result.sh"
 
 if [ "$AGENT" = "codex" ]; then
-    cp "$REPO_ROOT/shared/hooks/hooks.json" "$TARGET/$HOOK_CONFIG_DIR/hooks.json"
-    python3 "$HELPERS/render_dir.py" "$TARGET/$HOOK_CONFIG_DIR" \
-        "AGENT_ID=$AGENT" \
-        "AGENT_NAME=$AGENT_NAME" \
-        "HOOK_CONFIG_DIR=$HOOK_CONFIG_DIR" \
-        "ENGINE_NAME=${ENGINE^}"
-    python3 "$HELPERS/ensure_codex_hooks_feature.py" "$TARGET/$HOOK_CONFIG_DIR/config.toml"
+    python3 "$HELPERS/write_codex_stop_hook.py" "$TARGET/$HOOK_CONFIG_DIR/config.toml"
     echo "Installed Codex stop hook"
 else
     python3 "$HELPERS/merge_claude_stop_hook.py" "$TARGET/$HOOK_CONFIG_DIR/settings.json"
