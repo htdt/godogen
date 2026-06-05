@@ -64,7 +64,7 @@ Use `public/**` only for files that need stable direct URLs. Imported runtime as
 
 ## Delivery
 
-The deliverable is the live URL, not a video. Surface it as soon as something is showable and keep `npm run dev` alive so the user sees every change.
+The deliverable is the live URL. Surface it as soon as something is showable and keep `npm run dev` alive so the user sees every change.
 
 - Default scene: `http://127.0.0.1:5173/` (builds `?scene=main`).
 - Isolated review scene (on demand only): `http://127.0.0.1:5173/?scene=<name>` — add the route in `src/game/scenes/registry.ts`, fold it back into `main` once accepted.

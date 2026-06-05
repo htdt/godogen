@@ -44,3 +44,4 @@ Published Babylon.js repos carry:
 - Do not align Godot and Bevy behavior unless asked or the file belongs under `shared/`.
 - If you change a skill's user-facing purpose, update its `SKILL.md` frontmatter. Do not hand-edit generated `agents/openai.yaml`.
 - When writing skills: don't give obvious guidance. The agent is a highly capable LLM; handholding only pollutes the context.
+- When you change or remove a feature, describe the new state on its own terms. Don't define it against what's gone ("now a live URL, not a video") — once the old behavior is forgotten the contrast is just noise. Name the new thing as if it were always the design.

@@ -4,7 +4,7 @@ display_name: Godogen
 short_description: Build or update Babylon.js browser games interactively, delivered as a live URL
 default_prompt: "Use ${GODOGEN_COMMAND} to build or update this Babylon.js browser game from a natural-language design brief."
 description: |
-  Generate or update a complete Babylon.js browser game from a natural-language description, working interactively with the user. Use when the user wants ${AGENT_NAME} to make, rebuild, or substantially extend a Babylon.js project. The game is delivered as a live URL the user watches and steers, not a video.
+  Generate or update a complete Babylon.js browser game from a natural-language description, working interactively with the user. Use when the user wants ${AGENT_NAME} to make, rebuild, or substantially extend a Babylon.js project. The game is delivered as a live URL the user watches and steers.
 ---
 
 # Babylon Game Generator
@@ -57,7 +57,7 @@ User request
     |   +- Isolation: spin up a ?scene=X route only when main is too noisy or asked
     |   +- Checkpoint at slice boundaries; revise PLAN.md; let the user steer anytime
     |
-    +- Deliverable is the live URL(s) — no video
+    +- Deliverable is the live URL(s)
 ```
 
 ## Execution

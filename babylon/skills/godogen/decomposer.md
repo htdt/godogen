@@ -38,7 +38,7 @@ Everything else is routine — build it directly.
 
 ## Pass 2 — thin PLAN.md
 
-After the user picks an approach, write `PLAN.md` in that approach's shape. Keep it thin; it is a living doc you revise at every checkpoint.
+After the user picks an approach (the menu and when each fits live in `interactive.md`), write `PLAN.md` in that approach's shape. Keep it thin; it is a living doc you revise at every checkpoint.
 
 - **one-shot-then-polish** — a "first cut" goal for `main`, plus a polish backlog that fills in from the user's live reactions.
 - **hard-parts-first** — an ordered list of the hard parts (each a slice landed in `main` and confirmed live), then assembly, then routine fill.
@@ -50,11 +50,7 @@ Record the chosen approach and the reference-usage mode at the top so they survi
 
 Verification is mostly the user watching the live URL. For each slice, note **what to look at** — the specific behavior or transition to confirm — and self-check it with a `capture.mjs still` (see `capture.md`) before showing the user, so you never present an obviously broken state. You do not need exhaustive motion probes: the user sees motion directly.
 
-Hold verification to the reference-usage mode:
-
-- **precise** — reference consistency (palette, scale, camera, density) is a real criterion.
-- **art-direction** — check palette and mood, not layout.
-- **rough guide** — no reference-match gate.
+How strict reference-matching is follows the usage mode recorded in `PLAN.md` (defined in `interactive.md`).
 
 General things worth a glance on most slices: input → response feels right, animation matches movement direction, physics responds to gravity/collision, UI readable, no missing textures or placeholder materials, no browser console errors.
 

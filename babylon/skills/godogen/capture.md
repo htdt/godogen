@@ -1,6 +1,6 @@
 # Browser Screenshots
 
-Screenshots are for *your own* verification — confirm a visible change before showing the user, who judges motion and feel on the live URL. There is no video deliverable. Keep the Vite dev server alive and capture from the already-running page.
+Screenshots are for *your own* verification — confirm a visible change before showing the user, who judges motion and feel on the live URL. Keep the Vite dev server alive and capture from the already-running page.
 
 Primary URL:
 
