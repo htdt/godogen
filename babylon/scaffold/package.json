@@ -6,12 +6,11 @@
     "node": ">=22.12"
   },
   "scripts": {
-    "dev": "vite --host 127.0.0.1",
-    "dev:open": "vite --host 127.0.0.1 --open",
-    "dev:lan": "vite --host 0.0.0.0",
+    "dev": "vite",
+    "dev:open": "vite --open",
     "check": "tsc --noEmit",
     "build": "npm run check && vite build",
-    "preview": "vite preview --host 127.0.0.1",
+    "preview": "vite preview",
     "capture:still": "node scripts/capture.mjs still screenshots/still.png"
   },
   "dependencies": {

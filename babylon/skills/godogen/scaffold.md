@@ -21,7 +21,7 @@ Create or refresh a Babylon.js + TypeScript + Vite project shell. This defines t
 8. Start `npm run dev` and keep it running when possible.
 9. Verify the browser at `http://127.0.0.1:5173` with `node scripts/capture.mjs still screenshots/scaffold.png`.
 
-If Chrome/Chromium or WebGL2 is unavailable, stop and report the missing dependency. Hardware GPU is preferred — the capture script warns prominently when it falls back to a software renderer but still produces the capture, so a GPU-less host can iterate at reduced quality.
+If Chrome/Chromium or WebGL2 is unavailable, stop and report the missing dependency. Hardware GPU is preferred; `capture.md` covers reading the software-renderer warning.
 
 ## Baseline Files
 

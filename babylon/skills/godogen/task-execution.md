@@ -38,7 +38,7 @@ Required for browser validation:
 
 - Chrome/Chromium executable is available or `CHROME_BIN` points to one.
 - WebGL2 is available on the game canvas.
-- Hardware GPU acceleration is preferred. The capture script logs a `[capture] WARNING` when WebGL2 lands on a software renderer (SwiftShader, llvmpipe, lavapipe, etc) but still completes — on a GPU-equipped host, treat that warning as a misconfiguration to fix; on a GPU-less host the run is still valid at reduced quality.
+- Hardware GPU acceleration is preferred — `capture.md` covers reading the software-renderer warning.
 - Vite browser console forwarding stays enabled so runtime errors appear in the terminal.
 
 ## Assets
@@ -60,7 +60,7 @@ import { SceneLoader } from "../app/babylon";
 await SceneLoader.ImportMeshAsync("", "", heroUrl, scene);
 ```
 
-Use `public/**` only for files that need stable direct URLs. Imported runtime assets should normally live under `src/assets/**`.
+Use `public/**` only for files that need stable direct URLs. Imported runtime assets should normally live under `src/assets/**`. Generation intermediates (source videos, raw frame dumps, QA previews) are not runtime assets — keep them out of `src/assets/**` and delete them once the final files are in place.
 
 ## Delivery
 
@@ -68,7 +68,7 @@ The deliverable is the live URL. Surface it as soon as something is showable and
 
 - Default scene: `http://127.0.0.1:5173/` (builds `?scene=main`).
 - Isolated review scene (on demand only): `http://127.0.0.1:5173/?scene=<name>` — add the route in `src/game/scenes/registry.ts`, fold it back into `main` once accepted.
-- Remote user: serve a shareable link instead (`npm run dev:lan` or a tunnel) — see `interactive.md`.
+- Remote user: the dev server binds `0.0.0.0`, so the machine's LAN address works directly; use a tunnel for a public link — see `interactive.md`.
 
 ## Stop Conditions
 

@@ -28,13 +28,13 @@ Default is `grok`. Switch to `gemini` when precision matters.
 
 Tools live at `${GODOGEN_SKILL_DIR}/tools/`. Run from the project root.
 
-Keep runtime-loaded outputs under `assets/`. Put review-only references, scratch crops, and other non-runtime artifacts outside `assets/` unless the game actually loads them.
+Keep runtime-loaded outputs under `${RUNTIME_ASSET_DIR}/`. Put review-only references, scratch crops, and other non-runtime artifacts outside `${RUNTIME_ASSET_DIR}/` unless the game actually loads them.
 
 ### Generate image (2-15 cents)
 
 ```bash
 python3 ${GODOGEN_SKILL_DIR}/tools/asset_gen.py image \
-  --prompt "the full prompt" -o assets/img/car.png
+  --prompt "the full prompt" -o ${RUNTIME_ASSET_DIR}/img/car.png
 ```
 
 `--model` (default `grok`): `grok` (2¢), `gemini` (5-15¢ by size)
@@ -62,7 +62,7 @@ Gemini 1K, 1:1, neutral pose, solid BG — same color strategy as for rembg. Rev
 python3 ${GODOGEN_SKILL_DIR}/tools/asset_gen.py image \
   --model gemini --size 1K \
   --prompt "knight in armor, neutral standing pose, facing right, solid dark-green background" \
-  --aspect-ratio 1:1 -o assets/img/knight_ref.png
+  --aspect-ratio 1:1 -o ${RUNTIME_ASSET_DIR}/img/knight_ref.png
 ```
 
 **Step 2: Pose frame (7¢ — Gemini)**
@@ -73,8 +73,8 @@ Image-to-image edit: feed the reference, prompt only for the action/pose. Gemini
 python3 ${GODOGEN_SKILL_DIR}/tools/asset_gen.py image \
   --model gemini \
   --prompt "walking to the right, mid-stride pose, side view, solid dark-green background" \
-  --image assets/img/knight_ref.png \
-  --aspect-ratio 1:1 -o assets/img/knight_walk_pose.png
+  --image ${RUNTIME_ASSET_DIR}/img/knight_ref.png \
+  --aspect-ratio 1:1 -o ${RUNTIME_ASSET_DIR}/img/knight_walk_pose.png
 ```
 
 **Step 3: Generate video**
@@ -84,8 +84,8 @@ Feed the pose frame (not the reference) as the starting image. Prompt focuses on
 ```bash
 python3 ${GODOGEN_SKILL_DIR}/tools/asset_gen.py video \
   --prompt "walking to the right, smooth walk cycle, solid dark-green background" \
-  --image assets/img/knight_walk_pose.png \
-  --duration 2 -o assets/video/knight_walk.mp4
+  --image ${RUNTIME_ASSET_DIR}/img/knight_walk_pose.png \
+  --duration 2 -o ${RUNTIME_ASSET_DIR}/video/knight_walk.mp4
 ```
 
 `--duration` (1-15 seconds), `--resolution` (default `720p`): `720p`, `480p`
@@ -95,8 +95,8 @@ Same cost per second at both resolutions — always use `720p`. Fall back to `48
 **Step 4: Extract frames**
 
 ```bash
-mkdir -p assets/video/knight_walk_frames
-ffmpeg -i assets/video/knight_walk.mp4 -vsync 0 assets/video/knight_walk_frames/%04d.png
+mkdir -p ${RUNTIME_ASSET_DIR}/video/knight_walk_frames
+ffmpeg -i ${RUNTIME_ASSET_DIR}/video/knight_walk.mp4 -vsync 0 ${RUNTIME_ASSET_DIR}/video/knight_walk_frames/%04d.png
 ```
 
 **Step 5: Loop trim (looping animations only)**
@@ -104,7 +104,7 @@ ffmpeg -i assets/video/knight_walk.mp4 -vsync 0 assets/video/knight_walk_frames/
 For walk/run/idle cycles, find the best loop point. Picks top similarity candidates, deduplicates nearby frames, then chooses the latest (longest clip). Uses 7-frame window to avoid half-cycle cuts, falls back to 1-frame, then whole clip. Skip for one-shot animations (attack, death, jump).
 
 ```bash
-python3 ${GODOGEN_SKILL_DIR}/tools/find_loop_frame.py assets/video/knight_walk_frames/
+python3 ${GODOGEN_SKILL_DIR}/tools/find_loop_frame.py ${RUNTIME_ASSET_DIR}/video/knight_walk_frames/
 ```
 
 Output: `{"loop_frame": 54, "similarity": 0.9983, "window": 7, "total_frames": 73}`
@@ -115,8 +115,8 @@ Output: `{"loop_frame": 54, "similarity": 0.9983, "window": 7, "total_frames": 7
 
 ```bash
 python3 ${GODOGEN_SKILL_DIR}/tools/rembg_matting.py \
-  --batch assets/video/knight_walk_frames/ \
-  -o assets/img/knight_walk/
+  --batch ${RUNTIME_ASSET_DIR}/video/knight_walk_frames/ \
+  -o ${RUNTIME_ASSET_DIR}/img/knight_walk/
 ```
 
 **Step 7: Additional animations**
@@ -127,7 +127,7 @@ Repeat from step 2 using the same reference image. Each new animation costs 7¢ 
 
 ```bash
 python3 ${GODOGEN_SKILL_DIR}/tools/asset_gen.py glb \
-  --image assets/img/car.png -o assets/glb/car.glb
+  --image ${RUNTIME_ASSET_DIR}/img/car.png -o ${RUNTIME_ASSET_DIR}/glb/car.glb
 ```
 
 `--quality`: `default` (30¢ — v3.1, std geometry/texture, 30k face cap, PBR) or `hd` (60¢ — v3.1, detailed geometry + HD texture, no face cap)
@@ -142,7 +142,7 @@ Writes a `<output>.glb.tripo.json` sidecar with the `image_to_model` task id —
 
 ```bash
 python3 ${GODOGEN_SKILL_DIR}/tools/asset_gen.py rig \
-  --image assets/img/knight_ref.png -o assets/glb/knight_rigged.glb
+  --image ${RUNTIME_ASSET_DIR}/img/knight_ref.png -o ${RUNTIME_ASSET_DIR}/glb/knight_rigged.glb
 ```
 
 Runs `image_to_model → prerigcheck → animate_rig`. Aborts with a clear error if prerigcheck says the mesh is not biped. Same `--quality` / `--no-pbr` flags as `glb`. Writes a sidecar holding both task ids.
@@ -151,9 +151,9 @@ Runs `image_to_model → prerigcheck → animate_rig`. Aborts with a clear error
 
 ```bash
 python3 ${GODOGEN_SKILL_DIR}/tools/asset_gen.py retarget \
-  --rigged assets/glb/knight_rigged.glb \
+  --rigged ${RUNTIME_ASSET_DIR}/glb/knight_rigged.glb \
   --animation preset:biped:walk \
-  -o assets/glb/knight_walk.glb
+  -o ${RUNTIME_ASSET_DIR}/glb/knight_walk.glb
 ```
 
 Reads the rig task id from the sidecar next to `--rigged` and submits `animate_retarget`. Each call is a separate 10¢ task — for a character with walk + idle + attack, run `retarget` three times pointing at the same rigged GLB. **No re-rigging, no re-generation.** Delete the sidecar to force a cold start.
@@ -166,7 +166,7 @@ Do not assume the requested preset name survives into the exported GLB. Inspect 
 - A timeout in `glb` / `rig` / `retarget` does **not** mean the job failed on the server. The task id and stage are already persisted in `<output>.tripo.json`, and the spend has been recorded once. Do **not** resubmit — that double-charges.
 - Resume the stalled task with no extra cost:
   ```bash
-  python3 ${GODOGEN_SKILL_DIR}/tools/asset_gen.py resume -o assets/glb/car.glb
+  python3 ${GODOGEN_SKILL_DIR}/tools/asset_gen.py resume -o ${RUNTIME_ASSET_DIR}/glb/car.glb
   ```
   Works for `glb`, `rig` (picks up from whichever of image_to_model / prerigcheck / animate_rig is pending), and `retarget`. Safe to re-run — it no-ops when the sidecar reports `status: "complete"`.
 
@@ -201,7 +201,7 @@ Sets the generation budget to 500 cents. All subsequent generations check remain
 
 ### Output format
 
-JSON to stdout: `{"ok": true, "path": "assets/img/car.png", "cost_cents": 7}`
+JSON to stdout: `{"ok": true, "path": "${RUNTIME_ASSET_DIR}/img/car.png", "cost_cents": 7}`
 
 On failure: `{"ok": false, "error": "...", "cost_cents": 0}`
 
@@ -307,7 +307,7 @@ To match an existing style, pass a reference — the model sees it, so just desc
 Slice into individual PNGs:
 ```bash
 python3 ${GODOGEN_SKILL_DIR}/tools/grid_slice.py path_grid.png \
-  -o assets/img/items/ --grid 2x2 --names "sword,shield,potion,helm"
+  -o ${RUNTIME_ASSET_DIR}/img/items/ --grid 2x2 --names "sword,shield,potion,helm"
 ```
 
 Then rembg each item if transparency is needed. Supports any grid: `2x2`, `3x3`, `2x4`, etc.

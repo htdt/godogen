@@ -42,7 +42,7 @@ Useful searches:
 ```bash
 rg "class ArcRotateCamera" node_modules/@babylonjs/core
 rg "ImportMeshAsync" node_modules/@babylonjs/core node_modules/@babylonjs/loaders
-rg "handleHotUpdate" node_modules/vite
+rg "hotUpdate" node_modules/vite
 ```
 
 When answering:
@@ -52,13 +52,3 @@ When answering:
 - Separate documented facts from inference.
 - Give import paths that match the installed package.
 - Mention browser/GPU constraints when they affect the answer.
-
-Mandatory action after every successful lookup:
-
-- Append one short entry to `./.babylon-help.log`.
-- Record only:
-  - `requested`: what the caller asked for
-  - `comment`: short resolution note
-  - `result_files`: concrete local files or official URLs used
-
-Keep the log compact. Do not paste full docs or large code blocks into it.

@@ -22,7 +22,7 @@ Read each stage file from `${GODOGEN_SKILL_DIR}/` only when you reach that stage
 | `visual-target.md` | Generate a reference image (CLI) | Only if a reference earns its cost |
 | `scaffold.md` | Vite/Babylon project shell + scene router | When creating/refreshing the shell |
 | `architecture.md` | Babylon gameplay architecture stance | Before designing game code |
-| `asset-planner.md` | Budget and plan assets | When you generate assets during the build (budget provided) |
+| `asset-planner.md` | Budget and plan assets | When you plan asset generation during the build |
 | `asset-gen.md` | Asset generation CLI ref | When generating assets |
 | `rembg.md` | Background removal | Only when an asset needs transparency removed |
 | `task-execution.md` | Task workflow + commands | Before first task |
@@ -33,21 +33,23 @@ Read each stage file from `${GODOGEN_SKILL_DIR}/` only when you reach that stage
 
 ## Pipeline
 
-This is a set of moves, not a rigid sequence. The fixed parts are: read before you propose, scaffold before you can show a URL, and the live URL is the deliverable. Everything else — reference, assets, isolation, polish — happens when it earns its place, interleaved with the build. Scale the ceremony to the task: a small change to an existing game drops straight into the build loop, while a fresh, ambitious brief earns the full opening conversation.
+This is a set of moves, not a rigid sequence. The fixed parts are: the dev server comes up first (it needs no user input, and everything you show — the reference included — needs a URL), read before you propose, and the live URL is the deliverable. Everything else — reference, assets, isolation, polish — happens when it earns its place, interleaved with the build. Scale the ceremony to the task: a small change to an existing game drops straight into the build loop, while a fresh, ambitious brief earns the full opening conversation.
 
 ```text
 User request
     |
-    +- Resume check: PLAN.md exists? -> read state, confirm with the user what to continue
+    +- Resume check: PLAN.md exists? -> read state; confirm direction only if the
+    |  request leaves it ambiguous
+    |
+    +- Scaffold/refresh the Vite project; start `npm run dev`; SURFACE the URL
     |
     +- Opening conversation (interactive.md + decomposer.md Pass 1):
     |   +- Light read: what the game is, the hard/uncertain parts, rough asset
     |   |  sense, the smallest thing worth showing live first
     |   +- Reference decision: simple/low-benefit -> skip and say why; else propose a
-    |   |  specific scene, generate, serve at /reference.png, ask usage mode
+    |   |  specific scene, generate, show at /reference.png, ask usage mode
     |   +- Propose a build approach (shaped by the read), let the user choose
     |
-    +- Scaffold/refresh the Vite project; start `npm run dev`; SURFACE the URL
     +- Write a thin PLAN.md in the chosen approach's shape (decomposer.md Pass 2)
     |
     +- Build live in ?scene=main, the user watching. Make these moves when the
@@ -71,7 +73,7 @@ Read `task-execution.md` before starting. Keep `npm run dev` alive so the user c
 
 Build in `?scene=main` by default. Isolation into a separate `?scene=` route is on demand — only when the main scene is too noisy to judge a feature, or the user asks. See `interactive.md` for the checkpoint protocol and `scene-generation.md` for the router contract.
 
-Chrome/Chromium and WebGL2 are required for your own screenshot checks. If either is missing, report it rather than working around it. A `[capture] WARNING` about a software renderer (SwiftShader, llvmpipe, lavapipe) means the browser GPU path is misconfigured on a GPU host — fix it; on a GPU-less host it is informational.
+Chrome/Chromium and WebGL2 are required for your own screenshot checks. If either is missing, report it rather than working around it; `capture.md` covers reading the software-renderer warning.
 
 ## Babylon Help
 

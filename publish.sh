@@ -86,6 +86,12 @@ case "$ENGINE" in
     *) echo "error: --engine must be godot, bevy, or babylon" >&2; usage; exit 1 ;;
 esac
 
+# Root for runtime-loaded generated assets, substituted into the shared asset docs.
+case "$ENGINE" in
+    babylon) RUNTIME_ASSET_DIR="src/assets" ;;
+    *)       RUNTIME_ASSET_DIR="assets" ;;
+esac
+
 case "$AGENT" in
     claude)
         MANIFEST="CLAUDE.md"
@@ -156,6 +162,7 @@ python3 "$HELPERS/render_dir.py" "$TMP" \
     "BABYLON_HELP_SKILL_DIR=$SKILLS_DIR_REL/babylon-help" \
     "HOOK_CONFIG_DIR=$HOOK_CONFIG_DIR" \
     "ENGINE_NAME=${ENGINE^}" \
+    "RUNTIME_ASSET_DIR=$RUNTIME_ASSET_DIR" \
     "GODOGEN_COMMAND=$GODOGEN_COMMAND" \
     "GODOT_API_COMMAND=$GODOT_API_COMMAND" \
     "BEVY_HELP_COMMAND=$BEVY_HELP_COMMAND" \
@@ -182,8 +189,12 @@ if [ "$ENGINE" = "bevy" ]; then
 fi
 
 if [ "$ENGINE" = "babylon" ]; then
-    rsync -a "$REPO_ROOT/babylon/scaffold/" "$TARGET/"
-    echo "Created Babylon scaffold"
+    if [ -f "$TARGET/package.json" ]; then
+        echo "Existing package.json at target — scaffold left untouched (skills/manifest refreshed)"
+    else
+        rsync -a "$REPO_ROOT/babylon/scaffold/" "$TARGET/"
+        echo "Created Babylon scaffold"
+    fi
 fi
 
 mkdir -p "$TMP/game"
@@ -194,8 +205,8 @@ python3 "$HELPERS/render_dir.py" "$TMP/game" \
 cp "$TMP/game/game-engine.md" "$TARGET/$MANIFEST"
 echo "Created $MANIFEST"
 
-mkdir -p "$TARGET/$HOOK_CONFIG_DIR/hooks"
 if [ -d "$REPO_ROOT/$ENGINE/hooks" ]; then
+    mkdir -p "$TARGET/$HOOK_CONFIG_DIR/hooks"
     rsync -a "$REPO_ROOT/$ENGINE/hooks/" "$TARGET/$HOOK_CONFIG_DIR/hooks/"
     python3 "$HELPERS/render_dir.py" "$TARGET/$HOOK_CONFIG_DIR/hooks" \
         "AGENT_ID=$AGENT" \
@@ -210,6 +221,7 @@ fi
 if [ "$VIDEO_HOOK" -eq 1 ] && [ "$ENGINE" = "babylon" ]; then
     echo "Note: --video_hook is ignored for Babylon (delivery is a live URL, not a video)."
 elif [ "$VIDEO_HOOK" -eq 1 ]; then
+    mkdir -p "$TARGET/$HOOK_CONFIG_DIR/hooks"
     rsync -a "$REPO_ROOT/shared/hooks/stop_post_task_gate.py" \
         "$TARGET/$HOOK_CONFIG_DIR/hooks/"
     chmod +x "$TARGET/$HOOK_CONFIG_DIR/hooks/stop_post_task_gate.py"
@@ -237,7 +249,7 @@ if [ ! -f "$TARGET/.gitignore" ]; then
                 printf '/target\n/screenshots\n.bevy-help.log\n'
                 ;;
             babylon)
-                printf '/node_modules\n/dist\n/screenshots\n.capture\n.babylon-help.log\n'
+                printf '/node_modules\n/dist\n/screenshots\n'
                 ;;
         esac
     } > "$TARGET/.gitignore"

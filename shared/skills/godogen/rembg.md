@@ -48,7 +48,7 @@ pip install rembg[gpu,cli]   # use rembg[cpu,cli] if no GPU
 
 ```bash
 python3 ${GODOGEN_SKILL_DIR}/tools/rembg_matting.py \
-  assets/img/car.png -o assets/img/car_nobg.png --preview
+  ${RUNTIME_ASSET_DIR}/img/car.png -o ${RUNTIME_ASSET_DIR}/img/car_nobg.png --preview
 ```
 
 ### Batch (video frames)

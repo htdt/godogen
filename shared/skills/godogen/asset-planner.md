@@ -18,15 +18,15 @@ Read `${GODOGEN_SKILL_DIR}/asset-gen.md` for CLI reference and prompt templates.
 
 Read `reference.png` — understand the visual composition: what objects are visible, their proportions, the environment, foreground vs background layers. Use this to inform what assets to generate and at what scale.
 
-Read `STRUCTURE.md` (especially **Asset Hints**) and `PLAN.md` (especially **Assets needed** per task). Cross-reference both with the reference image to build the complete asset list:
+Read `STRUCTURE.md` and `PLAN.md` for asset requirements — depending on the flow these appear as an **Asset Hints** section, per-task **Assets needed** fields, or the plan's slices. Cross-reference them with the reference image to build the complete asset list:
 - **3D models**: characters, vehicles, key props, buildings — anything that needs geometry
 - **Textures**: ground surfaces, walls, UI backgrounds — flat materials that tile
 - **Backgrounds**: sky panoramas, parallax layers, title screens, large scenic images — use `--model gemini --size 2K` and an appropriate `--aspect-ratio`
 - **Animated sprites**: characters or objects with multiple actions (walk, attack, idle) — plan the motion graph before generating
 
-The scaffold's Asset Hints describe what the architecture needs. The decomposer's Assets needed fields describe what each task needs. Reconcile both — they may overlap or one may mention assets the other missed.
+Reconcile every source — the plan, the structure doc, and the reference image may overlap, or one may mention assets the others missed.
 
-Keep runtime-loaded outputs under `assets/` so the engine can load them at runtime.
+Keep runtime-loaded outputs under `${RUNTIME_ASSET_DIR}/` so the engine can load them at runtime.
 
 ### 2. Prioritize and budget
 
@@ -103,40 +103,40 @@ Every asset row **must** include a **Size** column — the intended in-game dime
 
 | Name | Description | Size | Image | GLB |
 |------|-------------|------|-------|-----|
-| car | sedan with spoiler | 4m long | assets/img/car.png | assets/glb/car.glb |
+| car | sedan with spoiler | 4m long | ${RUNTIME_ASSET_DIR}/img/car.png | ${RUNTIME_ASSET_DIR}/glb/car.glb |
 
 ## Textures
 
 | Name | Description | Size | Image |
 |------|-------------|------|-------|
-| grass | green meadow | 2m tile | assets/img/grass.png |
+| grass | green meadow | 2m tile | ${RUNTIME_ASSET_DIR}/img/grass.png |
 
 ## Backgrounds
 
 | Name | Description | Size | Image |
 |------|-------------|------|-------|
-| forest_bg | dense forest panorama | 1920x1080, fullscreen | assets/img/forest_bg.png |
+| forest_bg | dense forest panorama | 1920x1080, fullscreen | ${RUNTIME_ASSET_DIR}/img/forest_bg.png |
 
 ## Sprites
 
 | Name | Description | Size | Image |
 |------|-------------|------|-------|
-| coin | spinning gold coin | 64x64 px | assets/img/coin.png |
+| coin | spinning gold coin | 64x64 px | ${RUNTIME_ASSET_DIR}/img/coin.png |
 
 ## Animated Sprites
 
 ### knight
 
-**Reference:** `assets/img/knight_ref.png`
+**Reference:** `${RUNTIME_ASSET_DIR}/img/knight_ref.png`
 **Transitions:** idle ↔ walk, walk → attack → idle, walk → jump → land → idle
 
 | Action | Type | Size | Duration | Start From | Frames Dir |
 |--------|------|------|----------|------------|------------|
-| idle | loop | 128x128 px | 2s | ref | assets/img/knight_idle/ |
-| walk | loop | 128x128 px | 3s | ref | assets/img/knight_walk/ |
-| attack | one-shot | 128x128 px | 2s | walk | assets/img/knight_attack/ |
-| jump | one-shot | 128x128 px | 1s | ref | assets/img/knight_jump/ |
-| land | one-shot | 128x128 px | 1s | jump | assets/img/knight_land/ |
+| idle | loop | 128x128 px | 2s | ref | ${RUNTIME_ASSET_DIR}/img/knight_idle/ |
+| walk | loop | 128x128 px | 3s | ref | ${RUNTIME_ASSET_DIR}/img/knight_walk/ |
+| attack | one-shot | 128x128 px | 2s | walk | ${RUNTIME_ASSET_DIR}/img/knight_attack/ |
+| jump | one-shot | 128x128 px | 1s | ref | ${RUNTIME_ASSET_DIR}/img/knight_jump/ |
+| land | one-shot | 128x128 px | 1s | jump | ${RUNTIME_ASSET_DIR}/img/knight_land/ |
 ```
 
 One reference per character anchors all animations. **Loops** (idle, walk) repeat seamlessly — trimmed to loop point. **One-shots** (attack, death) play once.
@@ -153,12 +153,12 @@ One reference per character anchors all animations. **Loops** (idle, walk) repea
 
 ### 6. Update PLAN.md with asset assignments
 
-After generating assets, read PLAN.md and add concrete asset assignments to each task that needs them. For tasks with an **Assets needed** field, replace or augment it with an **Assets:** field listing the actual generated files:
+After generating assets, read PLAN.md and attach the generated files to the work that uses them — an **Assets:** field per task where the plan tracks tasks, or a line on the relevant slice otherwise:
 
 ```markdown
 - **Assets:**
-  - `car` GLB model (`assets/glb/car.glb`) — scale to 4m long
-  - `grass` texture (`assets/img/grass.png`) — tile every 2m via UV scale
+  - `car` GLB model (`${RUNTIME_ASSET_DIR}/glb/car.glb`) — scale to 4m long
+  - `grass` texture (`${RUNTIME_ASSET_DIR}/img/grass.png`) — tile every 2m via UV scale
 ```
 
 This ensures no asset is lost in the process — every generated file is assigned to the task that uses it. An asset may appear in multiple tasks.

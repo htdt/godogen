@@ -22,7 +22,12 @@ function godogenBabylonDev(): Plugin {
 
         const file = resolve(join(server.config.root, match[1]));
         if (!file.startsWith(server.config.root) || !existsSync(file)) {
-          return next();
+          // 404 instead of falling through to the SPA fallback, so a link to a
+          // not-yet-generated image fails loudly rather than serving the game page.
+          res.statusCode = 404;
+          res.setHeader("Content-Type", "text/plain");
+          res.end(`No ${match[1]} at the project root`);
+          return;
         }
 
         res.setHeader("Content-Type", "image/png");
@@ -58,7 +63,7 @@ export default defineConfig({
   ],
 
   server: {
-    host: "127.0.0.1",
+    host: "0.0.0.0",
     port: 5173,
     strictPort: true,
     forwardConsole: {
@@ -68,7 +73,7 @@ export default defineConfig({
   },
 
   preview: {
-    host: "127.0.0.1",
+    host: "0.0.0.0",
     port: 4173,
     strictPort: true
   },

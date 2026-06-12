@@ -33,7 +33,7 @@ export async function createScene(app: BabylonApp): Promise<Scene> {
   groundMaterial.diffuseColor = new Color3(0.24, 0.28, 0.24);
   ground.material = groundMaterial;
 
-  const marker = CreateBox("hot-reload-marker", { size: 1.2 }, scene);
+  const marker = CreateBox("marker", { size: 1.2 }, scene);
   marker.position.y = 0.6;
   const markerMaterial = new StandardMaterial("marker-material", scene);
   markerMaterial.diffuseColor = new Color3(0.95, 0.6, 0.25);
