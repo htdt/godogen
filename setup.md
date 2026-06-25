@@ -106,7 +106,7 @@ In a published game repo, the same asset-generation requirements file lives at:
 - `.claude/skills/godogen/tools/requirements.txt` for Claude Code
 - `.agents/skills/godogen/tools/requirements.txt` for Codex
 
-`google-genai` is required by `asset_gen.py` for Gemini image generation.
+`google-genai` is required by `asset_gen.py` for Gemini image generation. `dashscope` is optional — only needed when using the DashScope (Tongyi Wanxiang) backend.
 
 ## Godot (.NET edition)
 
@@ -231,6 +231,7 @@ Set in environment:
 - `GOOGLE_API_KEY` — Gemini image generation
 - `XAI_API_KEY` — xAI Grok image/video generation
 - `TRIPO3D_API_KEY` — image-to-3D conversion
+- `DASHSCOPE_API_KEY` — (optional) DashScope / Tongyi Wanxiang image & video generation
 
 ## Post-Task Telegram Push (optional)
 
