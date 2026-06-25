@@ -7,3 +7,4 @@ rembg
 pymatting
 onnxruntime-gpu
 nvidia-cudnn-cu12==9.*
+dashscope>=1.25.2

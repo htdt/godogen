@@ -57,7 +57,7 @@ Craft each prompt for its specific goal. The art direction tells you the visual 
 
 #### Backend selection
 
-Use Gemini (`--model gemini`) where prompt precision matters — reference images, character design, 3D model references, animated sprite refs/poses, backgrounds with precise layout. Use Grok (default) for textures, simple objects, item kits, and simple scenic backgrounds (sky, clouds, abstract).
+Use Gemini (`--model gemini`) where prompt precision matters — reference images, character design, 3D model references, animated sprite refs/poses, backgrounds with precise layout. Use Grok (default) for textures, simple objects, item kits, and simple scenic backgrounds (sky, clouds, abstract). Use DashScope (`--model dashscope`) as a cost-effective alternative to Grok (same 2¢ price) when you have an Alibaba Cloud / DashScope API key — particularly suitable for Chinese users or when Grok/XAI is unavailable.
 
 #### Using image references for consistency
 
