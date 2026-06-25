@@ -27,7 +27,7 @@ Claude Code vs Codex is a publish-time render choice, not a separate source tree
 - **Godot Android export** — debug APK export remains available when the user requests an Android app.
 - **Bevy output** — Rust/Bevy projects with code-first scenes, local Bevy docs lookup, deterministic capture guidance, and final proof bundles.
 - **Babylon.js output** — TypeScript/Vite browser games with first-class hot reload, Chrome/Chromium WebGL2 capture, and static web builds.
-- **Asset generation** — Gemini creates precise references and characters; xAI Grok handles textures and simple objects; Tripo3D converts images to 3D models. Animated sprites use Grok video generation with loop detection.
+- **Asset generation** — Gemini creates precise references and characters; xAI Grok handles textures and simple objects; DashScope (Alibaba Tongyi Wanxiang) provides a compatible alternative for Chinese users; Tripo3D converts images to 3D models. Animated sprites use Grok or DashScope video generation with loop detection.
 - **C# / .NET 9 for Godot** — Godot output uses C#. See [why C# over GDScript](docs/gdscript-vs-csharp.md).
 - **Frame-grounded self-repair** — the agent is carefully prompted to judge progress from captured screenshots, not from code that compiles, so visible defects (clipping, wrong scale, frozen motion, missing assets) drive the next iteration instead of being rationalized away.
 - **Telegram proof push** — opt in with `--video_hook` at publish time to install a stop hook that pushes the latest `screenshots/result/{N}/video.mp4` to Telegram when `tg-push` and the TG_* env vars are configured. No-op otherwise. Off by default.
@@ -46,6 +46,7 @@ Claude Code vs Codex is a publish-time render choice, not a separate source tree
   - `GOOGLE_API_KEY` — [Google AI Studio](https://aistudio.google.com/) for Gemini image generation
   - `XAI_API_KEY` — [xAI Grok](https://console.x.ai/home) for image/video generation
   - `TRIPO3D_API_KEY` — [Tripo3D](https://platform.tripo3d.ai/) for 3D generation
+  - `DASHSCOPE_API_KEY` — (optional) [Alibaba DashScope](https://bailian.console.aliyun.com/) for Tongyi Wanxiang image/video generation
 - System packages from [setup.md](setup.md): `vulkan-tools`, `xvfb`, `ffmpeg`, `imagemagick`, plus platform-specific extras
 - Tested on Ubuntu, Debian, and macOS
 - Claude Code or Codex

@@ -1,6 +1,6 @@
 # Asset Generator
 
-Generate PNG images (Gemini or xAI Grok) and GLB 3D models (Tripo3D) from text prompts.
+Generate PNG images (Gemini, xAI Grok, or DashScope) and GLB 3D models (Tripo3D) from text prompts.
 
 ## Models
 
@@ -8,12 +8,15 @@ Generate PNG images (Gemini or xAI Grok) and GLB 3D models (Tripo3D) from text p
 |-------|------|------|----------|
 | `gemini-3.1-flash-image-preview` | `--model gemini` | 5-15¢ (by size) | Precise prompt following — references, characters, backgrounds, 3D refs |
 | `grok-imagine-image` | `--model grok` | 2¢ | High-quality but imprecise — textures, simple objects, item kits |
+| `wan2.1-t2i-turbo` | `--model dashscope` | 2¢ | Fast generation, Chinese-friendly API |
+| `wan2.1-t2i-plus` | `--model dashscope` (set `DASHSCOPE_IMAGE_MODEL=wan2.1-t2i-plus`) | 5¢ | Higher quality DashScope output |
 
 **When to use which:**
 - **Gemini** — reference images, character design, 3D model references, animated sprite refs/poses, backgrounds with precise layout. Gemini costs more but reliably produces what you described.
 - **Grok** — textures, simple objects, item kits, props, simple scenic backgrounds (sky, clouds, abstract). Produces high-quality (even photographic) output but often defaults to common interpretations instead of following specific instructions. Great when exact prompt adherence doesn't matter.
+- **DashScope** — Chinese users or those with Alibaba Cloud accounts. Same quality as Grok at similar cost (2¢ turbo / 5¢ plus). Supports text-to-image and image-to-image. Also provides video generation (3¢/sec) as an alternative to Grok video.
 
-Default is `grok`. Switch to `gemini` when precision matters.
+Default is `grok`. Switch to `gemini` when precision matters. Switch to `dashscope` when using Chinese API keys or preferring Alibaba Cloud infrastructure.
 
 ### Gemini sizes and costs
 
@@ -37,14 +40,15 @@ python3 ${GODOGEN_SKILL_DIR}/tools/asset_gen.py image \
   --prompt "the full prompt" -o assets/img/car.png
 ```
 
-`--model` (default `grok`): `grok` (2¢), `gemini` (5-15¢ by size)
-`--size` (default `1K`): Grok: `1K`, `2K`. Gemini: `512`, `1K`, `2K`, `4K`.
-`--aspect-ratio` (default `1:1`): varies by backend — both support `1:1`, `16:9`, `9:16`, `4:3`, `3:4`, `3:2`, `2:3`
+`--model` (default `grok`): `grok` (2¢), `gemini` (5-15¢ by size), `dashscope` (2-5¢)
+`--size` (default `1K`): Grok: `1K`, `2K`. Gemini: `512`, `1K`, `2K`, `4K`. DashScope: `512`, `1K`, `2K` (max 1280×1280).
+`--aspect-ratio` (default `1:1`): varies by backend — all support `1:1`, `16:9`, `9:16`, `4:3`, `3:4`, `3:2`, `2:3`
 
 Typical combos:
 - `--model gemini --size 1K` — reference images, character sprites, 3D refs (7¢)
 - `--model gemini --size 2K --aspect-ratio 16:9` — backgrounds, title screens (10¢)
 - `--model grok` — textures, simple objects, item kits (2¢)
+- `--model dashscope` — fast/cheap generation via Alibaba Cloud (2¢ turbo, 5¢ plus)
 
 ### Remove background
 
@@ -89,6 +93,7 @@ python3 ${GODOGEN_SKILL_DIR}/tools/asset_gen.py video \
 ```
 
 `--duration` (1-15 seconds), `--resolution` (default `720p`): `720p`, `480p`
+`--video-backend` (default `grok`): `grok` (5¢/sec), `dashscope` (3¢/sec)
 
 Same cost per second at both resolutions — always use `720p`. Fall back to `480p` only if 720p fails (e.g. timeout or API error).
 
@@ -216,6 +221,8 @@ result=$(python3 ${GODOGEN_SKILL_DIR}/tools/asset_gen.py image --prompt "..." -o
 | Operation | Options | Cost | Notes |
 |-----------|---------|------|-------|
 | Image | --model grok | 2 cents | Fast, simple images |
+| Image | --model dashscope | 2 cents | Fast via Alibaba Cloud (turbo) |
+| Image | --model dashscope (plus) | 5 cents | Higher quality via Alibaba Cloud |
 | Image | --model gemini --size 512 | 5 cents | Small refs, quick tests |
 | Image | --model gemini --size 1K | 7 cents | References, characters, 3D refs |
 | Image | --model gemini --size 2K | 10 cents | Backgrounds, title screens |
@@ -224,7 +231,8 @@ result=$(python3 ${GODOGEN_SKILL_DIR}/tools/asset_gen.py image --prompt "..." -o
 | GLB | hd | 60 cents | v3.1, detailed geometry + HD texture + PBR |
 | Rig | biped | 25 cents | one-time per character, on top of the GLB cost |
 | Retarget | per animation | 10 cents | each clip is a separate task; reuses the rigged task id |
-| Video | --duration N | 5¢ × N seconds | Pose frame as starting image |
+| Video | --duration N (grok) | 5¢ × N seconds | Pose frame as starting image |
+| Video | --duration N (dashscope) | 3¢ × N seconds | Cheaper video alternative |
 
 A full 3D asset (Gemini 1K image + default GLB) costs 37¢. A rigged biped character with walk/idle/attack is 37¢ + 25¢ rig + 3 × 10¢ retarget = 92¢. A texture (Grok) is 2¢. A background is 2¢ (Grok, simple) or 10¢ (Gemini 2K, precise layout). A 3-second 2D sprite animation costs 24¢ (7¢ Gemini ref + 7¢ pose + 10¢ video); additional animations from the same ref cost 7¢ pose + video.
 
