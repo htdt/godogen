@@ -1,6 +1,6 @@
 # Asset Generator
 
-Generate PNG images (Gemini or xAI Grok) and GLB 3D models (Tripo3D) from text prompts.
+Generate PNG images (Gemini, xAI Grok, or OpenAI gpt-image-2) and GLB 3D models (Tripo3D) from text prompts.
 
 ## Models
 
@@ -8,12 +8,14 @@ Generate PNG images (Gemini or xAI Grok) and GLB 3D models (Tripo3D) from text p
 |-------|------|------|----------|
 | `gemini-3.1-flash-image-preview` | `--model gemini` | 5-15¢ (by size) | Precise prompt following — references, characters, backgrounds, 3D refs |
 | `grok-imagine-image` | `--model grok` | 2¢ | High-quality but imprecise — textures, simple objects, item kits |
+| `gpt-image-2` | `--model openai` | 1-85¢ (by size+quality) | In-image text rendering (incl. CJK), strong world knowledge, detailed layered prompts |
 
 **When to use which:**
 - **Gemini** — reference images, character design, 3D model references, animated sprite refs/poses, backgrounds with precise layout. Gemini costs more but reliably produces what you described.
 - **Grok** — textures, simple objects, item kits, props, simple scenic backgrounds (sky, clouds, abstract). Produces high-quality (even photographic) output but often defaults to common interpretations instead of following specific instructions. Great when exact prompt adherence doesn't matter.
+- **OpenAI gpt-image-2** — anything needing readable text baked into the image (signs, posters, UI mockups, labels — including CJK), real-world/cultural knowledge, or long layered prompts. Cost varies widely by size and `--quality`. Cannot produce transparent backgrounds — run rembg downstream.
 
-Default is `grok`. Switch to `gemini` when precision matters.
+Default is `grok`. Switch to `gemini` for precision, or `openai` when in-image text or world knowledge matters.
 
 ### Gemini sizes and costs
 
@@ -23,6 +25,23 @@ Default is `grok`. Switch to `gemini` when precision matters.
 | `1K` | 7¢ |
 | `2K` | 10¢ |
 | `4K` | 15¢ |
+
+### OpenAI gpt-image-2 sizes, quality, and costs
+
+`--quality` is `low` / `medium` / `high` (default `medium`). Cost spread between `low` and `high` at the same size can be ~35×.
+
+`--size` accepts either an abstract size (mapped via `--aspect-ratio` orientation) or a raw `WIDTHxHEIGHT` pixel size. Pixel sizes must be 16-multiples, max edge 3840, long:short ≤ 3:1, total pixels 655,360–8,294,400.
+
+| `--size` + `--aspect-ratio` | Pixel size | low | medium | high |
+|------|------|------|------|------|
+| `1K` 1:1 | 1024×1024 | 1¢ | 6¢ | 22¢ |
+| `1K` 16:9 / 3:2 | 1536×1024 | 1¢ | 5¢ | 17¢ |
+| `1K` 9:16 / 2:3 | 1024×1536 | 1¢ | 5¢ | 17¢ |
+| `2K` 1:1 | 2048×2048 | 3¢ | 22¢ | 85¢ |
+| `2K` 16:9 | 2048×1152 | 2¢ | 12¢ | 48¢ |
+| `4K` 16:9 | 3840×2160 | 3¢ | 16¢ | 41¢ |
+
+Costs are rounded up to whole cents. `512` and `4K` square are unsupported (outside pixel limits). For an exact size, pass e.g. `--size 1536x1024`.
 
 ## CLI Reference
 
@@ -37,14 +56,17 @@ python3 ${GODOGEN_SKILL_DIR}/tools/asset_gen.py image \
   --prompt "the full prompt" -o assets/img/car.png
 ```
 
-`--model` (default `grok`): `grok` (2¢), `gemini` (5-15¢ by size)
-`--size` (default `1K`): Grok: `1K`, `2K`. Gemini: `512`, `1K`, `2K`, `4K`.
-`--aspect-ratio` (default `1:1`): varies by backend — both support `1:1`, `16:9`, `9:16`, `4:3`, `3:4`, `3:2`, `2:3`
+`--model` (default `grok`): `grok` (2¢), `gemini` (5-15¢ by size), `openai` (gpt-image-2, 1-85¢ by size+quality)
+`--size` (default `1K`): Grok: `1K`, `2K`. Gemini: `512`, `1K`, `2K`, `4K`. OpenAI: abstract (`1K`/`2K`/`4K`, mapped via `--aspect-ratio`) or raw `WIDTHxHEIGHT` (e.g. `1536x1024`).
+`--quality` (default `medium`, **OpenAI only**): `low`, `medium`, `high`. Ignored by gemini/grok.
+`--aspect-ratio` (default `1:1`): varies by backend — both support `1:1`, `16:9`, `9:16`, `4:3`, `3:4`, `3:2`, `2:3`. For OpenAI abstract sizes it picks orientation; ignored when `--size` is `WIDTHxHEIGHT`.
 
 Typical combos:
 - `--model gemini --size 1K` — reference images, character sprites, 3D refs (7¢)
 - `--model gemini --size 2K --aspect-ratio 16:9` — backgrounds, title screens (10¢)
 - `--model grok` — textures, simple objects, item kits (2¢)
+- `--model openai --quality high` — posters/UI/signage with readable in-image text (22¢ at 1K 1:1)
+- `--model openai --size 1536x1024 --quality medium` — exact-pixel layout, e.g. video cover (5¢)
 
 ### Remove background
 
@@ -220,6 +242,9 @@ result=$(python3 ${GODOGEN_SKILL_DIR}/tools/asset_gen.py image --prompt "..." -o
 | Image | --model gemini --size 1K | 7 cents | References, characters, 3D refs |
 | Image | --model gemini --size 2K | 10 cents | Backgrounds, title screens |
 | Image | --model gemini --size 4K | 15 cents | Large maps, panoramas |
+| Image | --model openai --quality medium (1K) | 5-6 cents | In-image text, world knowledge |
+| Image | --model openai --quality high (1K) | 17-22 cents | High-fidelity text/posters |
+| Image | --model openai --quality high --size 2K | 48-85 cents | Large high-fidelity text/layout |
 | GLB | default | 30 cents | v3.1, 30k face cap, standard texture + PBR |
 | GLB | hd | 60 cents | v3.1, detailed geometry + HD texture + PBR |
 | Rig | biped | 25 cents | one-time per character, on top of the GLB cost |
