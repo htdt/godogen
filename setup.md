@@ -230,6 +230,7 @@ Set in environment:
 
 - `GOOGLE_API_KEY` — Gemini image generation
 - `XAI_API_KEY` — xAI Grok image/video generation
+- `OPENAI_API_KEY` — OpenAI gpt-image-2 image generation (requires API org verification)
 - `TRIPO3D_API_KEY` — image-to-3D conversion
 
 ## Post-Task Telegram Push (optional)

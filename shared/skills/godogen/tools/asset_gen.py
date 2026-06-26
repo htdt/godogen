@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Asset Generator CLI - creates images (Gemini / xAI Grok) and GLBs (Tripo3D).
+"""Asset Generator CLI - creates images (Gemini / xAI Grok / OpenAI gpt-image-2) and GLBs (Tripo3D).
 
 Subcommands:
-  image     Generate a PNG from a prompt (Gemini 5-15¢ or Grok 2¢)
+  image     Generate a PNG from a prompt (Gemini 5-15¢, Grok 2¢, or OpenAI gpt-image-2)
   video     Generate MP4 video from prompt + reference image (5¢/sec, Grok)
   glb       Convert a PNG to a static GLB (30¢ default, 60¢ hd)
   rig       Convert a PNG to a rigged biped GLB (preset + 25¢)
@@ -16,6 +16,8 @@ import argparse
 import base64
 import io
 import json
+import math
+import re
 import sys
 from pathlib import Path
 
@@ -23,6 +25,7 @@ import requests
 import xai_sdk
 from google import genai
 from google.genai import types
+from openai import OpenAI
 from PIL import Image
 
 from tripo3d import (
@@ -116,6 +119,37 @@ GROK_ASPECT_RATIOS = [
     "1:1", "16:9", "9:16", "4:3", "3:4", "3:2", "2:3",
     "2:1", "1:2", "19.5:9", "9:19.5", "20:9", "9:20", "auto",
 ]
+
+OPENAI_MODEL = "gpt-image-2-2026-04-21"  # fixed snapshot (avoids float-alias drift)
+OPENAI_QUALITIES = ["low", "medium", "high"]
+
+# Maps the abstract (--size, orientation) to a recommended gpt-image-2 pixel size.
+# OpenAI needs absolute pixels; orientation is derived from --aspect-ratio.
+# 512 and 4K-square are intentionally absent (below min / above max pixel limits).
+OPENAI_SIZE_MAP = {
+    ("1K", "square"): "1024x1024",
+    ("1K", "landscape"): "1536x1024",
+    ("1K", "portrait"): "1024x1536",
+    ("2K", "square"): "2048x2048",
+    ("2K", "landscape"): "2048x1152",
+    ("2K", "portrait"): "1152x2048",
+    ("4K", "landscape"): "3840x2160",
+    ("4K", "portrait"): "2160x3840",
+}
+
+# Documented per-size, per-quality cost in cents (OpenAI calculator estimates).
+# Sizes not listed are scaled from 1024x1024 by pixel ratio in _openai_cost_cents.
+OPENAI_SIZE_COSTS = {
+    "1024x1024": {"low": 0.6, "medium": 5.3, "high": 21.1},
+    "1536x1024": {"low": 0.5, "medium": 4.1, "high": 16.5},
+    "1024x1536": {"low": 0.5, "medium": 4.1, "high": 16.5},
+    "3840x2160": {"low": 2.4, "medium": 16.0, "high": 41.0},
+    "2160x3840": {"low": 2.4, "medium": 16.0, "high": 41.0},
+}
+
+OPENAI_MAX_EDGE = 3840
+OPENAI_MIN_PIXELS = 655_360
+OPENAI_MAX_PIXELS = 8_294_400
 
 ALL_SIZES = ["512", "1K", "2K", "4K"]
 ALL_ASPECT_RATIOS = sorted(set(GEMINI_ASPECT_RATIOS + GROK_ASPECT_RATIOS))
@@ -212,15 +246,134 @@ def _generate_grok(args, output: Path, cost: int):
     result_json(True, path=str(output), cost_cents=cost)
 
 
+def _aspect_orientation(aspect_ratio: str) -> str:
+    """Classify an aspect ratio string as square / landscape / portrait."""
+    try:
+        w, h = (float(x) for x in aspect_ratio.split(":"))
+    except ValueError:
+        return "square"
+    if w > h:
+        return "landscape"
+    if h > w:
+        return "portrait"
+    return "square"
+
+
+def _validate_openai_pixels(width: int, height: int):
+    """Enforce gpt-image-2 size constraints. Exit with error JSON on violation."""
+    errs = []
+    if width % 16 or height % 16:
+        errs.append("both dimensions must be multiples of 16")
+    if max(width, height) > OPENAI_MAX_EDGE:
+        errs.append(f"max edge is {OPENAI_MAX_EDGE}px")
+    short, long = sorted((width, height))
+    if long > short * 3:
+        errs.append("aspect ratio long:short must be <= 3:1")
+    pixels = width * height
+    if pixels < OPENAI_MIN_PIXELS or pixels > OPENAI_MAX_PIXELS:
+        errs.append(f"total pixels must be {OPENAI_MIN_PIXELS}-{OPENAI_MAX_PIXELS} (got {pixels})")
+    if errs:
+        result_json(False, error="Invalid gpt-image-2 size: " + "; ".join(errs))
+        sys.exit(1)
+
+
+def _resolve_openai_size(size: str, aspect_ratio: str) -> str:
+    """Resolve a gpt-image-2 'WxH' size from a pixel passthrough or abstract size+aspect."""
+    m = re.fullmatch(r"(\d+)x(\d+)", size)
+    if m:
+        width, height = int(m.group(1)), int(m.group(2))
+        _validate_openai_pixels(width, height)
+        return f"{width}x{height}"
+
+    orientation = _aspect_orientation(aspect_ratio)
+    key = (size, orientation)
+    if key not in OPENAI_SIZE_MAP:
+        combos = ", ".join(f"{s}+{o}" for s, o in OPENAI_SIZE_MAP)
+        result_json(False, error=(
+            f"gpt-image-2 has no mapping for size {size} + aspect {aspect_ratio} ({orientation}). "
+            f"Pass a WIDTHxHEIGHT size, or use one of: {combos}."
+        ))
+        sys.exit(1)
+    return OPENAI_SIZE_MAP[key]
+
+
+def _openai_cost_cents(openai_size: str, quality: str) -> int:
+    """Cost in whole cents (ceil), from the documented table or pixel-scaled fallback."""
+    table = OPENAI_SIZE_COSTS.get(openai_size)
+    if table and quality in table:
+        cents = table[quality]
+    else:
+        width, height = (int(x) for x in openai_size.split("x"))
+        base = OPENAI_SIZE_COSTS["1024x1024"][quality]
+        cents = base * (width * height) / (1024 * 1024)
+    return math.ceil(cents)
+
+
+def _openai_image_bytes(item) -> bytes:
+    """Extract PNG bytes from an OpenAI image response item (b64_json or url fallback)."""
+    b64 = getattr(item, "b64_json", None)
+    if b64:
+        return base64.b64decode(b64)
+    url = getattr(item, "url", None)
+    if url:
+        dl = requests.get(url, timeout=120)
+        dl.raise_for_status()
+        return dl.content
+    raise RuntimeError("No image data in OpenAI response")
+
+
+def _generate_openai(args, output: Path, cost: int, openai_size: str):
+    client = OpenAI()
+    try:
+        if args.image:
+            ref_path = Path(args.image)
+            if not ref_path.exists():
+                result_json(False, error=f"Reference image not found: {ref_path}")
+                sys.exit(1)
+            with open(ref_path, "rb") as f:
+                resp = client.images.edit(
+                    model=OPENAI_MODEL,
+                    image=f,
+                    prompt=args.prompt,
+                    size=openai_size,
+                    quality=args.quality,
+                    n=1,
+                )
+        else:
+            resp = client.images.generate(
+                model=OPENAI_MODEL,
+                prompt=args.prompt,
+                size=openai_size,
+                quality=args.quality,
+                n=1,
+                response_format="b64_json",
+            )
+        data = _openai_image_bytes(resp.data[0])
+        # Re-encode as real PNG (decode + save normalizes format)
+        img = Image.open(io.BytesIO(data))
+        img.save(output, format="PNG")
+    except Exception as e:
+        result_json(False, error=str(e))
+        sys.exit(1)
+
+    print(f"Saved: {output}", file=sys.stderr)
+    record_spend(cost, "openai")
+    result_json(True, path=str(output), cost_cents=cost)
+
+
 def cmd_image(args):
     backend = args.model
     size = args.size
+    openai_size = None
 
     if backend == "gemini":
         if size not in GEMINI_SIZES:
             result_json(False, error=f"Gemini does not support size {size}. Use: {', '.join(GEMINI_SIZES)}")
             sys.exit(1)
         cost = GEMINI_COSTS[size]
+    elif backend == "openai":
+        openai_size = _resolve_openai_size(size, args.aspect_ratio)
+        cost = _openai_cost_cents(openai_size, args.quality)
     else:
         if size not in GROK_SIZES:
             result_json(False, error=f"Grok does not support size {size}. Use: {', '.join(GROK_SIZES)}")
@@ -231,13 +384,18 @@ def cmd_image(args):
     output = Path(args.output)
     output.parent.mkdir(parents=True, exist_ok=True)
 
-    label = f"{backend} {size} {args.aspect_ratio}"
+    if backend == "openai":
+        label = f"openai {openai_size} {args.quality}"
+    else:
+        label = f"{backend} {size} {args.aspect_ratio}"
     if args.image:
         label += " (image-to-image)"
     print(f"Generating image ({label})...", file=sys.stderr)
 
     if backend == "gemini":
         _generate_gemini(args, output, cost)
+    elif backend == "openai":
+        _generate_openai(args, output, cost, openai_size)
     else:
         _generate_grok(args, output, cost)
 
@@ -578,17 +736,19 @@ def cmd_set_budget(args):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Asset Generator — images (Gemini / xAI Grok) and GLBs (Tripo3D)")
+    parser = argparse.ArgumentParser(description="Asset Generator — images (Gemini / xAI Grok / OpenAI gpt-image-2) and GLBs (Tripo3D)")
     sub = parser.add_subparsers(dest="command", required=True)
 
-    p_img = sub.add_parser("image", help="Generate a PNG image (Gemini 5-15¢ or Grok 2¢)")
+    p_img = sub.add_parser("image", help="Generate a PNG image (Gemini 5-15¢, Grok 2¢, or OpenAI gpt-image-2)")
     p_img.add_argument("--prompt", required=True, help="Full image generation prompt")
-    p_img.add_argument("--model", choices=["gemini", "grok"], default="grok",
-                       help="Backend: grok (2¢, fast, simple images) or gemini (5-15¢, precise prompt following). Default: grok.")
-    p_img.add_argument("--size", choices=ALL_SIZES, default="1K",
-                       help="Resolution. Grok: 1K, 2K. Gemini: 512, 1K, 2K, 4K. Default: 1K.")
+    p_img.add_argument("--model", choices=["gemini", "grok", "openai"], default="grok",
+                       help="Backend: grok (2¢, fast, simple), gemini (5-15¢, precise), or openai gpt-image-2 (varies by size/quality, strong text rendering). Default: grok.")
+    p_img.add_argument("--size", default="1K",
+                       help="Resolution. Grok: 1K, 2K. Gemini: 512, 1K, 2K, 4K. OpenAI: abstract (1K/2K/4K, mapped via --aspect-ratio) or a WIDTHxHEIGHT pixel size (16-multiples, max edge 3840). Default: 1K.")
+    p_img.add_argument("--quality", choices=OPENAI_QUALITIES, default="medium",
+                       help="OpenAI only: low/medium/high (35x cost spread). Ignored by gemini/grok. Default: medium.")
     p_img.add_argument("--aspect-ratio", choices=ALL_ASPECT_RATIOS, default="1:1",
-                       help="Aspect ratio. Default: 1:1")
+                       help="Aspect ratio. For OpenAI abstract sizes it selects orientation (square/landscape/portrait); ignored when --size is WIDTHxHEIGHT. Default: 1:1")
     p_img.add_argument("--image", default=None, help="Reference image for image-to-image edit")
     p_img.add_argument("-o", "--output", required=True, help="Output PNG path")
     p_img.set_defaults(func=cmd_image)
