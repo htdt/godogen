@@ -6,20 +6,20 @@ Autonomous game development for Godot, Bevy, and Babylon.js with Claude Code and
 
 [Watch the demos](https://youtu.be/eUz19GROIpY) · [Prompts](docs/demo_prompts.md)
 
-Describe a game. The agent builds it, generates assets, runs the engine, and proves the result — either as a recorded video (one-shot) or as a live game you watch and steer (interactive).
+Describe a game. The agent builds it, generates assets, runs the engine, and proves the result — as a live game you watch and steer, or as a recorded video when you're not there. It reads the situation and decides which, in the run.
 
-This repo is not a game. It is the source for a generator that produces games: **godogen -> game repo -> game**. You publish into a fresh game repo — choosing engine, host-agent flavor, and delivery mode — then the agent runs inside that repo and builds the actual game from a short engine guide.
+This repo is not a game. It is the source for a generator that produces games: **godogen -> game repo -> game**. You publish into a fresh game repo — choosing engine and host-agent flavor — then the agent runs inside that repo and builds the actual game from a short engine guide.
 
 ## Source layout
 
 A published repo is intentionally thin: a runtime manifest, a one-page engine guide, and the asset-generation skill. The agent recreates everything else (project scaffold, capture tooling) from the guide.
 
-- `prompts/` — the runtime manifest preamble (`runtime.md`) and the delivery-mode blocks (`oneshot.md`, `interactive.md`)
+- `prompts/runtime.md` — the runtime manifest
 - `asset-gen/` — the cross-engine asset-generation skill
 - `engines/babylon.md`, `engines/godot.md`, `engines/bevy.md` — per-engine guides
-- [publish.sh](publish.sh) — renders the runtime layout for the chosen engine, host agent, and mode
+- [publish.sh](publish.sh) — renders the runtime layout for the chosen engine and host agent
 
-Engine, host agent (Claude vs Codex), and mode are all publish-time render choices, not separate source trees.
+Engine and host agent (Claude vs Codex) are publish-time render choices, not separate source trees.
 
 ## What the agent does
 
@@ -27,12 +27,8 @@ Engine, host agent (Claude vs Codex), and mode are all publish-time render choic
 - **Bevy** — Rust/Bevy projects with code-first ECS scenes and offscreen capture.
 - **Babylon.js** — TypeScript/Vite browser games served at a live URL.
 - **Asset generation** — Gemini for precise references and characters, xAI Grok for textures and simple objects, Tripo3D for image-to-3D and rigged biped animation; animated sprites via Grok video with loop detection and background removal.
-- **Proof over claims** — the agent judges results from the running game (a recorded clip or a live URL), not from a clean compile, so visible defects drive the next iteration.
-
-## Delivery modes
-
-- **one-shot** (`--mode oneshot`, default for Godot/Bevy) — unattended build; the proof of result is a 15–20s recording of the running game.
-- **interactive** (`--mode interactive`, default for Babylon.js) — the user watches the live game (a URL, or a project they run) and steers at decision points.
+- **Proof over claims** — the agent judges results from the running game (a live URL or a recorded clip), not from a clean compile, so visible defects drive the next iteration.
+- **You choose your involvement** — watch the live game (a Babylon.js URL, or a Godot/Bevy project you run) and steer at decision points, or leave the run unattended and get a 15–20s proof recording at the end. The agent adapts to your presence.
 
 ## Getting started
 
@@ -53,16 +49,15 @@ Engine, host agent (Claude vs Codex), and mode are all publish-time render choic
 
 ### Publish a game repo
 
-Pick the engine, host agent, and (optionally) mode:
+Pick the engine and host agent:
 
 ```bash
-./publish.sh --engine godot   --agent claude --out ~/my-game                      # CLAUDE.md + .claude/skills/, one-shot
-./publish.sh --engine babylon --agent claude --out ~/my-game                      # interactive (Babylon default)
-./publish.sh --engine babylon --agent codex  --mode oneshot --out ~/my-game       # AGENTS.md + .agents/skills/, one-shot
-./publish.sh --engine bevy    --agent claude --mode interactive --out ~/my-game
+./publish.sh --engine godot   --agent claude --out ~/my-game       # CLAUDE.md + .claude/skills/
+./publish.sh --engine babylon --agent codex  --out ~/my-game       # AGENTS.md + .agents/skills/
+./publish.sh --engine bevy    --agent claude --out ~/my-game
 ```
 
-`--mode` defaults to `interactive` for Babylon.js and `oneshot` for Godot/Bevy. Pass `--force` to wipe existing contents at the target before re-publishing.
+Pass `--force` to wipe existing contents at the target before re-publishing.
 
 ## Running on a server
 

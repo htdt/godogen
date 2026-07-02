@@ -12,11 +12,7 @@ A plain Vite + TS project is enough. Scaffold one (`npm create vite@latest . -- 
 
 Commands: `npm install` · `npm run dev` · `npm run build` (use the build as a compile gate, but it is not proof the game runs — only the running page is).
 
-**Bind the dev server to `0.0.0.0` on a fixed port** (`server: { host: true, port: 5173 }`) so the URL is shareable on the LAN or via a tunnel.
-
-### Interactive vs one-shot
-- **Interactive:** keep `npm run dev` running and hand the user the URL (`http://<host>:5173`); they watch and steer while you edit and they refresh. A `?scene=<name>` switch in your bootstrap is a handy way to expose multiple scenes for review.
-- **One-shot:** build, then capture the 15–20s proof video (below).
+**Bind the dev server to `0.0.0.0` on a fixed port** (`server: { host: true, port: 5173 }`) so the URL is shareable on the LAN or via a tunnel. This is how the user watches: keep `npm run dev` running and hand them `http://<host>:5173` — you edit, they refresh.
 
 ## Imports
 
@@ -26,13 +22,13 @@ Import from `@babylonjs/core` subpaths (e.g. `@babylonjs/core/Meshes/meshBuilder
 
 Havok is available via `@babylonjs/havok`. Serve `HavokPhysics.wasm` from `public/` and load it with `HavokPhysics({ locateFile: () => "/HavokPhysics.wasm" })` — a `?url` import is blocked by the package `exports`. Enabling physics needs its side-effect module registered (per the rule above); then use `PhysicsAggregate`.
 
-## Capture (self-verify + one-shot proof)
+## Capture (self-verify + proof video)
 
-Load the running dev URL in headless Chrome/Chromium (`playwright-core`, or `google-chrome --headless`) and screenshot. This is how you verify your own work and how you produce the one-shot video.
+Load the running dev URL in headless Chrome/Chromium (`playwright-core`, or `google-chrome --headless`) and screenshot. This is how you verify your own work and how you produce the proof video.
 
 - **Use a real GPU.** Headless Chrome silently falls back to SwiftShader/llvmpipe, which renders slowly or blank. On Linux, run under `xvfb-run` and request hardware (`--use-angle=vulkan`); read the WebGL `RENDERER` string and warn if it contains `swiftshader`/`llvmpipe`/`lavapipe`.
 - **Wait before shooting.** Capture only after the scene has rendered a frame and textures/GLBs have loaded — gate on a ready flag the game sets, or settle a fixed delay after network idle. Screenshotting too early gives a misleading blank frame.
-- **One-shot video:** screenshot on an interval (~30fps for 15–20s) into a temp dir, then encode at ~720p: `ffmpeg -framerate 30 -i frame_%04d.png -c:v libx264 -pix_fmt yuv420p proof.mp4`.
+- **Proof video:** screenshot on an interval (~30fps for 15–20s) into a temp dir, then encode at ~720p: `ffmpeg -framerate 30 -i frame_%04d.png -c:v libx264 -pix_fmt yuv420p proof.mp4`.
 
 ## Babylon API lookups
 

@@ -1,15 +1,13 @@
 # Godogen Source Repo
 
-This repository is not a published game repo. It is the source that `publish.sh` renders into a runtime game repo for a chosen engine, host agent, and delivery mode.
+This repository is not a published game repo. It is the source that `publish.sh` renders into a runtime game repo for a chosen engine and host agent.
 
 ## Source Layout
 
-- `prompts/` — engine-agnostic runtime text:
-  - `runtime.md` — the process preamble for the runtime manifest
-  - `oneshot.md`, `interactive.md` — the delivery-regime blocks
+- `prompts/runtime.md` — the engine-agnostic runtime manifest text
 - `asset-gen/` — the asset-generation skill (CLI tools + docs), the one skill every published repo carries
 - `engines/babylon.md`, `engines/godot.md`, `engines/bevy.md` — per-engine guides (stack, project sketch, capture recipe, silent-failure traps)
-- `publish.sh` — renders a runtime repo with `--engine {godot,bevy,babylon}`, `--agent {claude,codex}`, `--mode {oneshot,interactive}`
+- `publish.sh` — renders a runtime repo with `--engine {godot,bevy,babylon}`, `--agent {claude,codex}`
 - `scripts/` — render helpers: `render_dir.py` (token substitution), `generate_codex_metadata.py` (Codex `openai.yaml`)
 
 ## Editing Rules

@@ -2,16 +2,12 @@
 # Publish Godogen runtime files into a target game repo.
 #
 # Usage:
-#   ./publish.sh --engine godot|bevy|babylon --agent claude|codex [--mode oneshot|interactive] --out <dir> [--force]
-#   ./publish.sh --engine godot|bevy|babylon --agent claude|codex [--mode ...] <dir> [--force]
+#   ./publish.sh --engine godot|bevy|babylon --agent claude|codex --out <dir> [--force]
+#   ./publish.sh --engine godot|bevy|babylon --agent claude|codex <dir> [--force]
 #
-# A published repo carries only docs: the runtime manifest (CLAUDE.md / AGENTS.md) for
-# the chosen mode, a per-engine guide (<engine>.md), and the asset-gen skill. The agent
-# scaffolds the game itself from the engine guide — no project scaffold is shipped.
-#
-# --mode selects the delivery regime (default: interactive for babylon, oneshot otherwise):
-#   oneshot     unattended build; proof of result is a recorded video
-#   interactive live, user-steered build (a live URL, or a project the user runs)
+# A published repo carries only docs: the runtime manifest (CLAUDE.md / AGENTS.md),
+# a per-engine guide (<engine>.md), and the asset-gen skill. The agent scaffolds
+# the game itself from the engine guide — no project scaffold is shipped.
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "$0")" && pwd)"
@@ -19,19 +15,17 @@ HELPERS="$REPO_ROOT/scripts"
 
 ENGINE=""
 AGENT=""
-MODE=""
 OUT=""
 FORCE=0
 
 usage() {
-    sed -n '1,13p' "$0" >&2
+    sed -n '1,10p' "$0" >&2
 }
 
 while [ $# -gt 0 ]; do
     case "$1" in
         --engine) ENGINE="${2:-}"; shift 2 ;;
         --agent)  AGENT="${2:-}";  shift 2 ;;
-        --mode)   MODE="${2:-}";   shift 2 ;;
         --out)    OUT="${2:-}";    shift 2 ;;
         --force)  FORCE=1;         shift   ;;
         -h|--help) usage; exit 0 ;;
@@ -48,16 +42,10 @@ while [ $# -gt 0 ]; do
 done
 
 case "$ENGINE" in
-    godot)   ENGINE_DISPLAY="Godot";      DEFAULT_MODE="oneshot" ;;
-    bevy)    ENGINE_DISPLAY="Bevy";       DEFAULT_MODE="oneshot" ;;
-    babylon) ENGINE_DISPLAY="Babylon.js"; DEFAULT_MODE="interactive" ;;
+    godot)   ENGINE_DISPLAY="Godot" ;;
+    bevy)    ENGINE_DISPLAY="Bevy" ;;
+    babylon) ENGINE_DISPLAY="Babylon.js" ;;
     *) echo "error: --engine must be godot, bevy, or babylon" >&2; usage; exit 1 ;;
-esac
-
-MODE="${MODE:-$DEFAULT_MODE}"
-case "$MODE" in
-    oneshot|interactive) ;;
-    *) echo "error: --mode must be oneshot or interactive" >&2; usage; exit 1 ;;
 esac
 
 # Root for runtime-loaded generated assets, substituted into the asset docs.
@@ -102,7 +90,7 @@ fi
 TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
 
-echo "Publishing $ENGINE/$AGENT ($MODE) to: $TARGET"
+echo "Publishing $ENGINE/$AGENT to: $TARGET"
 
 # --- Skills: only the asset-gen skill ---
 mkdir -p "$TMP/skills/asset-gen"
@@ -122,19 +110,16 @@ mkdir -p "$TARGET/$SKILLS_DIR_REL"
 rsync -a --delete "$TMP/skills/" "$TARGET/$SKILLS_DIR_REL/"
 echo "Installed asset-gen skill"
 
-# --- Manifest: runtime process preamble + the chosen mode block ---
-# MODE_BLOCK is passed first so its inner tokens (e.g. ENGINE_GUIDE_FILE) get
-# resolved by the later replacements in the same render pass.
+# --- Manifest: the runtime process doc ---
 MANIFEST_TMP="$TMP/manifest"
 mkdir -p "$MANIFEST_TMP"
 cp "$REPO_ROOT/prompts/runtime.md" "$MANIFEST_TMP/$MANIFEST"
 python3 "$HELPERS/render_dir.py" "$MANIFEST_TMP" \
-    "MODE_BLOCK=$(cat "$REPO_ROOT/prompts/$MODE.md")" \
     "ENGINE_NAME=$ENGINE_DISPLAY" \
     "ENGINE_GUIDE_FILE=$ENGINE_GUIDE_FILE" \
     "ASSET_SKILL_COMMAND=$ASSET_SKILL_COMMAND"
 cp "$MANIFEST_TMP/$MANIFEST" "$TARGET/$MANIFEST"
-echo "Created $MANIFEST ($MODE)"
+echo "Created $MANIFEST"
 
 # --- Per-engine guide (literal markdown) ---
 cp "$REPO_ROOT/engines/$ENGINE.md" "$TARGET/$ENGINE_GUIDE_FILE"

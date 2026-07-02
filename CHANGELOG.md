@@ -1,5 +1,9 @@
 # Changelog
 
+**2026-07-02 — Single delivery regime**
+- Dropped `--mode {oneshot,interactive}` from `publish.sh`; one runtime manifest now covers delivery. The agent reads the task and the user's presence in-run: an engaged user gets the live game early and checkpoints at taste/scope/cost decisions; an unattended run finishes on reasonable calls and closes with a 15–20s proof recording, watched back before done.
+- Merged the mode blocks (`prompts/oneshot.md`, `prompts/interactive.md`) into `prompts/runtime.md` and removed the "Interactive vs one-shot" splits from the engine guides — run/show/capture mechanics stay in the guides and serve both paths.
+
 **2026-06-13 — Docs-only runtime**
 - Replaced the multi-stage skill pipeline with a thin runtime: a mode-specific manifest, a one-page per-engine guide, and the cross-engine `asset-gen` skill. The model plans, scaffolds, and decomposes the work itself.
 - Added `--mode {oneshot,interactive}` to `publish.sh`. One-shot proves the result with a 15–20s recording of the running game; interactive delivers a live URL (Babylon.js) or a project the user runs (Godot/Bevy). Defaults: interactive for Babylon.js, one-shot for Godot/Bevy.

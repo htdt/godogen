@@ -19,9 +19,7 @@ opt-level = 3
 
 Build gate: `cargo fmt` · `cargo check` · `cargo build`. Construct the world from systems run `OnEnter(state)` (spawn a world root, camera, lights, UI), mark entities for teardown on state exit, and keep `src/lib.rs` as the single `App`-wiring point.
 
-### Interactive vs one-shot
-- **Interactive:** the user runs the project themselves (`cargo run`). Keep it compiling and launching cleanly.
-- **One-shot:** build, then capture the 15–20s proof video (below).
+The user watches by running the project themselves (`cargo run`) — keep it compiling and launching cleanly.
 
 ## Verify against the installed version
 
@@ -31,9 +29,9 @@ A few things that have bitten real builds and won't error at compile time — ch
 - UI box properties (`border_radius`, layout) live **inside** the `Node` component, not as separately spawned bundle items.
 - Procedural meshes are back-face culled by default — terrain wound the wrong way renders invisible (looks like "broken generation"; it's index order). A transform anchor with visible children needs both `Transform` and `Visibility`.
 
-## Capture (one-shot proof)
+## Capture (proof video)
 
-Do **not** record the interactive windowed binary — on headless Linux the primary-window path panics under virtual X even when it runs fine on a desktop. Use a **dedicated offscreen capture binary** (`src/bin/capture.rs`) in the same crate that reuses the real scene code but renders to a `RenderTarget::Image`:
+Do **not** record the windowed binary — on headless Linux the primary-window path panics under virtual X even when it runs fine on a desktop. Use a **dedicated offscreen capture binary** (`src/bin/capture.rs`) in the same crate that reuses the real scene code but renders to a `RenderTarget::Image`:
 
 - `DefaultPlugins` with `WindowPlugin { primary_window: None, exit_condition: DontExit }`, `WinitPlugin` disabled, and `ScheduleRunnerPlugin` as the runner.
 - Allocate the target `Image` **directly in the world** (`world_mut().resource_mut::<Assets<Image>>()`) and publish its handle *before* the camera/`OnEnter` systems read it — adding it via `Commands` in `Startup` is deferred and yields black captures.

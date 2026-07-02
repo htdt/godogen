@@ -9,9 +9,7 @@ Stack: **Godot 4 (.NET / Mono build)**, **C#**. All Godot C# classes must be `pa
 - `scripts/*.cs` runtime behavior · `scenes/*.tscn` scenes · `assets/` **only** files the running game loads (keep generation inputs/refs outside it).
 - Build gate: `dotnet build`, then `godot --headless --import` after asset changes, then `godot --headless --quit` (RID-leak warnings on headless exit are benign).
 
-### Interactive vs one-shot
-- **Interactive:** the user runs the project themselves (`godot --path .` or the editor). Keep it building and importing cleanly so each run reflects current state.
-- **One-shot:** build, then capture the 15–20s proof video (below).
+The user watches by running the project themselves (`godot --path .` or the editor) — keep it building and importing cleanly so each run reflects current state.
 
 ## Scenes are generated at build time, not by hand
 
@@ -51,7 +49,7 @@ Most Godot behavior the model already knows; these few fail with no error:
 - **C# enum names:** training data is GDScript-biased, so guessed C# enum names are often wrong (`BGMode.Sky`, not `BGModeEnum.Sky`). Verify against the installed Godot — read the C# API in the Godot docs/assemblies rather than guessing.
 - Frame-rate-independent damping: `speed *= Mathf.Exp(-rate * delta)`, not `speed *= (1 - drag)` per tick.
 
-## Capture (one-shot proof)
+## Capture (proof video)
 
 Hardware **Vulkan** gives correct rendering and is required for video; software Vulkan (`llvmpipe`/`lavapipe`) can still do stills but skip video and report it.
 

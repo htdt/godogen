@@ -53,7 +53,7 @@ command -v google-chrome || command -v chromium || command -v chromium-browser
 export CHROME_BIN=/path/to/chrome
 ```
 
-The Babylon capture script prefers hardware WebGL2. It logs a prominent warning when the browser falls back to a software renderer (SwiftShader, llvmpipe, lavapipe, etc) but still completes the capture — on a GPU-equipped host the warning means the browser GPU path is misconfigured and worth fixing; on a GPU-less host the warning is informational and the captured media is still usable at reduced quality and speed.
+Babylon capture prefers hardware WebGL2. A fallback to a software renderer (SwiftShader, llvmpipe, lavapipe, etc.) on a GPU-equipped host means the browser GPU path is misconfigured and worth fixing; on a GPU-less host it still captures, at reduced quality and speed.
 
 ## System Packages
 
@@ -62,8 +62,8 @@ sudo apt-get install vulkan-tools xvfb ffmpeg imagemagick
 ```
 
 - **vulkan-tools** — `vulkaninfo` for GPU validation
-- **xvfb** — virtual X11 display for headless Godot/Bevy smoke tests
-- **ffmpeg** — MP4 encoding and `ffprobe` for hook validation
+- **xvfb** — virtual X11 display for headless Godot/Bevy runs and capture
+- **ffmpeg** — MP4 encoding of proof videos and sprite frame extraction
 - **imagemagick** — image resize, flip, crop for sprite pipelines
 
 On macOS:
