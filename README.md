@@ -66,12 +66,6 @@ A full generation run can take hours, so it's convenient to offload it to a serv
 - Keep the session alive across SSH drops with `tmux` or `screen`.
 - Enable remote control so you can check in and steer the run from any device — both Claude Code and Codex have official remote-control interfaces.
 
-## Improving the guides
-
-After a generation session, ask the agent you used to review how it went:
-
-> Analyze this session. Were the instructions optimal? Flag anything that was too obvious, missing, or misleading. Did any tool pollute context with noise? Did the proof video / live URL catch the real problems? Any tool failures or workarounds?
-
 ## Changelog
 
 See [CHANGELOG.md](CHANGELOG.md).
