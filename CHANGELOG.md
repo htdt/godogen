@@ -1,15 +1,11 @@
 # Changelog
 
-**2026-07-02 — Single delivery regime**
-- Dropped `--mode {oneshot,interactive}` from `publish.sh`; one runtime manifest now covers delivery. The agent reads the task and the user's presence in-run: an engaged user gets the live game early and checkpoints at taste/scope/cost decisions; an unattended run finishes on reasonable calls and closes with a 15–20s proof recording, watched back before done.
-- Merged the mode blocks (`prompts/oneshot.md`, `prompts/interactive.md`) into `prompts/runtime.md` and removed the "Interactive vs one-shot" splits from the engine guides — run/show/capture mechanics stay in the guides and serve both paths.
-
-**2026-06-13 — Docs-only runtime**
-- Replaced the multi-stage skill pipeline with a thin runtime: a mode-specific manifest, a one-page per-engine guide, and the cross-engine `asset-gen` skill. The model plans, scaffolds, and decomposes the work itself.
-- Added `--mode {oneshot,interactive}` to `publish.sh`. One-shot proves the result with a 15–20s recording of the running game; interactive delivers a live URL (Babylon.js) or a project the user runs (Godot/Bevy). Defaults: interactive for Babylon.js, one-shot for Godot/Bevy.
+**2026-07-02 — Docs-only runtime**
+- Replaced the multi-stage skill pipeline with a thin runtime: a single engine-agnostic manifest (`prompts/runtime.md`), a one-page per-engine guide, and the cross-engine `asset-gen` skill. The model plans, scaffolds, and decomposes the work itself.
+- One runtime manifest covers delivery. The agent reads the task and the user's presence in-run: an engaged user gets the live game early and checkpoints at taste/scope/cost decisions; an unattended run finishes on reasonable calls and closes with a 15–20s proof recording, watched back before done. Run/show/capture mechanics live in the engine guides and serve both paths.
 - Dropped the planner/decomposer/architecture/scene/scaffold/quirks/capture skill docs, the Vite scaffold, the `godot-api` / `bevy-help` / `babylon-help` lookup skills, and all hooks. The engine-specific traps and capture recipes that survive a compile but fail at runtime moved into the engine guide.
 - Trimmed asset docs to generation only; `asset-gen` is now the sole published skill.
-- Reorganized the source tree: engine-agnostic runtime text lives in `prompts/` (`runtime.md` plus the `oneshot.md` / `interactive.md` mode blocks), and the asset skill lives at top-level `asset-gen/`.
+- Reorganized the source tree: engine-agnostic runtime text lives in `prompts/runtime.md`, and the asset skill lives at top-level `asset-gen/`.
 - Continues the 2026-04-26 "dropped Gemini verification" trajectory — removing guidance the current model no longer needs.
 
 **2026-05-18 — Babylon.js support**
