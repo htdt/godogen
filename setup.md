@@ -128,6 +128,21 @@ If `godot --headless --quit` crashes with assembly errors, check that `GodotShar
 ls "$(dirname "$(which godot)")"/GodotSharp/
 ```
 
+## Character Animation (Optional)
+
+Custom humanoid animation (the asset-gen skill's `motion.md`) additionally requires:
+
+- NVIDIA GPU with a working CUDA driver — generation is MuJoCo + torch
+- `git-lfs` — the pipeline checkout (GR00T-WholeBodyControl) is a multi-GB LFS repo
+- `xvfb` (already in System Packages) — generation also needs it on headless boxes
+- If `pip install -e` is unavailable, install the pipeline deps by name into a venv and `export PYTHONPATH=<checkout>/motionbricks`
+
+The checkouts and the venv are heavy and shared across game projects — keep them in one directory and export its path in `~/.bashrc`. Game agents reuse whatever lives there instead of re-fetching:
+
+```bash
+export MOTIONBRICKS_HOME="$HOME/Documents"   # holds motionbricks-practical/, GR00T-WholeBodyControl/, the pipeline venv
+```
+
 ## API Keys
 
 Set in environment:

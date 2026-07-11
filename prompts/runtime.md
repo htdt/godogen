@@ -2,6 +2,7 @@
 
 - Keep durable project status in `README.md`: what is built, what is left, and an asset table.
 - Generate visual assets with `${ASSET_SKILL_COMMAND}`. Confirm the spend with the user before the first paid generation.
+- Read `${ASSET_GEN_SKILL_DIR}/motion.md` when the game needs custom humanoid character animation.
 - Read `${ENGINE_GUIDE_FILE}` for engine guidance: stack, project layout, how to run, and how to capture.
 
 ## Delivery
