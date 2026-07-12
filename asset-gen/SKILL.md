@@ -78,7 +78,7 @@ scratch shoot shovel sing_01..04 sit slash sob standing_relax surf swagger swim 
 victory_celebration volleyball wait walk warm_up wave_goodbye_01/02
 ```
 
-Presets are generic stock clips. When gameplay needs a custom humanoid move set (state machines, root-motion locomotion, moves not in this list), read `${ASSET_GEN_SKILL_DIR}/motion.md`.
+Presets are generic stock clips. **Important:** when gameplay needs a custom humanoid move set (state machines, root-motion locomotion, moves not in this list), read `${ASSET_GEN_SKILL_DIR}/motion.md`.
 
 ### Tripo3D operations (important — avoids double-charging)
 
