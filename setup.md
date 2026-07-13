@@ -132,15 +132,14 @@ ls "$(dirname "$(which godot)")"/GodotSharp/
 
 Custom humanoid animation (the asset-gen skill's `motion.md`) additionally requires:
 
-- NVIDIA GPU with a working CUDA driver — generation is MuJoCo + torch
-- `git-lfs` — the pipeline checkout (GR00T-WholeBodyControl) is a multi-GB LFS repo
-- `xvfb` (already in System Packages) — generation also needs it on headless boxes
-- If `pip install -e` is unavailable, install the pipeline deps by name into a venv and `export PYTHONPATH=<checkout>/motionbricks`
+- NVIDIA GPU with a working CUDA driver. Modest is fine for the default (Kimodo) motion source: the text encoder runs on CPU (needs ≥20 GB free RAM), diffusion peaks ~2.5 GB VRAM; ~35 GB disk
+- `cmake` — the Kimodo install builds a compiled extension
+- For the legacy MotionBricks source only: `git-lfs` (the GR00T-WholeBodyControl checkout is a multi-GB LFS repo), `xvfb` (already in System Packages) for headless generation, and — if `pip install -e` is unavailable — installing the pipeline deps by name into a venv with `export PYTHONPATH=<checkout>/motionbricks`
 
 The checkouts and the venv are heavy and shared across game projects — keep them in one directory and export its path in `~/.bashrc`. Game agents reuse whatever lives there instead of re-fetching:
 
 ```bash
-export MOTIONBRICKS_HOME="$HOME/Documents"   # holds motionbricks-practical/, GR00T-WholeBodyControl/, the pipeline venv
+export MOTIONBRICKS_HOME="$HOME/Documents"   # holds motionbricks-practical/, the motion-source checkout (kimodo/ or GR00T-WholeBodyControl/), the pipeline venv
 ```
 
 ## API Keys
