@@ -1,6 +1,6 @@
 # Custom Character Animation
 
-Generate custom humanoid move sets with [motionbricks-practical](https://github.com/htdt/motionbricks-practical) and bake them into ordinary glTF animations.
+Generate custom humanoid move sets with [kimodo-practical](https://github.com/htdt/kimodo-practical) and bake them into ordinary glTF animations.
 
 ## When to reach for it
 
@@ -8,20 +8,19 @@ Custom move sets driving gameplay: state machines, root-motion locomotion, moves
 
 ## Fetch and follow
 
-If `MOTIONBRICKS_HOME` is set, the deps already live under it — `motionbricks-practical`, a motion-source checkout (`kimodo`, or GR00T-WholeBodyControl for the legacy G1 source), usually a ready venv — reuse them instead of fetching. Otherwise:
+If `KIMODO_HOME` is set, the deps already live under it — `kimodo-practical`, the `kimodo` checkout, usually a ready venv — reuse them instead of fetching. Otherwise:
 
 ```bash
-git clone https://github.com/htdt/motionbricks-practical
+git clone https://github.com/htdt/kimodo-practical
 ```
 
-Follow the README's "For agents" reading order. The motion source to default to is **Kimodo** (KIMODO.md): human skeleton, moves authored as text prompts, videogame combat and locomotion in-distribution. MotionBricks (MOTIONBRICKS.md) is the keyframe-driven robot-skeleton alternative — reach for it only when a ready checkout already exists. Then ALIGN.md → BAKE.md → INTEGRATE.md. The lib documents the pipeline itself; this page adds only environment facts and the bridges to this skill and the engine.
+Follow the README's "For agents" reading order: KIMODO.md → ALIGN.md → BAKE.md → INTEGRATE.md. Moves are authored as text prompts on a human skeleton; videogame combat and locomotion are in-distribution. The lib documents the pipeline itself; this page adds only environment facts and the bridges to this skill and the engine.
 
 ## Environment
 
 - Generation is free and local: it consumes GPU time, not the asset budget.
-- Kimodo needs a CUDA GPU but a small one: keep the Llama-3-8B text encoder on CPU (`TEXT_ENCODER_DEVICE=cpu`, needs ≥20 GB free RAM) and diffusion peaks ~2.5 GB VRAM; ~35 GB disk. Start `kimodo_textencoder` once as a service before batch generation — reloading the 16 GB encoder per CLI call is otherwise the dominant cost.
+- A CUDA GPU is needed but a small one suffices: keep the Llama-3-8B text encoder on CPU (`TEXT_ENCODER_DEVICE=cpu`, needs ≥20 GB free RAM) and diffusion peaks ~2.5 GB VRAM; ~35 GB disk. Start `kimodo_textencoder` once as a service before batch generation — reloading the 16 GB encoder per CLI call is otherwise the dominant cost.
 - The encoder base model is HF-gated (`meta-llama`). If the account has no Llama access, the lib's `kimodo/setup_text_encoder.py` builds a local `TEXT_ENCODERS_DIR` from the public byte-identical mirror — don't fight the gate.
-- The legacy MotionBricks path additionally needs MuJoCo (run under `xvfb-run -a` on headless boxes) and the multi-GB GR00T-WholeBodyControl Git LFS checkout. If `pip install -e` is unavailable (sandboxed agents), installing the deps by name into a venv and exporting `PYTHONPATH=<checkout>/motionbricks` works for that path — Kimodo has a compiled extension and needs the real install.
 
 ## Character bridge (this skill)
 
@@ -39,4 +38,4 @@ The motion workspace (checkout, move spec, baked clips) stays outside the game r
 
 ## Budgeting
 
-A polished move set is hours, not minutes — but the compute is not where they go. Kimodo generates a gated 17-move set in ~10 minutes on a 12 GB GPU (best-of-8 with numeric QA gates per move); the time goes to the review loop: filmstrip/QA review → adjust prompts or spec → regenerate → re-certify. Treat a gate failure as a real defect and regenerate — never patch a bad clip at runtime. Surface this when estimating.
+A polished move set is hours, not minutes — but the compute is not where they go. A gated 17-move set generates in ~10 minutes on a 12 GB GPU (best-of-8 with numeric QA gates per move); the time goes to the review loop: filmstrip/QA review → adjust prompts or spec → regenerate → re-certify. Treat a gate failure as a real defect and regenerate — never patch a bad clip at runtime. Surface this when estimating.
