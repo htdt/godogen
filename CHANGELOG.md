@@ -1,5 +1,10 @@
 # Changelog
 
+**2026-08-23 — Prime Agent support**
+- Added Prime Agent as a first-class host agent alongside Claude Code and Codex
+- `publish.sh` now accepts `--agent prime`, publishing the runtime manifest as `AGENTS.md` and the `asset-gen` skill to `.prime/agent/skills/` — Prime Agent's native project skill location
+- The manifest renders the asset-skill call as `/skill:asset-gen` (Prime Agent's skill command syntax); Codex metadata is not generated for the Prime layout
+
 **2026-07-02 — Docs-only runtime**
 - Replaced the multi-stage skill pipeline with a thin runtime: a single engine-agnostic manifest (`prompts/runtime.md`), a one-page per-engine guide, and the cross-engine `asset-gen` skill. The model plans, scaffolds, and decomposes the work itself.
 - One runtime manifest covers delivery. The agent reads how the task is framed in-run: an open-ended direction gets the live game early and checkpoints at taste/scope/cost decisions; a finished brief runs on reasonable calls and closes with a 15–20s proof recording, watched back before done. Run/show/capture mechanics live in the engine guides and serve both paths.

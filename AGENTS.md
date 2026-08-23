@@ -7,7 +7,7 @@ This repository is not a published game repo. It is the source that `publish.sh`
 - `prompts/runtime.md` — the engine-agnostic runtime manifest text
 - `asset-gen/` — the asset-generation skill (CLI tools + docs), the one skill every published repo carries
 - `engines/babylon.md`, `engines/godot.md`, `engines/bevy.md` — per-engine guides (stack, project sketch, capture recipe, silent-failure traps)
-- `publish.sh` — renders a runtime repo with `--engine {godot,bevy,babylon}`, `--agent {claude,codex}`
+- `publish.sh` — renders a runtime repo with `--engine {godot,bevy,babylon}`, `--agent {claude,codex,prime}`
 - `scripts/` — render helpers: `render_dir.py` (token substitution), `generate_codex_metadata.py` (Codex `openai.yaml`)
 
 ## Editing Rules

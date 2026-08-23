@@ -1,6 +1,6 @@
 # Godogen
 
-Autonomous game development for Godot, Bevy, and Babylon.js with Claude Code and Codex.
+Autonomous game development for Godot, Bevy, and Babylon.js with Claude Code, Codex, and Prime Agent.
 
 [![Watch the video](https://img.youtube.com/vi/eUz19GROIpY/maxresdefault.jpg)](https://youtu.be/eUz19GROIpY)
 
@@ -19,7 +19,7 @@ A published repo is intentionally thin: a runtime manifest, a one-page engine gu
 - `engines/babylon.md`, `engines/godot.md`, `engines/bevy.md` — per-engine guides
 - [publish.sh](publish.sh) — renders the runtime layout for the chosen engine and host agent
 
-Engine and host agent (Claude vs Codex) are publish-time render choices, not separate source trees.
+Engine and host agent (Claude vs Codex vs Prime Agent) are publish-time render choices, not separate source trees.
 
 ## What the agent does
 
@@ -45,7 +45,7 @@ Engine and host agent (Claude vs Codex) are publish-time render choices, not sep
   - `TRIPO3D_API_KEY` — [Tripo3D](https://platform.tripo3d.ai/) for 3D generation
 - System packages from [setup.md](setup.md): `vulkan-tools`, `xvfb`, `ffmpeg`, `imagemagick`, plus platform-specific extras
 - Tested on Ubuntu, Debian, and macOS
-- Claude Code or Codex
+- Claude Code, Codex, or Prime Agent
 
 ### Publish a game repo
 
@@ -54,7 +54,7 @@ Pick the engine and host agent:
 ```bash
 ./publish.sh --engine godot   --agent claude --out ~/my-game       # CLAUDE.md + .claude/skills/
 ./publish.sh --engine babylon --agent codex  --out ~/my-game       # AGENTS.md + .agents/skills/
-./publish.sh --engine bevy    --agent claude --out ~/my-game
+./publish.sh --engine bevy    --agent prime  --out ~/my-game       # AGENTS.md + .prime/agent/skills/
 ```
 
 Pass `--force` to wipe existing contents at the target before re-publishing.
@@ -64,7 +64,7 @@ Pass `--force` to wipe existing contents at the target before re-publishing.
 A full generation run can take hours, so it's convenient to offload it to a server — ideally a GPU instance, since engine rendering and video capture are much faster with hardware acceleration.
 
 - Keep the session alive across SSH drops with `tmux` or `screen`.
-- Enable remote control so you can check in and steer the run from any device — both Claude Code and Codex have official remote-control interfaces.
+- Enable remote control so you can check in and steer the run from any device — Claude Code and Codex have official remote-control interfaces; Prime Agent keeps the session alive in a detached daemon worker after the TUI disconnects.
 
 ## Changelog
 
