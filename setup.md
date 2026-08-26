@@ -79,7 +79,6 @@ Requires Python 3.10+.
 ```bash
 python3 --version
 pip install -r asset-gen/tools/requirements.txt
-pip install google-genai
 ```
 
 In a published game repo, the same asset-generation requirements file lives at:
@@ -87,7 +86,7 @@ In a published game repo, the same asset-generation requirements file lives at:
 - `.claude/skills/asset-gen/tools/requirements.txt` for Claude Code
 - `.agents/skills/asset-gen/tools/requirements.txt` for Codex
 
-`google-genai` is required by `asset_gen.py` for Gemini image generation.
+`tencentcloud-sdk-python` is required by `asset_gen.py` for Hunyuan 3D generation and is included in the requirements file.
 
 ## Godot (.NET edition)
 
@@ -132,9 +131,9 @@ ls "$(dirname "$(which godot)")"/GodotSharp/
 
 Set in environment:
 
-- `GOOGLE_API_KEY` — Gemini image generation
-- `XAI_API_KEY` — xAI Grok image/video generation
-- `TRIPO3D_API_KEY` — image-to-3D conversion
+- `DASHSCOPE_API_KEY` — Alibaba Cloud Wan image/video generation
+- `TENCENTCLOUD_SECRET_ID` and `TENCENTCLOUD_SECRET_KEY` — Tencent Hunyuan 3D image-to-GLB conversion
+- Optional: `TENCENTCLOUD_REGION` (default `ap-guangzhou`), `WAN_IMAGE_MODEL`, and `WAN_VIDEO_MODEL`
 
 ## Verify Rendering
 
