@@ -36,13 +36,13 @@ Engine and host agent (Claude vs Codex) are publish-time render choices, not sep
 
 - [Godot 4](https://godotengine.org/download/) (.NET build) on `PATH` for Godot projects
 - Rust/Cargo for Bevy projects
-- Node.js 22.12+ and npm for Babylon.js projects
+- Node.js 20+ and npm (22.12+ for Babylon.js projects), plus the Tripo CLI: `npm install -g tripo-cli`
 - Chrome or Chromium with hardware WebGL2 for Babylon.js browser capture
 - Python 3 with pip
 - API keys as environment variables:
   - `GOOGLE_API_KEY` — [Google AI Studio](https://aistudio.google.com/) for Gemini image generation
   - `XAI_API_KEY` — [xAI Grok](https://console.x.ai/home) for image/video generation
-  - `TRIPO3D_API_KEY` — [Tripo3D](https://platform.tripo3d.ai/) for 3D generation
+  - `TRIPO_API_KEY` — [Tripo](https://developers.tripo3d.ai/) for 3D generation (used by the `tripo` CLI)
 - System packages from [setup.md](setup.md): `vulkan-tools`, `xvfb`, `ffmpeg`, `imagemagick`, plus platform-specific extras
 - Tested on Ubuntu, Debian, and macOS
 - Claude Code or Codex

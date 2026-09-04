@@ -1,13 +1,11 @@
 #!/usr/bin/env python3
-"""Asset Generator CLI - creates images (Gemini / xAI Grok) and GLBs (Tripo3D).
+"""Asset Generator CLI - creates images and videos (Gemini / xAI Grok).
 
 Subcommands:
   image     Generate a PNG from a prompt (Gemini 5-15¢ or Grok 2¢)
   video     Generate MP4 video from prompt + reference image (5¢/sec, Grok)
-  glb       Convert a PNG to a static GLB (30¢ default, 60¢ hd)
-  rig       Convert a PNG to a rigged biped GLB (preset + 25¢)
-  retarget  Apply a biped preset animation to a rigged GLB (10¢)
-  resume    Resume a timed-out Tripo3D job (glb/rig/retarget) from its sidecar — no extra cost
+
+3D models come from the `tripo` CLI (see SKILL.md), not from here.
 
 Output: JSON to stdout. Progress to stderr.
 """
@@ -25,37 +23,10 @@ from google import genai
 from google.genai import types
 from PIL import Image
 
-from tripo3d import (
-    create_image_to_model_task,
-    create_prerigcheck_task,
-    create_retarget_task,
-    create_rig_task,
-    download_model,
-    poll_task,
-)
-
 TOOLS_DIR = Path(__file__).parent
 
 VIDEO_MODEL = "grok-imagine-video"
 VIDEO_COST_PER_SEC = 5  # cents
-
-QUALITY_PRESETS = {
-    "default": {
-        "face_limit": 30000,
-        "geometry_quality": "standard",
-        "texture_quality": "standard",
-        "cost_cents": 30,
-    },
-    "hd": {
-        "face_limit": None,
-        "geometry_quality": "detailed",
-        "texture_quality": "detailed",
-        "cost_cents": 60,
-    },
-}
-
-RIG_COST_CENTS = 25
-RETARGET_COST_CENTS = 10
 
 
 def result_json(ok: bool, path: str | None = None, cost_cents: int = 0, error: str | None = None):
@@ -243,286 +214,9 @@ def cmd_video(args):
     result_json(True, path=str(output), cost_cents=cost)
 
 
-def _sidecar_path(output: Path) -> Path:
-    return output.with_suffix(output.suffix + ".tripo.json")
-
-
-def _write_sidecar(output: Path, data: dict) -> None:
-    _sidecar_path(output).write_text(json.dumps(data, indent=2) + "\n")
-
-
-def _read_sidecar(path: Path) -> dict:
-    sc = _sidecar_path(path)
-    if not sc.exists():
-        raise FileNotFoundError(f"Sidecar not found: {sc} (run `rig` first)")
-    return json.loads(sc.read_text())
-
-
-def _resolve_preset(name: str) -> dict:
-    if name not in QUALITY_PRESETS:
-        result_json(False, error=f"Unknown quality: {name}. Use: {', '.join(QUALITY_PRESETS)}")
-        sys.exit(1)
-    return QUALITY_PRESETS[name]
-
-
-def _resume_hint(output: Path) -> str:
-    return f"Task is still processing on the server. Resume (no extra cost) with: asset_gen.py resume -o {output}"
-
-
-def cmd_glb(args):
-    image_path = Path(args.image)
-    if not image_path.exists():
-        result_json(False, error=f"Image not found: {image_path}")
-        sys.exit(1)
-
-    preset = _resolve_preset(args.quality)
-
-    face_limit = args.face_limit if args.quality == "default" else preset["face_limit"]
-
-    output = Path(args.output)
-    output.parent.mkdir(parents=True, exist_ok=True)
-
-    print(f"Generating GLB (quality={args.quality}, pbr={args.pbr}, face_limit={face_limit})...", file=sys.stderr)
-
-    sidecar = {
-        "kind": "mesh",
-        "preset": args.quality,
-        "pbr": args.pbr,
-        "status": "pending",
-    }
-    try:
-        task_id = create_image_to_model_task(
-            image_path,
-            face_limit=face_limit,
-            pbr=args.pbr,
-            geometry_quality=preset["geometry_quality"],
-            texture_quality=preset["texture_quality"],
-        )
-        print(f"  image_to_model: {task_id}", file=sys.stderr)
-        sidecar["image_to_model_task_id"] = task_id
-        _write_sidecar(output, sidecar)
-
-        result = poll_task(task_id)
-        download_model(result, output)
-    except TimeoutError as e:
-        result_json(False, error=f"{e}. {_resume_hint(output)}", cost_cents=preset["cost_cents"])
-        sys.exit(1)
-    except Exception as e:
-        result_json(False, error=str(e))
-        sys.exit(1)
-
-    sidecar["status"] = "complete"
-    _write_sidecar(output, sidecar)
-    print(f"Saved: {output}", file=sys.stderr)
-    result_json(True, path=str(output), cost_cents=preset["cost_cents"])
-
-
-def cmd_rig(args):
-    image_path = Path(args.image)
-    if not image_path.exists():
-        result_json(False, error=f"Image not found: {image_path}")
-        sys.exit(1)
-
-    preset = _resolve_preset(args.quality)
-    total_cost = preset["cost_cents"] + RIG_COST_CENTS
-
-    face_limit = args.face_limit if args.quality == "default" else preset["face_limit"]
-
-    output = Path(args.output)
-    output.parent.mkdir(parents=True, exist_ok=True)
-
-    print(f"Generating rigged GLB (quality={args.quality}, face_limit={face_limit})...", file=sys.stderr)
-
-    sidecar = {
-        "kind": "rig",
-        "preset": args.quality,
-        "pbr": args.pbr,
-        "rig_type": "biped",
-        "status": "pending",
-    }
-    try:
-        gen_id = create_image_to_model_task(
-            image_path,
-            face_limit=face_limit,
-            pbr=args.pbr,
-            geometry_quality=preset["geometry_quality"],
-            texture_quality=preset["texture_quality"],
-        )
-        print(f"  image_to_model: {gen_id}", file=sys.stderr)
-        sidecar["image_to_model_task_id"] = gen_id
-        sidecar["stage"] = "image_to_model"
-        _write_sidecar(output, sidecar)
-        poll_task(gen_id)
-
-        check_id = create_prerigcheck_task(gen_id)
-        print(f"  animate_prerigcheck: {check_id}", file=sys.stderr)
-        sidecar["prerigcheck_task_id"] = check_id
-        sidecar["stage"] = "prerigcheck"
-        _write_sidecar(output, sidecar)
-        check_result = poll_task(check_id)
-        check_out = check_result.get("output", {})
-        rig_type = check_out.get("rig_type")
-        if rig_type != "biped":
-            result_json(False, error=(
-                f"Rig pipeline is biped-only; prerigcheck reported rig_type={rig_type!r}. "
-                f"Use `glb` for non-biped characters."
-            ), cost_cents=preset["cost_cents"])
-            sys.exit(1)
-
-        rig_id = create_rig_task(gen_id, rig_type="biped")
-        print(f"  animate_rig: {rig_id}", file=sys.stderr)
-        sidecar["animate_rig_task_id"] = rig_id
-        sidecar["stage"] = "animate_rig"
-        _write_sidecar(output, sidecar)
-        rig_result = poll_task(rig_id)
-        download_model(rig_result, output)
-    except TimeoutError as e:
-        result_json(False, error=f"{e}. {_resume_hint(output)}", cost_cents=0)
-        sys.exit(1)
-    except Exception as e:
-        result_json(False, error=str(e))
-        sys.exit(1)
-
-    sidecar["status"] = "complete"
-    _write_sidecar(output, sidecar)
-    print(f"Saved: {output}", file=sys.stderr)
-    result_json(True, path=str(output), cost_cents=total_cost)
-
-
-def cmd_retarget(args):
-    rigged = Path(args.rigged)
-    if not rigged.exists():
-        result_json(False, error=f"Rigged GLB not found: {rigged}")
-        sys.exit(1)
-
-    try:
-        rigged_sidecar = _read_sidecar(rigged)
-    except FileNotFoundError as e:
-        result_json(False, error=str(e))
-        sys.exit(1)
-
-    rig_task_id = rigged_sidecar.get("animate_rig_task_id")
-    if not rig_task_id or rigged_sidecar.get("kind") != "rig":
-        result_json(False, error=f"Sidecar for {rigged} is not a rig output")
-        sys.exit(1)
-
-    output = Path(args.output)
-    output.parent.mkdir(parents=True, exist_ok=True)
-
-    print(f"Retargeting ({args.animation})...", file=sys.stderr)
-
-    sidecar = {
-        "kind": "anim",
-        "animate_rig_task_id": rig_task_id,
-        "animation": args.animation,
-        "status": "pending",
-    }
-    try:
-        task_id = create_retarget_task(rig_task_id, args.animation)
-        print(f"  animate_retarget: {task_id}", file=sys.stderr)
-        sidecar["animate_retarget_task_id"] = task_id
-        _write_sidecar(output, sidecar)
-        result = poll_task(task_id)
-        download_model(result, output)
-    except TimeoutError as e:
-        result_json(False, error=f"{e}. {_resume_hint(output)}", cost_cents=RETARGET_COST_CENTS)
-        sys.exit(1)
-    except Exception as e:
-        result_json(False, error=str(e))
-        sys.exit(1)
-
-    sidecar["status"] = "complete"
-    _write_sidecar(output, sidecar)
-    print(f"Saved: {output}", file=sys.stderr)
-    result_json(True, path=str(output), cost_cents=RETARGET_COST_CENTS)
-
-
-def cmd_resume(args):
-    output = Path(args.output)
-    try:
-        sidecar = _read_sidecar(output)
-    except FileNotFoundError as e:
-        result_json(False, error=str(e))
-        sys.exit(1)
-
-    if sidecar.get("status") == "complete":
-        print(f"Already complete: {output}", file=sys.stderr)
-        result_json(True, path=str(output), cost_cents=0)
-        return
-
-    kind = sidecar.get("kind")
-    output.parent.mkdir(parents=True, exist_ok=True)
-
-    try:
-        if kind == "mesh":
-            task_id = sidecar["image_to_model_task_id"]
-            print(f"  resuming image_to_model: {task_id}", file=sys.stderr)
-            result = poll_task(task_id)
-            download_model(result, output)
-
-        elif kind == "rig":
-            stage = sidecar.get("stage")
-            gen_id: str = sidecar["image_to_model_task_id"]
-
-            if stage == "image_to_model":
-                print(f"  resuming image_to_model: {gen_id}", file=sys.stderr)
-                poll_task(gen_id)
-                check_id = create_prerigcheck_task(gen_id)
-                print(f"  animate_prerigcheck: {check_id}", file=sys.stderr)
-                sidecar["prerigcheck_task_id"] = check_id
-                sidecar["stage"] = "prerigcheck"
-                _write_sidecar(output, sidecar)
-                stage = "prerigcheck"
-
-            if stage == "prerigcheck":
-                check_id = sidecar["prerigcheck_task_id"]
-                print(f"  resuming animate_prerigcheck: {check_id}", file=sys.stderr)
-                check_result = poll_task(check_id)
-                rt = check_result.get("output", {}).get("rig_type")
-                if rt != "biped":
-                    result_json(False, error=f"prerigcheck: rig_type={rt!r}; rig pipeline is biped-only")
-                    sys.exit(1)
-                rig_id = create_rig_task(gen_id, rig_type="biped")
-                print(f"  animate_rig: {rig_id}", file=sys.stderr)
-                sidecar["animate_rig_task_id"] = rig_id
-                sidecar["stage"] = "animate_rig"
-                _write_sidecar(output, sidecar)
-                stage = "animate_rig"
-
-            if stage == "animate_rig":
-                rig_id = sidecar["animate_rig_task_id"]
-                print(f"  resuming animate_rig: {rig_id}", file=sys.stderr)
-                rig_result = poll_task(rig_id)
-                download_model(rig_result, output)
-            else:
-                result_json(False, error=f"Unknown rig stage: {stage}")
-                sys.exit(1)
-
-        elif kind == "anim":
-            task_id = sidecar["animate_retarget_task_id"]
-            print(f"  resuming animate_retarget: {task_id}", file=sys.stderr)
-            result = poll_task(task_id)
-            download_model(result, output)
-
-        else:
-            result_json(False, error=f"Unknown sidecar kind: {kind!r}")
-            sys.exit(1)
-
-    except TimeoutError as e:
-        result_json(False, error=f"{e}. Task still processing; retry resume.", cost_cents=0)
-        sys.exit(1)
-    except Exception as e:
-        result_json(False, error=str(e))
-        sys.exit(1)
-
-    sidecar["status"] = "complete"
-    _write_sidecar(output, sidecar)
-    print(f"Saved: {output}", file=sys.stderr)
-    result_json(True, path=str(output), cost_cents=0)
-
 
 def main():
-    parser = argparse.ArgumentParser(description="Asset Generator — images (Gemini / xAI Grok) and GLBs (Tripo3D)")
+    parser = argparse.ArgumentParser(description="Asset Generator — images and videos (Gemini / xAI Grok)")
     sub = parser.add_subparsers(dest="command", required=True)
 
     p_img = sub.add_parser("image", help="Generate a PNG image (Gemini 5-15¢ or Grok 2¢)")
@@ -545,38 +239,6 @@ def main():
                        help="Video resolution. Default: 720p")
     p_vid.add_argument("-o", "--output", required=True, help="Output MP4 path")
     p_vid.set_defaults(func=cmd_video)
-
-    p_glb = sub.add_parser("glb", help="Convert PNG to static GLB (30¢ default, 60¢ hd)")
-    p_glb.add_argument("--image", required=True, help="Input PNG path")
-    p_glb.add_argument("--quality", default="default", choices=list(QUALITY_PRESETS.keys()),
-                       help="default=30¢ v3.1 std (30k faces), hd=60¢ v3.1 detailed geom+HD texture")
-    p_glb.add_argument("--no-pbr", dest="pbr", action="store_false", default=True,
-                       help="Disable PBR (use if PBR output looks wrong)")
-    p_glb.add_argument("--face-limit", type=int, default=30000,
-                       help="Face cap for default quality, 10000-50000. Ignored when --quality hd. Default: 30000")
-    p_glb.add_argument("-o", "--output", required=True, help="Output GLB path")
-    p_glb.set_defaults(func=cmd_glb)
-
-    p_rig = sub.add_parser("rig", help="Convert PNG to rigged biped GLB (preset cost + 25¢). Biped only.")
-    p_rig.add_argument("--image", required=True, help="Input PNG path (biped character)")
-    p_rig.add_argument("--quality", default="default", choices=list(QUALITY_PRESETS.keys()),
-                       help="Underlying mesh preset (default or hd)")
-    p_rig.add_argument("--no-pbr", dest="pbr", action="store_false", default=True,
-                       help="Disable PBR")
-    p_rig.add_argument("--face-limit", type=int, default=30000,
-                       help="Face cap for default quality. Ignored when --quality hd. Default: 30000")
-    p_rig.add_argument("-o", "--output", required=True, help="Output rigged GLB path")
-    p_rig.set_defaults(func=cmd_rig)
-
-    p_rt = sub.add_parser("retarget", help="Apply a preset:biped:* animation to a rigged GLB (10¢)")
-    p_rt.add_argument("--rigged", required=True, help="Rigged GLB produced by `rig`")
-    p_rt.add_argument("--animation", required=True, help="e.g. preset:biped:walk")
-    p_rt.add_argument("-o", "--output", required=True, help="Output animated GLB path")
-    p_rt.set_defaults(func=cmd_retarget)
-
-    p_res = sub.add_parser("resume", help="Resume a timed-out Tripo3D job from its sidecar (no extra cost)")
-    p_res.add_argument("-o", "--output", required=True, help="Output path whose .tripo.json sidecar holds the pending task id(s)")
-    p_res.set_defaults(func=cmd_resume)
 
     args = parser.parse_args()
     args.func(args)

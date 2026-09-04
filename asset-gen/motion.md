@@ -26,7 +26,7 @@ Follow the README's "For agents" reading order: KIMODO.md → ALIGN.md → BAKE.
 
 ## Character bridge (this skill)
 
-The character comes from `asset_gen.py rig` — Tripo-rigged bipeds certify against the lib's Stage 1 battery (verified). Certify before animating; a rig that fails gets regenerated, not patched. After baking, run the lib's `qa_endeffectors.mjs <char.glb> <movesDir> --gate` for every character × move-set pair — skewed fists/feet from a wrong rest anchor read fine in stills and are ~free to catch mechanically.
+The character comes from `tripo make <ref.png> --then rig-check,rig:model=v1.0-20240301` (SKILL.md) — Tripo-rigged bipeds certify against the lib's Stage 1 battery (verified). Certify before animating; a rig that fails gets regenerated, not patched. After baking, run the lib's `qa_endeffectors.mjs <char.glb> <movesDir> --gate` for every character × move-set pair — skewed fists/feet from a wrong rest anchor read fine in stills and are ~free to catch mechanically.
 
 ## The move set is half authored
 

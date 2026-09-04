@@ -39,7 +39,7 @@ rustc --version
 
 ## Node.js And Browser
 
-Babylon.js projects require Node.js 22.12+ and npm:
+The Tripo CLI needs Node.js 20+ for every engine (`npm install -g tripo-cli`); Babylon.js projects need 22.12+:
 
 ```bash
 node --version
@@ -170,7 +170,7 @@ Set in environment:
 
 - `GOOGLE_API_KEY` — Gemini image generation
 - `XAI_API_KEY` — xAI Grok image/video generation
-- `TRIPO3D_API_KEY` — image-to-3D conversion
+- `TRIPO_API_KEY` — image-to-3D conversion via the `tripo` CLI (`npm install -g tripo-cli`, Node 20+)
 
 ## Verify Rendering
 

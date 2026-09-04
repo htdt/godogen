@@ -5,12 +5,12 @@ short_description: Generate game images, GLB 3D models, rigged characters, and a
 default_prompt: "Use ${ASSET_SKILL_COMMAND} to generate images, 3D models, or animated sprites for this game."
 allow_implicit_invocation: true
 description: |
-  Generate visual assets from text prompts: PNG images (Gemini / xAI Grok), GLB 3D models (Tripo3D), rigged biped characters, retargeted animations, and frame-by-frame animated sprites, plus background removal. Use whenever a game needs generated art.
+  Generate visual assets from text prompts: PNG images (Gemini / xAI Grok), GLB 3D models (Tripo CLI), rigged characters, retargeted animations, and frame-by-frame animated sprites, plus background removal. Use whenever a game needs generated art.
 ---
 
 # Asset Generator
 
-Generate PNG images (Gemini or xAI Grok) and GLB 3D models (Tripo3D) from text prompts. These are paid APIs — every call costs real money. Tools live at `${ASSET_GEN_SKILL_DIR}/tools/`; run from the project root and keep runtime-loaded outputs under `${RUNTIME_ASSET_DIR}/`.
+Generate PNG images (Gemini or xAI Grok) and GLB 3D models (Tripo) from text prompts. These are paid APIs — every call costs real money. Image tools live at `${ASSET_GEN_SKILL_DIR}/tools/`; 3D goes through the `tripo` CLI. Run from the project root and keep runtime-loaded outputs under `${RUNTIME_ASSET_DIR}/`.
 
 ## Models
 
@@ -34,7 +34,7 @@ python3 ${ASSET_GEN_SKILL_DIR}/tools/asset_gen.py image \
 
 **Small sprites:** minimum generation is 1K, so a 1024px image downscaled to 64px looks muddy. Design display sizes ≥128px, or generate a kit (multiple objects in one 1K image) and slice it with `tools/grid_slice.py ... --grid 2x2 --names "a,b,c,d"`, or prompt for bold flat forms that survive downscaling.
 
-Review every PNG before any GLB conversion — a bad image wastes 30¢+ downstream.
+Review every PNG before any GLB conversion — a bad image wastes 30+ credits downstream.
 
 ### Background removal
 
@@ -55,16 +55,25 @@ Reuse one reference for all of a character's actions. **Chaining** (feed action 
 
 ## 3D models
 
+The `tripo` CLI (`npm install -g tripo-cli`, key in `TRIPO_API_KEY`) owns the whole 3D path: submit, poll, download, credit pre-check, refunds on failure. Its own agent docs are the reference — `tripo docs --llm`, then `tripo docs --topic commands/process` / `examples/animation` / `common-errors` — this section only covers what is specific to game use here.
+
 ```bash
-python3 ${ASSET_GEN_SKILL_DIR}/tools/asset_gen.py glb  --image ref.png -o model.glb     # 30¢ default / 60¢ --quality hd
-python3 ${ASSET_GEN_SKILL_DIR}/tools/asset_gen.py rig  --image ref.png -o rigged.glb    # +25¢, biped only
-python3 ${ASSET_GEN_SKILL_DIR}/tools/asset_gen.py retarget --rigged rigged.glb \
-  --animation preset:biped:walk -o walk.glb                                             # 10¢ per clip
+tripo make ref.png --name car -p face_limit=30000 -p auto_size=true --json --yes -o ${RUNTIME_ASSET_DIR}/glb
+tripo make ref.png --name hero --then rig-check,rig:model=v1.0-20240301 --json --yes -o ${RUNTIME_ASSET_DIR}/glb
+tripo anim retarget @hero --animation preset:biped:walk preset:biped:idle --json --yes -o ${RUNTIME_ASSET_DIR}/glb
 ```
 
-Source image for `glb`: 3/4 elevated angle, solid white/gray background, matte finish, opaque glass, single centered subject — and **do not** rembg it (Tripo3D needs the solid bg). `rig` is biped-only and aborts if the mesh isn't humanoid; quadrupeds use plain `glb`. `retarget` reuses the rigged task id — run it once per animation against the same rigged GLB (no re-rigging). Don't assume the preset name survives into the GLB; inspect the imported clip names before wiring playback.
+- `make` is blocking (default timeout 30 min) and prints one JSON line: read `model_file`, `preview.png` and `credits_consumed` from it. Never add your own shorter timeout, never resubmit because a task_id appeared in stderr. If the process does die, `tripo task watch <id> --download` finishes the same task for free.
+- Output lands in `<-o dir>/<name>-<id8>/` (`model.glb`, `preview.png`, `task.json`). Move or reference the GLB from there; `task.json` keeps the seeds and task id, so there is nothing else to save.
+- `--name X` makes the task addressable as `@X` for later steps (retarget, convert, decimate). Retarget reuses the rig task — never re-rig for another clip; up to 5 animations per call, billed per animation.
+- Model defaults to v3.1. For `face_limit` ≤ 20000 the CLI silently switches to P1 (low-poly topology, no `geometry_quality`) — that is the right choice for mobile-style budgets, but know it happens. `--for game-pc` converts to FBX by default; skip it for GLB engines.
+- `-p geometry_quality=detailed -p texture_quality=detailed` is the HD tier (≈ double credits).
+- Rig: keep `rig:model=v1.0-20240301` for bipeds — that is the rig motion.md's pipeline is certified against, and it uses the `preset:biped:*` clips below. The CLI's default rig (v2.5) covers quadrupeds, avians, etc. with `preset:<name>` clips (`idle walk run dive climb jump slash shoot hurt fall turn`); unverified with motion.md. `rig-check` in the chain aborts before rigging if the mesh isn't riggable. `--animate-in-place` when game code drives locomotion.
+- Don't assume the preset name survives into the GLB; inspect the imported clip names before wiring playback.
 
-Biped retarget presets (pass as `preset:biped:<name>`):
+Source image for `make`: 3/4 elevated angle, solid white/gray background, matte finish, opaque glass, single centered subject — and **do not** rembg it (Tripo needs the solid bg). For characters, generate the reference in a T-pose.
+
+v1.0 biped retarget presets (pass as `preset:biped:<name>`):
 
 ```
 afraid agree angry_01/02/03 basketball_shot bow box_01/02/03 cast_a_spell cheer chop
@@ -80,22 +89,13 @@ victory_celebration volleyball wait walk warm_up wave_goodbye_01/02
 
 Presets are generic stock clips. **Important:** when gameplay needs a custom humanoid move set (state machines, root-motion locomotion, moves not in this list), read `${ASSET_GEN_SKILL_DIR}/motion.md`.
 
-### Tripo3D operations (important — avoids double-charging)
-
-- Jobs routinely sit at 99% with empty output for minutes. Let the default timeout run.
-- A timeout in `glb`/`rig`/`retarget` does **not** mean server failure. The task id is already saved in the `<output>.tripo.json` sidecar. **Do not resubmit — that double-charges.** Resume for free instead:
-  ```bash
-  python3 ${ASSET_GEN_SKILL_DIR}/tools/asset_gen.py resume -o model.glb
-  ```
-  Safe to re-run; it no-ops once complete. Delete the sidecar to force a cold start.
-
 ## Costs
 
-Each generation costs real money, so confirm with the user before generating. Quick reference: texture/simple sprite (Grok) 2¢ · character/ref (Gemini 1K) 7¢ · background 2¢ (Grok) or 10¢ (Gemini 2K) · full 3D asset 37¢ (7¢ image + 30¢ GLB) · rigged character walk/idle/attack ≈ 92¢.
+Each generation costs real money, so confirm with the user before generating. Quick reference: texture/simple sprite (Grok) 2¢ · character/ref (Gemini 1K) 7¢ · background 2¢ (Grok) or 10¢ (Gemini 2K). Tripo bills in credits (≈1¢): ~30 per model, ~25 to rig, ~10 per retargeted clip — `tripo balance` before a batch, and report the `credits_consumed` the CLI returns rather than an estimate.
 
 ## Output and logging
 
-Each command prints JSON to stdout: `{"ok": true, "path": "...", "cost_cents": 7}`. Progress goes to stderr — redirect it to a temp file and read only on failure to keep context clean:
+Each `asset_gen.py` command prints JSON to stdout: `{"ok": true, "path": "...", "cost_cents": 7}`; `tripo` does the same with `--json`. Progress goes to stderr — redirect it to a temp file and read only on failure to keep context clean:
 
 ```bash
 _log=$(mktemp)
@@ -123,4 +123,4 @@ Track every generated asset in `README.md` with an **in-game Size** column — w
 
 | Name | Description | Size | Path | Cost |
 |------|-------------|------|------|------|
-| car | sedan with spoiler | 4m long | ${RUNTIME_ASSET_DIR}/glb/car.glb | 37¢ |
+| car | sedan with spoiler | 4m long | ${RUNTIME_ASSET_DIR}/glb/car.glb | 7¢ + 30 cr |
