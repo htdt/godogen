@@ -86,6 +86,8 @@ In a published game repo, the same asset-generation requirements file lives at:
 
 - `.claude/skills/asset-gen/tools/requirements.txt` for Claude Code
 - `.agents/skills/asset-gen/tools/requirements.txt` for Codex
+- `.zcode/skills/asset-gen/tools/requirements.txt` for ZCode
+- `.dsh/skills/asset-gen/tools/requirements.txt` for dsh
 
 `google-genai` is required by `asset_gen.py` for Gemini image generation.
 

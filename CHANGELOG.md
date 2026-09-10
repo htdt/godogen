@@ -1,5 +1,9 @@
 # Changelog
 
+**2026-09-10 — ZCode and dsh support**
+- Added `--agent zcode` and `--agent dsh` alongside `claude` and `codex`. Both publish the `AGENTS.md` manifest with their native skill roots: `.zcode/skills/` for ZCode, `.dsh/skills/` for dsh. The `asset-gen` `SKILL.md` frontmatter works for all four agents unchanged — only Codex gets generated `agents/openai.yaml`.
+- ZCode and dsh also discover `.agents/skills/` (the Codex layout) as a fallback root, so existing Codex-published repos already run under them; the dedicated flavors pin the native roots and the agent-appropriate skill-invocation phrasing.
+
 **2026-07-02 — Docs-only runtime**
 - Replaced the multi-stage skill pipeline with a thin runtime: a single engine-agnostic manifest (`prompts/runtime.md`), a one-page per-engine guide, and the cross-engine `asset-gen` skill. The model plans, scaffolds, and decomposes the work itself.
 - One runtime manifest covers delivery. The agent reads how the task is framed in-run: an open-ended direction gets the live game early and checkpoints at taste/scope/cost decisions; a finished brief runs on reasonable calls and closes with a 15–20s proof recording, watched back before done. Run/show/capture mechanics live in the engine guides and serve both paths.
