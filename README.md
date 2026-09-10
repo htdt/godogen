@@ -1,6 +1,6 @@
 # Godogen
 
-Autonomous game development for Godot, Bevy, and Babylon.js with Claude Code and Codex.
+Autonomous game development for Godot, Bevy, and Babylon.js with Claude Code, Codex, ZCode, and dsh.
 
 [![Watch the video](https://img.youtube.com/vi/eUz19GROIpY/maxresdefault.jpg)](https://youtu.be/eUz19GROIpY)
 
@@ -19,7 +19,7 @@ A published repo is intentionally thin: a runtime manifest, a one-page engine gu
 - `engines/babylon.md`, `engines/godot.md`, `engines/bevy.md` — per-engine guides
 - [publish.sh](publish.sh) — renders the runtime layout for the chosen engine and host agent
 
-Engine and host agent (Claude vs Codex) are publish-time render choices, not separate source trees.
+Engine and host agent (Claude, Codex, ZCode, dsh) are publish-time render choices, not separate source trees.
 
 ## What the agent does
 
@@ -45,7 +45,7 @@ Engine and host agent (Claude vs Codex) are publish-time render choices, not sep
   - `TRIPO3D_API_KEY` — [Tripo3D](https://platform.tripo3d.ai/) for 3D generation
 - System packages from [setup.md](setup.md): `vulkan-tools`, `xvfb`, `ffmpeg`, `imagemagick`, plus platform-specific extras
 - Tested on Ubuntu, Debian, and macOS
-- Claude Code or Codex
+- Claude Code, Codex, ZCode, or dsh
 
 ### Publish a game repo
 
@@ -54,7 +54,8 @@ Pick the engine and host agent:
 ```bash
 ./publish.sh --engine godot   --agent claude --out ~/my-game       # CLAUDE.md + .claude/skills/
 ./publish.sh --engine babylon --agent codex  --out ~/my-game       # AGENTS.md + .agents/skills/
-./publish.sh --engine bevy    --agent claude --out ~/my-game
+./publish.sh --engine bevy    --agent zcode  --out ~/my-game       # AGENTS.md + .zcode/skills/
+./publish.sh --engine godot   --agent dsh    --out ~/my-game       # AGENTS.md + .dsh/skills/
 ```
 
 Pass `--force` to wipe existing contents at the target before re-publishing.
