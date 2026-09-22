@@ -164,6 +164,33 @@ Verify:
 ls "$KIMODO_HOME/text_encoders/llama3-8b-instruct-base/config.json"
 ```
 
+## Local Image Generation (Optional)
+
+A `qwen-image` command on `PATH` runs [Qwen-Image-2.1](https://huggingface.co/Qwen/Qwen-Image-2.1) on the local GPU. When the asset-gen skill finds it, simple images are generated there for free; otherwise they go to the paid APIs.
+
+Requires an NVIDIA GPU with a working CUDA driver and ~33 GB of weights to download. Unquantized, the model wants ~40 GB VRAM; quantized with CPU offload, a 12 GB card with 23 GB RAM runs it at ~2.5 min per 1024² image.
+
+GPUs, drivers, and memory differ too much for one recipe, so there isn't one: on the target machine, have Claude Code build the command from the brief below.
+
+### Brief
+
+Goal: a `qwen-image` command on `PATH` that runs Qwen-Image-2.1 (https://huggingface.co/Qwen/Qwen-Image-2.1, diffusers `QwenImage21Pipeline`) locally with the interface below. Download the model, quantize/offload if the local GPU needs it, implement the CLI in its own isolated Python environment. One-shot command, not a server. It must behave the same from any directory and shell, whatever the caller's environment (an active venv, `PYTHONPATH`, `LD_LIBRARY_PATH`) — game agents call it from their own project shells.
+
+- `qwen-image generate PROMPT` | `qwen-image rgba PROMPT` (transparent PNG; the command adds the model's RGBA prompt phrasing itself) | `qwen-image edit -i IMG [-i IMG ...] PROMPT` | `qwen-image info`
+- `PROMPT` of `-` reads stdin.
+- Options: `-o/--out PATH`, `--size WxH`, `--resolution N` (default 1024), `--steps N` (default 40), `--seed N` (random if omitted), `--cfg F`, `--negative TEXT`, `--json`.
+- stdout: absolute output path, or with `--json` `{output, width, height, mode, prompt, seed, steps, cfg, inputs, seconds, peak_vram_gb}` / `{"error": ...}`. Progress on stderr. Exit 0 on success, 1 on failure. Output is PNG.
+
+Known trap: don't quantize the transformer with bitsandbytes LLM.int8 (`load_in_8bit`). Its kernel casts activations to fp16, which overflows on this DiT and returns the same noise for every prompt. NF4 or torchao int8 weight-only are clean.
+
+Verify:
+
+```bash
+qwen-image info
+qwen-image rgba --resolution 512 --steps 10 "a red apple" -o /tmp/apple.png   # look at it
+magick identify -format '%[opaque]\n' /tmp/apple.png                           # False (has transparency)
+```
+
 ## API Keys
 
 Set in environment:
