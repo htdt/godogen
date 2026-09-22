@@ -14,13 +14,13 @@ Generate PNG images (Gemini or xAI Grok) and GLB 3D models (Tripo) from text pro
 
 ## Models
 
-| Model | Flag | Cost | Best for |
-|-------|------|------|----------|
-| Gemini | `--model gemini` | 5¢ (512) · 7¢ (1K) · 10¢ (2K) · 15¢ (4K) | Precise prompt following — references, characters, 3D refs, exact layouts |
-| Grok | `--model grok` (default) | 2¢ | High quality but imprecise — textures, simple objects, item kits, scenic backgrounds |
+| Model | Flag | Cost | Notes |
+|-------|------|------|-------|
+| Gemini 3.1 Flash Image | `--model gemini` | 5¢ (512) · 7¢ (1K) · 10¢ (2K) · 15¢ (4K) | ~10 s per image |
+| Grok Imagine Image 2.0 | `--model grok` | 6¢ (1K) · 8¢ (2K), +1¢ per reference image | 1–2 min per image |
 | Qwen-Image | `qwen-image` CLI (local, if installed) | free, minutes per image | Simple images — textures, props, icons, UI, backgrounds, in-image text; native transparency |
 
-Grok produces great-looking output but often ignores specific instructions; reach for Gemini when the result must match what you described.
+Gemini and Grok are equally strong: both follow detailed prompts closely, and both slip on small details — a miscounted item, a mirrored left/right. Use whichever key is set; with both, `asset_gen.py` defaults to Gemini for speed. When an asset is quality-critical (a character reference that anchors 3D or animation, a hero image) and both keys are set, generate it with both and keep the better one.
 
 ## Images
 
@@ -29,7 +29,7 @@ python3 ${ASSET_GEN_SKILL_DIR}/tools/asset_gen.py image \
   --prompt "the full prompt" -o ${RUNTIME_ASSET_DIR}/img/car.png
 ```
 
-`--model` (default `grok`) · `--size` (default `1K`; Gemini also `512`/`4K`) · `--aspect-ratio` (default `1:1`; also `16:9`, `9:16`, `4:3`, `3:4`, `3:2`, `2:3`).
+`--model` (default `gemini` when its key is set, else `grok`) · `--size` (default `1K`; Gemini also `512`/`4K`) · `--aspect-ratio` (default `1:1`; also `16:9`, `9:16`, `4:3`, `3:4`, `3:2`, `2:3`).
 
 **Image-to-image:** pass `--image ref.png` and the model sees the reference — prompt only for what changes (angle, pose, recolor), don't re-describe appearance. Use this for style families (one hero asset → the rest), variants, and multi-view sets.
 
@@ -43,7 +43,7 @@ Read `${ASSET_GEN_SKILL_DIR}/rembg.md`. Key rule: **never prompt for a "transpar
 
 ### Local generation (`qwen-image`)
 
-If `command -v qwen-image` finds it, this machine runs Qwen-Image-2.1 on its own GPU. It costs nothing, so simple images go there first; keep Gemini for characters, references, and exact layouts.
+If `command -v qwen-image` finds it, this machine runs Qwen-Image-2.1 on its own GPU. It costs nothing, so simple images go there first; keep the paid models for characters, references, and exact layouts.
 
 ```bash
 qwen-image generate "the full prompt" -o ${RUNTIME_ASSET_DIR}/img/crate.png                 # --size WxH or --resolution N (default 1024)
@@ -60,9 +60,9 @@ qwen-image edit -i crate.png "mossy and cracked" -o ${RUNTIME_ASSET_DIR}/img/cra
 
 Recipe: **reference → pose → video → extract frames → loop-trim → rembg.**
 
-1. Reference (Gemini 1K, neutral pose, solid BG) — anchors everything; review carefully.
+1. Reference (1K, neutral pose, solid BG) — anchors everything; review carefully.
 2. Pose per action: image-to-image from the reference, prompt only the action.
-3. Video from the pose frame: `asset_gen.py video --image pose.png --duration 2 -o walk.mp4` (`--duration` 1–15s, `--resolution` 720p; cost 5¢/s).
+3. Video from the pose frame: `asset_gen.py video --image pose.png --duration 2 -o walk.mp4` (Grok, needs `XAI_API_KEY`; `--duration` 1–15s; `--resolution` 720p at 14¢/s, or 480p at 8¢/s — enough for small sprites).
 4. Extract: `ffmpeg -i walk.mp4 -vsync 0 frames/%04d.png`.
 5. Loop-trim looping cycles (walk/idle): `tools/find_loop_frame.py frames/` returns the loop frame; delete frames past it. Skip for one-shots (attack/death).
 6. Batch matte: `tools/rembg_matting.py --batch frames/ -o clean/`.
@@ -107,7 +107,7 @@ Presets are generic stock clips. **Important:** when gameplay needs a custom hum
 
 ## Costs
 
-Paid generations cost real money, so confirm with the user before generating; `qwen-image` runs are free. Quick reference: texture/simple sprite (Grok) 2¢ · character/ref (Gemini 1K) 7¢ · background 2¢ (Grok) or 10¢ (Gemini 2K). Tripo bills in credits (≈1¢): ~30 per model, ~25 to rig, ~10 per retargeted clip — `tripo balance` before a batch, and report the `credits_consumed` the CLI returns rather than an estimate.
+Paid generations cost real money, so confirm with the user before generating; `qwen-image` runs are free. Quick reference: 1K image 6–7¢ · 2K background 8–10¢ · a quality-critical image generated on both models ~13¢ · sprite video 14¢/s at 720p. Tripo bills in credits (≈1¢): ~30 per model, ~25 to rig, ~10 per retargeted clip — `tripo balance` before a batch, and report the `credits_consumed` the CLI returns rather than an estimate.
 
 ## Output and logging
 
@@ -125,7 +125,7 @@ Generate independent API images in parallel (multiple Bash calls in one message)
 Generators and vision checks have weak spatial sense — verify from screenshots when it matters.
 
 - **Direction/orientation** is unreliable ("facing left" vs "right" often comes out identical). Generate one direction and flip horizontally at runtime rather than paying for the mirror.
-- **Mixed sizes:** image frames are ~1024px, video frames ~720px. Downscale everything to the smallest source before matting (`magick in.png -resize 720x720 out.png`).
+- **Mixed sizes:** image frames are ~1024px, video frames smaller (960px square at 720p). Downscale everything to the smallest source before matting (`magick in.png -resize 960x960 out.png`).
 - **Playback fps:** source videos are ~24fps — drive sprite playback off elapsed time at ~1/24s, and only restart a loop when the animation state actually changes.
 
 ## Asset manifest (in README.md)

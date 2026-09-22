@@ -47,44 +47,38 @@ def _has_nvidia_gpu() -> bool:
         return False
 
 
-def _check_cuda_available() -> bool:
-    """Check if onnxruntime can actually use CUDA."""
-    try:
-        import onnxruntime as ort
-        return "CUDAExecutionProvider" in ort.get_available_providers()
-    except Exception:
-        return False
-
-
 def create_session(model: str = "birefnet-general"):
     """Create a rembg session with GPU acceleration when available.
 
-    Tries CUDA first, falls back to CPU. Warns loudly if GPU is present
-    but CUDA providers are missing (missing deps).
+    Tries CUDA first, falls back to CPU. Warns loudly if a GPU is present
+    but the session can't run on it (missing or mismatched CUDA libraries).
     """
-    has_gpu = _has_nvidia_gpu()
-    cuda_ok = _check_cuda_available() if has_gpu else False
+    if not _has_nvidia_gpu():
+        print("rembg: using CPU", file=sys.stderr)
+        return new_session(model, providers=["CPUExecutionProvider"])
 
-    if has_gpu and cuda_ok:
+    # CUDA/cuDNN from the nvidia-* pip wheels aren't on the loader path until preloaded
+    try:
+        import onnxruntime as ort
+        ort.preload_dlls()
+    except Exception:
+        pass
+
+    session = new_session(model, providers=["CUDAExecutionProvider", "CPUExecutionProvider"])
+    if "CUDAExecutionProvider" in session.inner_session.get_providers():
         print("rembg: using GPU (CUDAExecutionProvider)", file=sys.stderr)
-        return new_session(model, providers=["CUDAExecutionProvider", "CPUExecutionProvider"])
+        return session
 
-    if has_gpu and not cuda_ok:
-        print(
-            "\n"
-            "WARNING: NVIDIA GPU detected but CUDA is not available for rembg/onnxruntime.\n"
-            "  Background removal will run on CPU (much slower).\n"
-            "  To fix, install GPU dependencies:\n"
-            "    pip install onnxruntime-gpu nvidia-cudnn-cu12==9.*\n"
-            "  Then verify:\n"
-            "    python -c \"import onnxruntime; print(onnxruntime.get_available_providers())\"\n"
-            "  Expected output should include 'CUDAExecutionProvider'.\n",
-            file=sys.stderr,
-        )
-
-    # CPU fallback
+    print(
+        "\n"
+        "WARNING: NVIDIA GPU detected but rembg/onnxruntime can't run on it.\n"
+        "  Background removal will run on CPU (much slower).\n"
+        "  The onnxruntime error above names the library that failed to load. To fix:\n"
+        "    pip install -U \"onnxruntime-gpu[cuda,cudnn]\"\n",
+        file=sys.stderr,
+    )
     print("rembg: using CPU", file=sys.stderr)
-    return new_session(model, providers=["CPUExecutionProvider"])
+    return session
 
 
 def sample_bg_color(img: np.ndarray, block: int = 2) -> np.ndarray:
@@ -309,7 +303,7 @@ def main():
 
     # QA preview: composite on contrasting solid bg for visual inspection
     if args.preview:
-        preview_path = make_qa_preview(out, output_path, bg_color)
+        preview_path = make_qa_preview(out, output_path, sample_bg_color(img))
         print(f"  QA preview: {preview_path}")
 
 

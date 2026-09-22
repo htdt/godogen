@@ -196,7 +196,9 @@ magick identify -format '%[opaque]\n' /tmp/apple.png                           #
 Set in environment:
 
 - `GOOGLE_API_KEY` — Gemini image generation
-- `XAI_API_KEY` — xAI Grok image/video generation
+- `XAI_API_KEY` — xAI Grok image generation and animated-sprite video
+
+Either image key is enough; with both, Gemini is the default and quality-critical assets are generated on each.
 - `TRIPO_API_KEY` — image-to-3D conversion via the `tripo` CLI (`npm install -g tripo-cli`, Node 20+)
 
 ## Verify Rendering

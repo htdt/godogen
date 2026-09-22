@@ -26,7 +26,7 @@ Engine and host agent (Claude vs Codex) are publish-time render choices, not sep
 - **Godot 4** — C#/.NET projects with build-time scene generation, runtime scripts, and Jolt physics.
 - **Bevy** — Rust/Bevy projects with code-first ECS scenes and offscreen capture.
 - **Babylon.js** — TypeScript/Vite browser games served at a live URL.
-- **Asset generation** — Gemini for precise references and characters, xAI Grok for textures and simple objects, Tripo3D for image-to-3D and rigged biped animation; animated sprites via Grok video with loop detection and background removal.
+- **Asset generation** — Gemini or xAI Grok for images (whichever key is set; with both, quality-critical assets are generated on each and the better kept), Tripo3D for image-to-3D and rigged biped animation; animated sprites via Grok video with loop detection and background removal.
 - **Proof over claims** — the agent judges results from the running game (a live URL or a recorded clip), not from a clean compile, so visible defects drive the next iteration.
 - **You choose your involvement** — watch the live game (a Babylon.js URL, or a Godot/Bevy project you run) and steer at decision points, or leave the run unattended and get a 15–20s proof recording at the end. The agent takes its cue from how you frame the task.
 
@@ -41,7 +41,7 @@ Engine and host agent (Claude vs Codex) are publish-time render choices, not sep
 - Python 3 with pip
 - API keys as environment variables:
   - `GOOGLE_API_KEY` — [Google AI Studio](https://aistudio.google.com/) for Gemini image generation
-  - `XAI_API_KEY` — [xAI Grok](https://console.x.ai/home) for image/video generation
+  - `XAI_API_KEY` — [xAI Grok](https://console.x.ai/home) for image generation and animated-sprite video (either image key is enough)
   - `TRIPO_API_KEY` — [Tripo](https://developers.tripo3d.ai/) for 3D generation (used by the `tripo` CLI)
 - System packages from [setup.md](setup.md): `vulkan-tools`, `xvfb`, `ffmpeg`, `imagemagick`, plus platform-specific extras
 - Tested on Ubuntu, Debian, and macOS

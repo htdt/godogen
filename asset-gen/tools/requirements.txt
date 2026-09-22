@@ -1,9 +1,8 @@
-xai-sdk
+xai-sdk>=1.19
 google-genai
 requests
 numpy
 pillow
 rembg
 pymatting
-onnxruntime-gpu
-nvidia-cudnn-cu12==9.*
+onnxruntime-gpu[cuda,cudnn]
