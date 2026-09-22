@@ -1,5 +1,11 @@
 # Changelog
 
+**2026-09-22 — Local image generation, current image models**
+- Added local image generation: when `qwen-image` is on PATH, `asset-gen` runs Qwen-Image-2.1 on the machine's GPU for free, so simple images (textures, props, icons, UI, backgrounds, in-image text) go there before the paid APIs; `qwen-image rgba` outputs real alpha with no matting. `setup.md` carries a brief for building the command on each machine.
+- Image generation uses Gemini 3.1 Flash Image and Grok Imagine Image 2.0 (medium quality) as equals — a side-by-side on a 3D-ready character and a dense composition came out even. `asset_gen.py` uses whichever key is set, Gemini by default for speed (~10 s vs 1–2 min); quality-critical assets are generated on both and the better kept.
+- Sprite video uses `grok-imagine-video-1.5` without audio (14¢/s at 720p, 8¢/s at 480p). Grok results report the cost xAI actually billed; Grok requires `xai-sdk>=1.19`.
+- Background removal preloads the CUDA libraries from the `nvidia-*` wheels and checks the provider the session actually runs on, so a mismatched `onnxruntime-gpu` build warns instead of silently running on CPU; requirements pull matching CUDA/cuDNN via `onnxruntime-gpu[cuda,cudnn]`. `rembg_matting.py --preview` no longer crashes.
+
 **2026-09-22 — Custom character animation, Tripo CLI**
 - Added custom humanoid animation through `asset-gen/motion.md`: move sets generated locally with [kimodo-practical](https://github.com/htdt/kimodo-practical) (NVIDIA Kimodo), baked to ordinary glTF clips plus `rootmotion.json`, so the game repo carries no motion tooling. Reached from the asset-gen skill when stock retarget presets aren't enough.
 - `motion.md` covers the environment, the Tripo-rig → Kimodo and prebake → engine bridges, the authored-pose hybrid (game-authored key poses pinned as `fullbody` constraints), impact timing, numeric prop-relative gates, and a pitfalls index from shipped move sets.
