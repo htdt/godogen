@@ -1,5 +1,12 @@
 # Changelog
 
+**2026-09-22 — Custom character animation, Tripo CLI**
+- Added custom humanoid animation through `asset-gen/motion.md`: move sets generated locally with [kimodo-practical](https://github.com/htdt/kimodo-practical) (NVIDIA Kimodo), baked to ordinary glTF clips plus `rootmotion.json`, so the game repo carries no motion tooling. Reached from the asset-gen skill when stock retarget presets aren't enough.
+- `motion.md` covers the environment, the Tripo-rig → Kimodo and prebake → engine bridges, the authored-pose hybrid (game-authored key poses pinned as `fullbody` constraints), impact timing, numeric prop-relative gates, and a pitfalls index from shipped move sets.
+- The animation stack is machine-level under `KIMODO_HOME` with a fixed layout (`kimodo-practical/`, `kimodo/`, `kimenv/`, `text_encoders/`); each project clones its motion workspace from the local reference. Install and verify steps in `setup.md`.
+- 3D generation, rigging, and retargeting go through the `tripo` CLI (`npm install -g tripo-cli`, `TRIPO_API_KEY`), which owns submit/poll/download, credit pre-checks, and resume. Removed the in-repo `tripo3d.py` client and the `glb` / `rig` / `retarget` / `resume` subcommands from `asset_gen.py`; Tripo costs are reported in credits.
+- Node.js 20+ is now needed for every engine (Tripo CLI); published repos ignore `/tripo-out`.
+
 **2026-07-02 — Docs-only runtime**
 - Replaced the multi-stage skill pipeline with a thin runtime: a single engine-agnostic manifest (`prompts/runtime.md`), a one-page per-engine guide, and the cross-engine `asset-gen` skill. The model plans, scaffolds, and decomposes the work itself.
 - One runtime manifest covers delivery. The agent reads how the task is framed in-run: an open-ended direction gets the live game early and checkpoints at taste/scope/cost decisions; a finished brief runs on reasonable calls and closes with a 15–20s proof recording, watched back before done. Run/show/capture mechanics live in the engine guides and serve both paths.
