@@ -1,5 +1,10 @@
 # Changelog
 
+**2026-09-24 — Local asset generation by default, audio**
+- Assets come from [godogen_assets](https://github.com/htdt/godogen_assets) by default: free local generators for images (Qwen-Image), textured 3D (TRELLIS.2), humanoid rigging (Make-It-Animatable), Kimodo moves (`gen-moves`, `add-moves`), lip-sync, sound effects (Stable Audio 3) and voice lines (Qwen3-TTS). `asset-gen/SKILL.md` is a TL;DR linking to its docs; its README carries the setup, and `publish.sh` writes the checkout recorded in `.godogen_assets` into the published skill.
+- Paid APIs live in `asset-gen/api.md`, read only when the local tools are missing or can't make an asset: Gemini / Grok images, animated sprites from Grok video, Tripo 3D, Gemini TTS voice acting (`asset_gen.py speech`) and Lyria music (`asset_gen.py music`), with `loop_audio.py` cutting seamless music loops. API keys and the Tripo CLI are optional.
+- `motion.md` is the game side of the `add-moves` output: authored key poses pinned as spec constraints, root motion and impact timing from `rootmotion.json`, prop-relative gates.
+
 **2026-09-22 — Local image generation, current image models**
 - Added local image generation: when `qwen-image` is on PATH, `asset-gen` runs Qwen-Image-2.1 on the machine's GPU for free, so simple images (textures, props, icons, UI, backgrounds, in-image text) go there before the paid APIs; `qwen-image rgba` outputs real alpha with no matting. `setup.md` carries a brief for building the command on each machine.
 - Image generation uses Gemini 3.1 Flash Image and Grok Imagine Image 2.0 (medium quality) as equals — a side-by-side on a 3D-ready character and a dense composition came out even. `asset_gen.py` uses whichever key is set, Gemini by default for speed (~10 s vs 1–2 min); quality-critical assets are generated on both and the better kept.

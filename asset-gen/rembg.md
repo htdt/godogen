@@ -3,7 +3,7 @@
 Matte a solid background out of an asset that needs transparency.
 
 Applies to: characters, props, icons, UI, animated sprite frames.
-Does NOT apply to: textures, backgrounds, 3D model references (Tripo3D needs the solid bg), `qwen-image rgba` output (already has real alpha).
+Does NOT apply to: textures, backgrounds, 3D model references (Tripo needs the solid bg; `gen3d` removes it itself), `qwen-image rgba` output (already has real alpha).
 
 **Never prompt for a "transparent background" — the generator draws a checkerboard. Prompt a solid color, then remove it.**
 

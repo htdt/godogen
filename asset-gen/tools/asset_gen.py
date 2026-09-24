@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
-"""Asset Generator CLI - creates images and videos (Gemini / xAI Grok).
+"""Asset Generator CLI - creates images, videos, speech and music (Gemini / xAI Grok / Lyria).
 
 Subcommands:
   image     Generate a PNG from a prompt (Gemini 5-15¢ or Grok 6-8¢)
   video     Generate MP4 video from prompt + reference image (8-14¢/sec, Grok)
+  speech    Speak a directed transcript with Gemini TTS (~0.5¢ per 10 s line)
+  music     Generate music with Lyria (4¢ per 30 s clip, 8¢ per song)
 
-3D models come from the `tripo` CLI (see SKILL.md), not from here.
+3D models come from the `tripo` CLI (see api.md), not from here.
 
 Output: JSON to stdout. Progress to stderr.
 """
@@ -15,7 +17,12 @@ import base64
 import io
 import json
 import os
+import re
+import subprocess
 import sys
+import tempfile
+import time
+import wave
 from pathlib import Path
 
 import requests
@@ -30,12 +37,13 @@ VIDEO_MODEL = "grok-imagine-video-1.5"
 VIDEO_COSTS_PER_SEC = {"480p": 8, "720p": 14}  # cents, +1¢ for the start frame; xAI's billed cost_usd is reported when present
 
 
-def result_json(ok: bool, path: str | None = None, cost_cents: int = 0, error: str | None = None):
+def result_json(ok: bool, path: str | None = None, cost_cents: float = 0, error: str | None = None, **extra):
     d = {"ok": ok, "cost_cents": cost_cents}
     if path:
         d["path"] = path
     if error:
         d["error"] = error
+    d.update(extra)
     print(json.dumps(d))
 
 
@@ -237,9 +245,157 @@ def cmd_video(args):
     result_json(True, path=str(output), cost_cents=_billed_cents(resp, cost))
 
 
+# --- Audio (Gemini TTS, Lyria) ---
+
+TTS_MODEL = "gemini-3.1-flash-tts-preview"
+TTS_USD_PER_M = {"input": 1.00, "output": 20.00}  # text in, audio out
+TTS_VOICES = [
+    "Zephyr", "Puck", "Charon", "Kore", "Fenrir", "Leda", "Orus", "Aoede", "Callirrhoe", "Autonoe",
+    "Enceladus", "Iapetus", "Umbriel", "Algieba", "Despina", "Erinome", "Algenib", "Rasalgethi",
+    "Laomedeia", "Achernar", "Alnilam", "Schedar", "Gacrux", "Pulcherrima", "Achird", "Zubenelgenubi",
+    "Vindemiatrix", "Sadachbia", "Sadaltager", "Sulafat",
+]
+TTS_ATTEMPTS = 3  # the model sometimes emits text instead of audio and the request fails; retrying fixes it
+
+MUSIC_MODELS = {"clip": ("lyria-3-clip-preview", 4), "song": ("lyria-3.5", 8)}  # (model, cents per call)
+AUDIO_EXTS = {".wav", ".ogg", ".mp3", ".flac"}
+
+
+def _check_audio_output(output: Path):
+    if output.suffix.lower() not in AUDIO_EXTS:
+        result_json(False, error=f"Unsupported audio extension {output.suffix!r}: use {', '.join(sorted(AUDIO_EXTS))}")
+        sys.exit(1)
+    output.parent.mkdir(parents=True, exist_ok=True)
+
+
+def _ffmpeg_convert(src: Path, dst: Path):
+    """Transcode with ffmpeg; codec follows dst's extension (ogg -> Vorbis)."""
+    codec = {".ogg": ["-c:a", "libvorbis", "-q:a", "6"], ".mp3": ["-c:a", "libmp3lame", "-q:a", "2"],
+             ".wav": ["-c:a", "pcm_s16le"], ".flac": ["-c:a", "flac"]}[dst.suffix.lower()]
+    subprocess.run(["ffmpeg", "-v", "error", "-y", "-i", str(src), *codec, str(dst)], check=True)
+
+
+def _speech_config(args) -> types.SpeechConfig:
+    def voice(name: str) -> types.VoiceConfig:
+        match = next((v for v in TTS_VOICES if v.lower() == name.lower()), None)
+        if not match:
+            result_json(False, error=f"Unknown voice {name!r}. Voices: {', '.join(TTS_VOICES)}")
+            sys.exit(1)
+        return types.VoiceConfig(prebuilt_voice_config=types.PrebuiltVoiceConfig(voice_name=match))
+
+    if args.speakers:
+        pairs = [s.split("=", 1) for s in args.speakers.split(",")]
+        if len(pairs) > 2 or any(len(p) != 2 or not p[0].strip() for p in pairs):
+            result_json(False, error="--speakers takes up to 2 NAME=VOICE pairs, e.g. 'Hero=Puck,Witch=Gacrux'")
+            sys.exit(1)
+        return types.SpeechConfig(multi_speaker_voice_config=types.MultiSpeakerVoiceConfig(
+            speaker_voice_configs=[types.SpeakerVoiceConfig(speaker=n.strip(), voice_config=voice(v.strip()))
+                                   for n, v in pairs]))
+    return types.SpeechConfig(voice_config=voice(args.voice))
+
+
+def cmd_speech(args):
+    output = Path(args.output)
+    _check_audio_output(output)
+    text = Path(args.text_file).read_text() if args.text_file else args.text
+    if not text or not text.strip():
+        result_json(False, error="Empty text: pass --text or --text-file")
+        sys.exit(1)
+    config = types.GenerateContentConfig(response_modalities=["AUDIO"], speech_config=_speech_config(args))
+    client = genai.Client()
+
+    label = f"speakers {args.speakers}" if args.speakers else f"voice {args.voice}"
+    print(f"Generating speech ({args.model}, {label})...", file=sys.stderr)
+    pcm, rate, cents, last_error = None, 24000, 0.0, "no audio returned"
+    for attempt in range(1, TTS_ATTEMPTS + 1):
+        try:
+            resp = client.models.generate_content(model=args.model, contents=text, config=config)
+            usage = resp.usage_metadata
+            if usage:
+                cents += ((usage.prompt_token_count or 0) * TTS_USD_PER_M["input"]
+                          + (usage.candidates_token_count or 0) * TTS_USD_PER_M["output"]) / 1e4
+            for part in resp.parts or []:
+                if part.inline_data is not None and (part.inline_data.mime_type or "").startswith("audio/"):
+                    pcm = part.inline_data.data
+                    m = re.search(r"rate=(\d+)", part.inline_data.mime_type or "")
+                    rate = int(m.group(1)) if m else 24000
+                    break
+            if pcm:
+                break
+            reason = resp.candidates[0].finish_reason if resp.candidates else "unknown"
+            last_error = f"no audio returned (finish reason: {reason})"
+        except Exception as e:
+            last_error = str(e)
+        print(f"  attempt {attempt} failed: {last_error}", file=sys.stderr)
+        time.sleep(2 * attempt)
+    if not pcm:
+        result_json(False, error=last_error, cost_cents=round(cents, 2))
+        sys.exit(1)
+
+    with tempfile.TemporaryDirectory() as tmp:
+        wav_path = output if output.suffix.lower() == ".wav" else Path(tmp) / "speech.wav"
+        with wave.open(str(wav_path), "wb") as w:  # raw 16-bit little-endian mono PCM
+            w.setnchannels(1)
+            w.setsampwidth(2)
+            w.setframerate(rate)
+            w.writeframes(pcm)
+        if wav_path != output:
+            _ffmpeg_convert(wav_path, output)
+    seconds = round(len(pcm) / (2 * rate), 2)
+    print(f"Saved: {output}", file=sys.stderr)
+    result_json(True, path=str(output), cost_cents=round(cents, 2), seconds=seconds)
+
+
+def cmd_music(args):
+    output = Path(args.output)
+    _check_audio_output(output)
+    model, cost = MUSIC_MODELS[args.length]
+    contents = []
+    if args.image:
+        ref_path = Path(args.image)
+        if not ref_path.exists():
+            result_json(False, error=f"Reference image not found: {ref_path}")
+            sys.exit(1)
+        contents.append(types.Part.from_bytes(data=ref_path.read_bytes(), mime_type=_mime_for_image(ref_path)))
+    contents.append(args.prompt)
+
+    print(f"Generating music ({model})...", file=sys.stderr)
+    client = genai.Client()  # keep a reference: a temporary Client closes its connection before the call
+    try:
+        resp = client.models.generate_content(
+            model=model, contents=contents,
+            config=types.GenerateContentConfig(response_modalities=["AUDIO", "TEXT"]))
+    except Exception as e:
+        result_json(False, error=str(e))
+        sys.exit(1)
+
+    audio, texts = None, []
+    for part in resp.parts or []:
+        if part.text:
+            texts.append(part.text.strip())
+        elif part.inline_data is not None and (part.inline_data.mime_type or "").startswith("audio/"):
+            audio = part.inline_data.data
+    if not audio:
+        reason = resp.candidates[0].finish_reason if resp.candidates else "unknown"
+        result_json(False, error=f"No audio returned (reason: {reason})", text="\n".join(texts))
+        sys.exit(1)
+
+    with tempfile.TemporaryDirectory() as tmp:  # Lyria returns MP3 (44.1 kHz stereo)
+        if output.suffix.lower() == ".mp3":
+            output.write_bytes(audio)
+        else:
+            src = Path(tmp) / "music.mp3"
+            src.write_bytes(audio)
+            _ffmpeg_convert(src, output)
+    probe = subprocess.run(["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0",
+                            str(output)], capture_output=True, text=True)
+    seconds = round(float(probe.stdout.strip() or 0), 2)
+    print(f"Saved: {output}", file=sys.stderr)
+    result_json(True, path=str(output), cost_cents=cost, seconds=seconds, text="\n".join(texts))
+
 
 def main():
-    parser = argparse.ArgumentParser(description="Asset Generator — images and videos (Gemini / xAI Grok)")
+    parser = argparse.ArgumentParser(description="Asset Generator — images, videos, speech and music (Gemini / xAI Grok / Lyria)")
     sub = parser.add_subparsers(dest="command", required=True)
 
     p_img = sub.add_parser("image", help="Generate a PNG image (Gemini 5-15¢ or Grok 6-8¢)")
@@ -263,6 +419,25 @@ def main():
                        help="Video resolution. Default: 720p")
     p_vid.add_argument("-o", "--output", required=True, help="Output MP4 path")
     p_vid.set_defaults(func=cmd_video)
+
+    p_sp = sub.add_parser("speech", help="Speak a directed transcript with Gemini TTS (~0.5¢ per 8 s)")
+    src = p_sp.add_mutually_exclusive_group(required=True)
+    src.add_argument("--text", help="Full TTS prompt: optional direction, then the transcript (audio tags allowed)")
+    src.add_argument("--text-file", help="Read the prompt from a file")
+    who = p_sp.add_mutually_exclusive_group(required=True)
+    who.add_argument("--voice", help="Prebuilt voice for a single speaker, e.g. Kore")
+    who.add_argument("--speakers", help="Two-speaker dialogue: 'Name1=Voice1,Name2=Voice2' (names as in the transcript)")
+    p_sp.add_argument("--model", default=TTS_MODEL, help=f"TTS model. Default: {TTS_MODEL}")
+    p_sp.add_argument("-o", "--output", required=True, help="Output .wav (24 kHz mono) / .ogg / .mp3 / .flac")
+    p_sp.set_defaults(func=cmd_speech)
+
+    p_mu = sub.add_parser("music", help="Generate music with Lyria (clip 4¢ = 30 s, song 8¢ = ~2 min)")
+    p_mu.add_argument("--prompt", required=True, help="Music prompt: genre first, instruments, mood, BPM, key, structure")
+    p_mu.add_argument("--length", choices=list(MUSIC_MODELS), default="clip",
+                      help="clip: lyria-3-clip-preview, always 30 s (4¢). song: lyria-3.5, length set in the prompt (8¢)")
+    p_mu.add_argument("--image", default=None, help="Optional reference image to set the mood")
+    p_mu.add_argument("-o", "--output", required=True, help="Output .mp3 (native) / .ogg / .wav / .flac")
+    p_mu.set_defaults(func=cmd_music)
 
     args = parser.parse_args()
     args.func(args)

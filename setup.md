@@ -39,7 +39,7 @@ rustc --version
 
 ## Node.js And Browser
 
-The Tripo CLI needs Node.js 20+ for every engine (`npm install -g tripo-cli`); Babylon.js projects need 22.12+:
+Babylon.js projects need Node.js 22.12+; the optional Tripo CLI (`npm install -g tripo-cli`) needs 20+:
 
 ```bash
 node --version
@@ -133,78 +133,25 @@ ls "$(dirname "$(which godot)")"/GodotSharp/   # Linux: must sit next to the bin
 head -2 "$(which godot)"                       # macOS: must be the wrapper script above
 ```
 
-## Character Animation (Optional)
+## Local Asset Generation
 
-Custom humanoid animation (the asset-gen skill's `motion.md`) additionally requires:
+Assets are generated locally by default with [godogen_assets](https://github.com/htdt/godogen_assets): images, textured 3D models, rigged humanoids with generated moves and lip-sync, sound effects and voice lines, free on the machine's NVIDIA GPU (reference: RTX 3060 12 GB, 24 GB RAM). Without it, every asset goes to the paid APIs below.
 
-- NVIDIA GPU with a working CUDA driver. Modest is fine: the text encoder runs on CPU (needs ≥20 GB free RAM), diffusion peaks ~2.5 GB VRAM; ~35 GB disk
-- `cmake` — the Kimodo install builds a compiled extension
-
-### Dependency layout
-
-The animation stack is machine-level: one copy per workstation, shared by every game project. It lives under a single directory, with these exact names:
-
-```
-$KIMODO_HOME/
-├── kimodo-practical/   # the animation lib — reference clone; projects clone their workspace from it
-├── kimodo/             # upstream NVIDIA Kimodo checkout, editable-installed into kimenv/
-├── kimenv/             # the pipeline venv — run the lib's python tools with kimenv/bin/python
-└── text_encoders/      # local Llama-3 encoder mirror (built by the lib's setup_text_encoder.py)
-```
-
-Model weights — the ~3 GB Kimodo checkpoint and the 16 GB Llama base — live in `~/.cache/huggingface`; `text_encoders/` is symlinks into it. Install steps for all four entries: `kimodo-practical/KIMODO.md` §1, run from `$KIMODO_HOME`. The venv is not relocatable (absolute shebangs, editable install) — pick the location once, or rebuild the venv after a move.
-
-Export in `~/.bashrc` (and `~/.zshrc`):
+GPUs and drivers differ too much for one script, so its [README](https://github.com/htdt/godogen_assets#setup) (Setup) is a manual for a Claude Code or Codex agent to follow on the machine at hand. Once its commands are on `PATH` (`./setup.sh link`), record the checkout in this repo — `publish.sh` writes the path into every published asset-gen skill:
 
 ```bash
-export KIMODO_HOME="$HOME/Documents/kimodo-home"
+echo "$PWD" > /path/to/godogen/.godogen_assets   # run in the godogen_assets checkout; git-ignored
 ```
 
-A set `KIMODO_HOME` is the signal agents key on: the stack is installed and complete under it — reuse it, never re-fetch or search the filesystem. It is the only animation env var; upstream Kimodo's own variables derive from the fixed layout and are set per command (`TEXT_ENCODERS_DIR="$KIMODO_HOME/text_encoders"`, `TEXT_ENCODER_DEVICE=cpu`), as `motion.md` and the lib's docs instruct.
+## API Keys (Optional)
 
-Verify:
+Paid generation covers what the local tools can't make — or every asset, on a machine without them. Set in environment:
 
-```bash
-"$KIMODO_HOME/kimenv/bin/python" -c "import kimodo, torch; print(torch.cuda.is_available())"  # True
-ls "$KIMODO_HOME/text_encoders/llama3-8b-instruct-base/config.json"
-```
+- `GOOGLE_API_KEY` — Gemini images, Gemini TTS voice acting, Lyria music
+- `XAI_API_KEY` — xAI Grok images and animated-sprite video
+- `TRIPO_API_KEY` — image-to-3D and non-humanoid rigging via the `tripo` CLI (`npm install -g tripo-cli`, Node 20+)
 
-## Local Image Generation (Optional)
-
-A `qwen-image` command on `PATH` runs [Qwen-Image-2.1](https://huggingface.co/Qwen/Qwen-Image-2.1) on the local GPU. When the asset-gen skill finds it, simple images are generated there for free; otherwise they go to the paid APIs.
-
-Requires an NVIDIA GPU with a working CUDA driver and ~33 GB of weights to download. Unquantized, the model wants ~40 GB VRAM; quantized with CPU offload, a 12 GB card with 23 GB RAM runs it at ~2.5 min per 1024² image.
-
-GPUs, drivers, and memory differ too much for one recipe, so there isn't one: on the target machine, have Claude Code build the command from the brief below.
-
-### Brief
-
-Goal: a `qwen-image` command on `PATH` that runs Qwen-Image-2.1 (https://huggingface.co/Qwen/Qwen-Image-2.1, diffusers `QwenImage21Pipeline`) locally with the interface below. Download the model, quantize/offload if the local GPU needs it, implement the CLI in its own isolated Python environment. One-shot command, not a server. It must behave the same from any directory and shell, whatever the caller's environment (an active venv, `PYTHONPATH`, `LD_LIBRARY_PATH`) — game agents call it from their own project shells.
-
-- `qwen-image generate PROMPT` | `qwen-image rgba PROMPT` (transparent PNG; the command adds the model's RGBA prompt phrasing itself) | `qwen-image edit -i IMG [-i IMG ...] PROMPT` | `qwen-image info`
-- `PROMPT` of `-` reads stdin.
-- Options: `-o/--out PATH`, `--size WxH`, `--resolution N` (default 1024), `--steps N` (default 40), `--seed N` (random if omitted), `--cfg F`, `--negative TEXT`, `--json`.
-- stdout: absolute output path, or with `--json` `{output, width, height, mode, prompt, seed, steps, cfg, inputs, seconds, peak_vram_gb}` / `{"error": ...}`. Progress on stderr. Exit 0 on success, 1 on failure. Output is PNG.
-
-Known trap: don't quantize the transformer with bitsandbytes LLM.int8 (`load_in_8bit`). Its kernel casts activations to fp16, which overflows on this DiT and returns the same noise for every prompt. NF4 or torchao int8 weight-only are clean.
-
-Verify:
-
-```bash
-qwen-image info
-qwen-image rgba --resolution 512 --steps 10 "a red apple" -o /tmp/apple.png   # look at it
-magick identify -format '%[opaque]\n' /tmp/apple.png                           # False (has transparency)
-```
-
-## API Keys
-
-Set in environment:
-
-- `GOOGLE_API_KEY` — Gemini image generation
-- `XAI_API_KEY` — xAI Grok image generation and animated-sprite video
-
-Either image key is enough; with both, Gemini is the default and quality-critical assets are generated on each.
-- `TRIPO_API_KEY` — image-to-3D conversion via the `tripo` CLI (`npm install -g tripo-cli`, Node 20+)
+With both image keys, Gemini is the default and quality-critical images are generated on each.
 
 ## Verify Rendering
 

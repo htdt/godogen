@@ -45,10 +45,10 @@ The manifest states only this intent; everything about *how to show and capture*
 
 **Trust the model.** The runtime ships no scaffold and no planner. The model recreates boilerplate from a short sketch and decomposes the work itself; the guides spend their words only on what it genuinely can't know.
 
-**Cost-aware asset generation.** Gemini, Grok, and Tripo3D are used where they make economic sense — the agent confirms costs with the user before generating, and the asset manifest in `README.md` tracks paths, in-game sizes, and costs so implementation doesn't lose them.
+**Local-first asset generation.** Assets come from [godogen_assets](https://github.com/htdt/godogen_assets), free on the machine's GPU; paid APIs (Gemini, Grok, Tripo3D, Lyria) fill only what it can't make, with the cost confirmed with the user first. The asset manifest in `README.md` tracks paths, in-game sizes, and costs so implementation doesn't lose them.
 
 **One source, many targets.** Engine and host agent are render-time choices over one source tree.
 
 ## Runtime Limitations
 
-The runtime does not ship a dedicated audio pipeline or mobile/native packaging.
+The runtime does not ship mobile/native packaging.

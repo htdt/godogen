@@ -8,6 +8,8 @@
 # A published repo carries only docs: the runtime manifest (CLAUDE.md / AGENTS.md),
 # a per-engine guide (<engine>.md), and the asset-gen skill. The agent scaffolds
 # the game itself from the engine guide — no project scaffold is shipped.
+# The asset-gen skill points at the godogen_assets checkout recorded in
+# .godogen_assets (setup.md); without it, every asset goes to the paid APIs.
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "$0")" && pwd)"
@@ -73,6 +75,17 @@ esac
 ASSET_GEN_SKILL_DIR="$SKILLS_DIR_REL/asset-gen"
 ENGINE_GUIDE_FILE="$ENGINE.md"
 
+GODOGEN_ASSETS="none"
+if [ -f "$REPO_ROOT/.godogen_assets" ]; then
+    GODOGEN_ASSETS="$(head -n1 "$REPO_ROOT/.godogen_assets")"
+    if [ ! -f "$GODOGEN_ASSETS/README.md" ] || [ ! -d "$GODOGEN_ASSETS/bin" ]; then
+        echo "error: .godogen_assets names '$GODOGEN_ASSETS', which is not a godogen_assets checkout" >&2
+        exit 1
+    fi
+else
+    echo "warning: no .godogen_assets (setup.md): the asset-gen skill will use the paid APIs only" >&2
+fi
+
 if [ -z "$OUT" ]; then
     echo "error: --out <target_dir> is required" >&2
     usage
@@ -100,7 +113,8 @@ python3 "$HELPERS/render_dir.py" "$TMP/skills" \
     "AGENT_NAME=$AGENT_NAME" \
     "ASSET_GEN_SKILL_DIR=$ASSET_GEN_SKILL_DIR" \
     "ASSET_SKILL_COMMAND=$ASSET_SKILL_COMMAND" \
-    "RUNTIME_ASSET_DIR=$RUNTIME_ASSET_DIR"
+    "RUNTIME_ASSET_DIR=$RUNTIME_ASSET_DIR" \
+    "GODOGEN_ASSETS=$GODOGEN_ASSETS"
 
 if [ "$AGENT" = "codex" ]; then
     python3 "$HELPERS/generate_codex_metadata.py" "$TMP/skills"

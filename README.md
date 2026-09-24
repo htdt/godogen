@@ -26,7 +26,7 @@ Engine and host agent (Claude vs Codex) are publish-time render choices, not sep
 - **Godot 4** — C#/.NET projects with build-time scene generation, runtime scripts, and Jolt physics.
 - **Bevy** — Rust/Bevy projects with code-first ECS scenes and offscreen capture.
 - **Babylon.js** — TypeScript/Vite browser games served at a live URL.
-- **Asset generation** — Gemini or xAI Grok for images (whichever key is set; with both, quality-critical assets are generated on each and the better kept), Tripo3D for image-to-3D and rigged biped animation; animated sprites via Grok video with loop detection and background removal.
+- **Asset generation** — local and free by default with [godogen_assets](https://github.com/htdt/godogen_assets): images with real transparency, textured 3D models, rigged humanoids with generated moves and lip-sync, sound effects and voice lines. Paid APIs fill what it can't make: Gemini or xAI Grok images, animated sprites from Grok video, Tripo3D, Gemini TTS voice acting, Lyria music.
 - **Proof over claims** — the agent judges results from the running game (a live URL or a recorded clip), not from a clean compile, so visible defects drive the next iteration.
 - **You choose your involvement** — watch the live game (a Babylon.js URL, or a Godot/Bevy project you run) and steer at decision points, or leave the run unattended and get a 15–20s proof recording at the end. The agent takes its cue from how you frame the task.
 
@@ -36,13 +36,14 @@ Engine and host agent (Claude vs Codex) are publish-time render choices, not sep
 
 - [Godot 4](https://godotengine.org/download/) (.NET build) on `PATH` for Godot projects
 - Rust/Cargo for Bevy projects
-- Node.js 20+ and npm (22.12+ for Babylon.js projects), plus the Tripo CLI: `npm install -g tripo-cli`
+- Node.js 22.12+ and npm for Babylon.js projects
 - Chrome or Chromium with hardware WebGL2 for Babylon.js browser capture
 - Python 3 with pip
-- API keys as environment variables:
-  - `GOOGLE_API_KEY` — [Google AI Studio](https://aistudio.google.com/) for Gemini image generation
-  - `XAI_API_KEY` — [xAI Grok](https://console.x.ai/home) for image generation and animated-sprite video (either image key is enough)
-  - `TRIPO_API_KEY` — [Tripo](https://developers.tripo3d.ai/) for 3D generation (used by the `tripo` CLI)
+- [godogen_assets](https://github.com/htdt/godogen_assets) for local asset generation (NVIDIA GPU), set up per its README and recorded in `.godogen_assets` ([setup.md](setup.md))
+- Optional API keys as environment variables, for assets the local tools can't make (or all of them, without godogen_assets):
+  - `GOOGLE_API_KEY` — [Google AI Studio](https://aistudio.google.com/) for Gemini images, Gemini TTS and Lyria music
+  - `XAI_API_KEY` — [xAI Grok](https://console.x.ai/home) for images and animated-sprite video
+  - `TRIPO_API_KEY` — [Tripo](https://developers.tripo3d.ai/) for 3D generation (used by the `tripo` CLI: `npm install -g tripo-cli`, Node.js 20+)
 - System packages from [setup.md](setup.md): `vulkan-tools`, `xvfb`, `ffmpeg`, `imagemagick`, plus platform-specific extras
 - Tested on Ubuntu, Debian, and macOS
 - Claude Code or Codex
