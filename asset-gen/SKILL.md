@@ -40,7 +40,7 @@ Moves that drive gameplay — root-motion locomotion, attacks, state machines, a
 `${ASSET_GEN_SKILL_DIR}/api.md` covers Gemini / xAI Grok images, animated sprites from Grok video, Tripo 3D, Gemini TTS and Lyria music. Read it only when an asset needs one:
 
 - godogen_assets isn't on this machine (its checkout above reads `none`), or a command answers `not installed` — that part isn't set up;
-- the local tools don't make it: frame-by-frame animated 2D sprites, music, voice acting with emotion tags, two-speaker dialogue, a language `qwen-tts` lacks, a rig for a non-humanoid;
+- the local tools don't make it: frame-by-frame animated 2D sprites, music, one character voice acting many emotions, vocal barks, two-speaker dialogue, a language `qwen-tts` lacks, a rig for a non-humanoid;
 - a local result stays wrong after rewording and a few seeds.
 
 Paid calls cost real money: confirm with the user before the first one.

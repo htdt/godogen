@@ -78,8 +78,7 @@ Requires Python 3.10+.
 
 ```bash
 python3 --version
-pip install -r asset-gen/tools/requirements.txt
-pip install google-genai
+pip install -U -r asset-gen/tools/requirements.txt
 ```
 
 In a published game repo, the same asset-generation requirements file lives at:
@@ -87,7 +86,7 @@ In a published game repo, the same asset-generation requirements file lives at:
 - `.claude/skills/asset-gen/tools/requirements.txt` for Claude Code
 - `.agents/skills/asset-gen/tools/requirements.txt` for Codex
 
-`google-genai` is required by `asset_gen.py` for Gemini image generation.
+`asset_gen.py` needs `google-genai` 2.25+ for Gemini images, TTS, voice design and Lyria.
 
 ## Godot (.NET edition)
 

@@ -80,37 +80,54 @@ Presets are generic stock clips. Custom humanoid moves (`gen-moves`, motion.md) 
 
 ## Voice — Gemini TTS
 
-For what `qwen-tts` can't do: a character's emotional range from one voice, audio tags, two-speaker dialogue, 70+ languages. ~0.5¢ per 8 s line.
+For what `qwen-tts` can't do: one character voice acting every line differently, vocal bursts and barks, staged two-speaker dialogue, 130 languages with regional accents. Gemini 3.8 Flash TTS, ~0.25¢ per 10 s line; `--model gemini-3.8-flash-lite-tts` is a third cheaper with plainer acting and fewer languages, for bulk neutral lines. [Prompting guide](https://ai.google.dev/gemini-api/docs/speech-generation#prompting-guide).
 
-Read the [prompting guide](https://ai.google.dev/gemini-api/docs/speech-generation#prompting-guide) before writing prompts. It covers the prompt structure (audio profile, scene, director's notes, transcript) and the [audio tags](https://ai.google.dev/gemini-api/docs/speech-generation#audio-tags): `[whispers]`, `[laughs]` and the like are performed, not read aloud.
+The text is spoken verbatim, so direction never goes in it. Each kind of direction has its own place:
+- **Who is speaking** — species, age, gender, timbre, accent — is the voice. Cast it once per character (below).
+- **How the whole line is delivered** goes in `--style`, kept short: `"whispered, nervous"`, `"shouting over battle"`. Most lines need none; reuse one string for a character's baseline.
+- **What happens at a moment** goes inline as angle-bracket tags: `<laugh>`, `<sigh>`, `<gasp>`, `<groan>`, `<short pause>`, etc. ([full list](https://ai.google.dev/gemini-api/docs/speech-generation#vocal-bursts)). CAPS stresses a word.
 
 ```bash
-python3 ${ASSET_GEN_SKILL_DIR}/tools/asset_gen.py speech --voice Algenib -o ${RUNTIME_ASSET_DIR}/audio/dwarf_01.ogg --text "Synthesize speech for a game character.
-### DIRECTOR'S NOTES
-Style: gruff old dwarf blacksmith, proud, a little amused.
-Accent: Scottish, as heard in Glasgow.
-### TRANSCRIPT
-[laughs] Aye, that blade'll hold. [whispers] Forged it meself, three nights without sleep."
+python3 ${ASSET_GEN_SKILL_DIR}/tools/asset_gen.py speech --voice Algenib --style "proud, a little amused" \
+  -o ${RUNTIME_ASSET_DIR}/audio/dwarf_01.ogg --text "<chuckle> Aye, that blade'll hold. <short pause> Forged it meself, three nights without sleep."
 ```
 
-- **Opening line and transcript label.** Open with a line saying to synthesize speech, and label where the transcript starts. Without them the call is rejected (`PROHIBITED_CONTENT`), or the director's notes get read aloud.
-- **Other languages.** Write the transcript in the target language; the notes and tags stay in English.
-- **Two-speaker dialogue.** Use `--speakers "Hero=Puck,Witch=Gacrux"`, and start each transcript line with one of those names (`Hero: ...`).
-- **Consistency.** A prebuilt voice keeps its timbre across calls, so one voice per character is enough.
+- **Natural lines.** Write lines as people talk ("Oh, uh... hm, fine."); plain transcripts beat heavy styling.
+- **Traits stay in the voice.** Age, gender or accent in `--style` fights the voice; cast another voice instead. Instructions to "keep the same voice" add drift.
+- **Barks.** A tags-only line works: `--text "<grunt> <scream>" --style "hit by an arrow, falling"` is a death cry. Tags are human sounds only; do effects (radio, robot, echo) on the finished line.
+- **Other languages.** Write the transcript in the language; tags stay English.
 
-### Choosing a voice
+### Casting a character
 
-Google gives each voice only a one-word descriptor. Below, the 30 voices are split by measured register (median pitch of one neutral line; speaker-embedding clustering agrees):
+**Realistic humans** come from the voice library: 2,000+ adult voices tagged with language, regional accent, gender, pitch, and an age and role in the description. Browsing is free: `asset_gen.py voice list --language ja-JP --gender male --pitch low`, `--search "60-year-old"`. The 30 studio voices (Kore, Puck, Algenib…) are in it too.
 
-- **Deeper:** Algieba (Smooth, 91 Hz) · Algenib (Gravelly, 96) · Sadachbia (Lively, 122) · Sadaltager (Knowledgeable, 129) · Iapetus (Clear, 133) · Enceladus (Breathy, 135) · Zubenelgenubi (Casual, 142) · Puck (Upbeat, 145) · Achird (Friendly, 149) · Orus (Firm, 153) · Alnilam (Firm, 154) · Umbriel (Easy-going, 155) · Charon (Informative, 157) · Rasalgethi (Informative, 159) · Schedar (Even, 165)
-- **Higher:** Pulcherrima (Forward, 161) · Zephyr (Bright, 173) · Leda (Youthful, 181) · Gacrux (Mature, 182) · Laomedeia (Upbeat, 183) · Despina (Smooth, 186) · Vindemiatrix (Gentle, 193) · Achernar (Soft, 199) · Callirrhoe (Easy-going, 201) · Erinome (Clear, 205) · Sulafat (Warm, 207) · Aoede (Breezy, 209) · Kore (Firm, 209) · Autonoe (Bright, 218) · Fenrir (Excitable, 241)
+**Everything else** (creatures, villains, wizards, stylized heroes) gets a designed voice:
 
-To choose:
-1. Pick by register first, then by descriptor.
-2. Fenrir, Kore and Vindemiatrix sit near the boundary; audition them before giving them a gendered role.
-3. Voice the character's signature line with 2–3 candidates (~0.3¢ each).
-4. Keep the winner for every line of that character.
-5. Characters who talk to each other get distinct voices.
+```bash
+python3 ${ASSET_GEN_SKILL_DIR}/tools/asset_gen.py voice design --name Grukk --gender male \
+  --prompt "A small, wiry cave goblin with a high, nasal, raspy voice; sneaky and quick, giggles at his own schemes." \
+  -o voices/grukk_audition.wav
+```
+
+- **Result.** `"voice": "voice_..."`, used in `--voice` and `--speakers` like a name. ~1–2¢; `-o` gets a 30–60 s in-character audition to check before voicing lines.
+- **Prompt.** 1–2 sentences of permanent traits: who, age, timbre, texture, accent, attitude. Long or contradictory prompts drift. Per-line emotion still comes from `--style`.
+- **Persistence.** The voice lives for a year in the key's Google project (200 max), and its id is the only handle on it: record the id in the asset manifest next to the character. `voice list --mine`, `voice delete ID`.
+- **Children.** Designs of child voices are refused ("blocked by safety policies"). Use `qwen-tts`, or the youthful prebuilt Leda.
+- **The user's own voice.** They create it in AI Studio's [Voice replication](https://aistudio.google.com/generate-speech), which needs their spoken consent, and give you the `voice_...` id.
+
+### Dialogue
+
+Games usually play lines one at a time: one file per line. `--speakers` is for one clip where the timing between two characters matters (a cutscene, radio chatter, a bark exchange):
+
+```bash
+python3 ${ASSET_GEN_SKILL_DIR}/tools/asset_gen.py speech --speakers "Guard=Orus,Grukk=voice_abc123" \
+  -o ${RUNTIME_ASSET_DIR}/audio/bridge_toll.ogg --text "Guard (bored): Toll is five coppers. |five?!| Five.
+Grukk (outraged): FIVE? <gasp> For a BRIDGE?"
+```
+
+- **Line format.** One `Name (style): text` per line; `(style)` is optional.
+- **Backchannel.** `|...|` inside a turn is the other speaker's backchannel or overlap, spoken without breaking the turn.
+- **Limit.** Two speakers per call; designed voices work here too.
 
 ## Music — Lyria
 
@@ -142,7 +159,7 @@ python3 ${ASSET_GEN_SKILL_DIR}/tools/loop_audio.py music_src/shop_theme.mp3 --bp
 
 ## Costs
 
-Quick reference: 1K image 6–7¢ · 2K background 8–10¢ · a quality-critical image generated on both models ~13¢ · sprite video 14¢/s at 720p · Gemini TTS ~0.5¢ per 8 s line · Lyria 4¢ per 30 s clip, 8¢ per song. Tripo bills in credits (≈1¢): ~30 per model, ~25 to rig, ~10 per retargeted clip — `tripo balance` before a batch, and report the `credits_consumed` the CLI returns rather than an estimate.
+Quick reference: 1K image 6–7¢ · 2K background 8–10¢ · a quality-critical image generated on both models ~13¢ · sprite video 14¢/s at 720p · Gemini TTS ~0.25¢ per 10 s line, a designed voice 1–2¢ (both double from 2027) · Lyria 4¢ per 30 s clip, 8¢ per song. Tripo bills in credits (≈1¢): ~30 per model, ~25 to rig, ~10 per retargeted clip — `tripo balance` before a batch, and report the `credits_consumed` the CLI returns rather than an estimate.
 
 ## Output and logging
 

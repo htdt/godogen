@@ -4,7 +4,8 @@
 Subcommands:
   image     Generate a PNG from a prompt (Gemini 5-15¢ or Grok 6-8¢)
   video     Generate MP4 video from prompt + reference image (8-14¢/sec, Grok)
-  speech    Speak a directed transcript with Gemini TTS (~0.5¢ per 10 s line)
+  speech    Speak a transcript with Gemini 3.8 TTS (~0.25¢ per 10 s line)
+  voice     Design a persistent character voice (~2¢), list voices, delete one
   music     Generate music with Lyria (4¢ per 30 s clip, 8¢ per song)
 
 3D models come from the `tripo` CLI (see api.md), not from here.
@@ -21,8 +22,8 @@ import re
 import subprocess
 import sys
 import tempfile
-import time
 import wave
+from datetime import date
 from pathlib import Path
 
 import requests
@@ -247,15 +248,10 @@ def cmd_video(args):
 
 # --- Audio (Gemini TTS, Lyria) ---
 
-TTS_MODEL = "gemini-3.1-flash-tts-preview"
-TTS_USD_PER_M = {"input": 1.00, "output": 20.00}  # text in, audio out
-TTS_VOICES = [
-    "Zephyr", "Puck", "Charon", "Kore", "Fenrir", "Leda", "Orus", "Aoede", "Callirrhoe", "Autonoe",
-    "Enceladus", "Iapetus", "Umbriel", "Algieba", "Despina", "Erinome", "Algenib", "Rasalgethi",
-    "Laomedeia", "Achernar", "Alnilam", "Schedar", "Gacrux", "Pulcherrima", "Achird", "Zubenelgenubi",
-    "Vindemiatrix", "Sadachbia", "Sadaltager", "Sulafat",
-]
-TTS_ATTEMPTS = 3  # the model sometimes emits text instead of audio and the request fails; retrying fixes it
+TTS_MODEL = "gemini-3.8-flash-tts"
+# USD per 1M tokens: (text in, audio out), 25 audio tokens per second. Introductory prices, doubled from 2027-01-01.
+TTS_USD_PER_M = {"gemini-3.8-flash-tts": (0.50, 9.00), "gemini-3.8-flash-lite-tts": (0.50, 6.00)}
+TTS_TURN = re.compile(r"^([^:()]+?)\s*(?:\(([^)]*)\))?:\s*(.+)$")  # Name (style): text
 
 MUSIC_MODELS = {"clip": ("lyria-3-clip-preview", 4), "song": ("lyria-3.5", 8)}  # (model, cents per call)
 AUDIO_EXTS = {".wav", ".ogg", ".mp3", ".flac"}
@@ -275,23 +271,56 @@ def _ffmpeg_convert(src: Path, dst: Path):
     subprocess.run(["ffmpeg", "-v", "error", "-y", "-i", str(src), *codec, str(dst)], check=True)
 
 
-def _speech_config(args) -> types.SpeechConfig:
-    def voice(name: str) -> types.VoiceConfig:
-        match = next((v for v in TTS_VOICES if v.lower() == name.lower()), None)
-        if not match:
-            result_json(False, error=f"Unknown voice {name!r}. Voices: {', '.join(TTS_VOICES)}")
-            sys.exit(1)
-        return types.VoiceConfig(prebuilt_voice_config=types.PrebuiltVoiceConfig(voice_name=match))
+def _tts_cents(model: str, usage) -> float:
+    """Cost from the token usage the API reports; thinking tokens billed as output."""
+    if not usage:
+        return 0.0
+    usd_in, usd_out = TTS_USD_PER_M.get(model.removeprefix("models/"), TTS_USD_PER_M[TTS_MODEL])
+    if date.today() >= date(2027, 1, 1):
+        usd_in, usd_out = 2 * usd_in, 2 * usd_out
+    out_tokens = (usage.total_output_tokens or 0) + (usage.total_thought_tokens or 0)
+    return round(((usage.total_input_tokens or 0) * usd_in + out_tokens * usd_out) / 1e4, 3)
 
-    if args.speakers:
-        pairs = [s.split("=", 1) for s in args.speakers.split(",")]
-        if len(pairs) > 2 or any(len(p) != 2 or not p[0].strip() for p in pairs):
-            result_json(False, error="--speakers takes up to 2 NAME=VOICE pairs, e.g. 'Hero=Puck,Witch=Gacrux'")
+
+def _save_wav(wav: bytes, output: Path) -> float:
+    """Write WAV bytes to output (transcoding by extension); return the duration in seconds."""
+    with wave.open(io.BytesIO(wav)) as w:
+        seconds = w.getnframes() / w.getframerate()
+    if output.suffix.lower() == ".wav":
+        output.write_bytes(wav)
+    else:
+        with tempfile.TemporaryDirectory() as tmp:
+            src = Path(tmp) / "speech.wav"
+            src.write_bytes(wav)
+            _ffmpeg_convert(src, output)
+    return round(seconds, 2)
+
+
+def _speech_turns(args, text: str) -> tuple[list, dict | list]:
+    """Transcript -> (content turns, speech_config). Dialogue lines are `Name: text` or `Name (style): text`."""
+    def turn(line: str, speaker: str | None = None, style: str | None = None) -> dict:
+        item: dict = {"type": "text", "text": line.strip()}
+        meta = {k: v for k, v in (("speaker", speaker), ("style", style)) if v}
+        if meta:
+            item["annotations"] = [{"type": "speech_metadata", **meta}]
+        return item
+
+    if not args.speakers:
+        return [turn(text, style=args.style)], [{"voice": args.voice}]
+    pairs = [s.split("=", 1) for s in args.speakers.split(",")]
+    if len(pairs) != 2 or any(len(p) != 2 or not p[0].strip() or not p[1].strip() for p in pairs):
+        result_json(False, error="--speakers takes 2 NAME=VOICE pairs, e.g. 'Hero=Puck,Goblin=voice_abc123'")
+        sys.exit(1)
+    voices = {n.strip(): v.strip() for n, v in pairs}
+    turns = []
+    for line in filter(None, map(str.strip, text.splitlines())):
+        m = TTS_TURN.match(line)
+        if not m or m.group(1) not in voices:
+            result_json(False, error=f"Dialogue line must start with {' or '.join(voices)} and a colon: {line!r}")
             sys.exit(1)
-        return types.SpeechConfig(multi_speaker_voice_config=types.MultiSpeakerVoiceConfig(
-            speaker_voice_configs=[types.SpeakerVoiceConfig(speaker=n.strip(), voice_config=voice(v.strip()))
-                                   for n, v in pairs]))
-    return types.SpeechConfig(voice_config=voice(args.voice))
+        turns.append(turn(m.group(3), m.group(1), m.group(2) or args.style))
+    config = {"mode": "conversational", "speakers": [{"speaker": n, "voice": v} for n, v in voices.items()]}
+    return turns, config
 
 
 def cmd_speech(args):
@@ -301,49 +330,89 @@ def cmd_speech(args):
     if not text or not text.strip():
         result_json(False, error="Empty text: pass --text or --text-file")
         sys.exit(1)
-    config = types.GenerateContentConfig(response_modalities=["AUDIO"], speech_config=_speech_config(args))
-    client = genai.Client()
+    turns, speech_config = _speech_turns(args, text)
 
     label = f"speakers {args.speakers}" if args.speakers else f"voice {args.voice}"
     print(f"Generating speech ({args.model}, {label})...", file=sys.stderr)
-    pcm, rate, cents, last_error = None, 24000, 0.0, "no audio returned"
-    for attempt in range(1, TTS_ATTEMPTS + 1):
-        try:
-            resp = client.models.generate_content(model=args.model, contents=text, config=config)
-            usage = resp.usage_metadata
-            if usage:
-                cents += ((usage.prompt_token_count or 0) * TTS_USD_PER_M["input"]
-                          + (usage.candidates_token_count or 0) * TTS_USD_PER_M["output"]) / 1e4
-            for part in resp.parts or []:
-                if part.inline_data is not None and (part.inline_data.mime_type or "").startswith("audio/"):
-                    pcm = part.inline_data.data
-                    m = re.search(r"rate=(\d+)", part.inline_data.mime_type or "")
-                    rate = int(m.group(1)) if m else 24000
-                    break
-            if pcm:
-                break
-            reason = resp.candidates[0].finish_reason if resp.candidates else "unknown"
-            last_error = f"no audio returned (finish reason: {reason})"
-        except Exception as e:
-            last_error = str(e)
-        print(f"  attempt {attempt} failed: {last_error}", file=sys.stderr)
-        time.sleep(2 * attempt)
-    if not pcm:
-        result_json(False, error=last_error, cost_cents=round(cents, 2))
+    client = genai.Client()
+    try:
+        resp = client.interactions.create(
+            model=args.model, input=[{"type": "user_input", "content": turns}],
+            response_format={"type": "audio"},
+            # passed raw: the SDK's typed speech_config drops "mode"
+            extra_body={"generation_config": {"speech_config": speech_config}})
+    except Exception as e:
+        result_json(False, error=str(e))
+        sys.exit(1)
+    cents = _tts_cents(args.model, resp.usage)
+    if resp.output_audio is None or not resp.output_audio.data:
+        result_json(False, error=f"No audio returned (status: {resp.status})", cost_cents=cents)
         sys.exit(1)
 
-    with tempfile.TemporaryDirectory() as tmp:
-        wav_path = output if output.suffix.lower() == ".wav" else Path(tmp) / "speech.wav"
-        with wave.open(str(wav_path), "wb") as w:  # raw 16-bit little-endian mono PCM
-            w.setnchannels(1)
-            w.setsampwidth(2)
-            w.setframerate(rate)
-            w.writeframes(pcm)
-        if wav_path != output:
-            _ffmpeg_convert(wav_path, output)
-    seconds = round(len(pcm) / (2 * rate), 2)
+    seconds = _save_wav(base64.b64decode(resp.output_audio.data), output)
     print(f"Saved: {output}", file=sys.stderr)
-    result_json(True, path=str(output), cost_cents=round(cents, 2), seconds=seconds)
+    result_json(True, path=str(output), cost_cents=cents, seconds=seconds)
+
+
+def cmd_voice_design(args):
+    output = Path(args.output)
+    _check_audio_output(output)
+    voice: dict = {"model": args.model, "type": "prompted", "display_name": args.name, "prompted": {"input": args.prompt}}
+    if args.gender:
+        voice["gender"] = args.gender
+    if args.language:
+        voice["language_code"] = args.language
+
+    print(f"Designing voice {args.name!r} ({args.model})...", file=sys.stderr)
+    client = genai.Client()  # keep a reference: a temporary Client closes its connection before the call
+    try:
+        created = client.voices.create(store=True, voice=voice)
+    except Exception as e:
+        result_json(False, error=str(e))
+        sys.exit(1)
+    cents = _tts_cents(args.model, created.usage)
+    extra = {"voice": created.id, "expires": created.expire_time.date().isoformat() if created.expire_time else None}
+    if not created.sample_audio or not created.sample_audio.data:
+        result_json(False, error="Voice created but no sample audio returned", cost_cents=cents, **extra)
+        sys.exit(1)
+    seconds = _save_wav(base64.b64decode(created.sample_audio.data), output)
+    print(f"Saved: {output}", file=sys.stderr)
+    result_json(True, path=str(output), cost_cents=cents, seconds=seconds, **extra)
+
+
+def cmd_voice_list(args):
+    filters = {"page_size": args.limit}
+    for key, value in (("language_code", args.language), ("gender", args.gender), ("pitch", args.pitch)):
+        if value:
+            filters[key] = value.split(",")
+    if args.search:
+        filters["search"] = args.search
+    if args.mine:
+        filters["type_"] = ["prompted", "replicated"]
+    client = genai.Client()
+    try:
+        resp = client.voices.list(**filters)
+    except Exception as e:
+        result_json(False, error=str(e))
+        sys.exit(1)
+    for voice in resp.voices or []:
+        row = {
+            "voice": voice.id, "name": voice.display_name, "language": voice.language_code, "accent": voice.accent,
+            "gender": voice.gender, "pitch": voice.pitch, "description": voice.description,
+            "prompt": voice.prompted.input if voice.prompted else None,
+            "expires": voice.expire_time.date().isoformat() if voice.expire_time else None,
+        }
+        print(json.dumps({k: v for k, v in row.items() if v}, ensure_ascii=False))
+
+
+def cmd_voice_delete(args):
+    client = genai.Client()
+    try:
+        client.voices.delete(id=args.voice_id)
+    except Exception as e:
+        result_json(False, error=str(e))
+        sys.exit(1)
+    result_json(True, voice=args.voice_id)
 
 
 def cmd_music(args):
@@ -420,16 +489,40 @@ def main():
     p_vid.add_argument("-o", "--output", required=True, help="Output MP4 path")
     p_vid.set_defaults(func=cmd_video)
 
-    p_sp = sub.add_parser("speech", help="Speak a directed transcript with Gemini TTS (~0.5¢ per 8 s)")
+    tts_models = list(TTS_USD_PER_M)
+    p_sp = sub.add_parser("speech", help="Speak a transcript with Gemini 3.8 TTS (~0.25¢ per 10 s)")
     src = p_sp.add_mutually_exclusive_group(required=True)
-    src.add_argument("--text", help="Full TTS prompt: optional direction, then the transcript (audio tags allowed)")
-    src.add_argument("--text-file", help="Read the prompt from a file")
+    src.add_argument("--text", help="Verbatim transcript with inline <tags>; with --speakers, one 'Name (style): text' per line")
+    src.add_argument("--text-file", help="Read the transcript from a file")
     who = p_sp.add_mutually_exclusive_group(required=True)
-    who.add_argument("--voice", help="Prebuilt voice for a single speaker, e.g. Kore")
+    who.add_argument("--voice", help="Voice for a single speaker: prebuilt name (Kore), library id, or designed voice_...")
     who.add_argument("--speakers", help="Two-speaker dialogue: 'Name1=Voice1,Name2=Voice2' (names as in the transcript)")
-    p_sp.add_argument("--model", default=TTS_MODEL, help=f"TTS model. Default: {TTS_MODEL}")
+    p_sp.add_argument("--style", help="Short delivery direction for the whole line, e.g. 'whispered urgently'")
+    p_sp.add_argument("--model", choices=tts_models, default=TTS_MODEL, help=f"TTS model. Default: {TTS_MODEL}")
     p_sp.add_argument("-o", "--output", required=True, help="Output .wav (24 kHz mono) / .ogg / .mp3 / .flac")
     p_sp.set_defaults(func=cmd_speech)
+
+    p_vo = sub.add_parser("voice", help="Gemini voices: design a character voice, list, delete")
+    vsub = p_vo.add_subparsers(dest="voice_command", required=True)
+    p_vd = vsub.add_parser("design", help="Create a persistent voice from a description (~2¢, kept 1 year)")
+    p_vd.add_argument("--prompt", required=True, help="1-2 sentences: who, age, timbre, texture, accent, baseline attitude")
+    p_vd.add_argument("--name", required=True, help="Display name, e.g. the character's name")
+    p_vd.add_argument("--gender", choices=["female", "male", "neutral"], default=None)
+    p_vd.add_argument("--language", default=None, help="BCP-47 language of the lines, e.g. en-GB, ja-JP")
+    p_vd.add_argument("--model", choices=tts_models, default=TTS_MODEL, help=f"Design model. Default: {TTS_MODEL}")
+    p_vd.add_argument("-o", "--output", required=True, help="Audition clip the voice speaks in character (~50 s)")
+    p_vd.set_defaults(func=cmd_voice_design)
+    p_vl = vsub.add_parser("list", help="Browse the voice library and your designed voices (free), one JSON line each")
+    p_vl.add_argument("--search", help="Substring of name or description, e.g. 'gravelly', '62-year-old'")
+    p_vl.add_argument("--language", help="BCP-47 codes, comma-separated, e.g. ja-JP or en-GB,en-IE")
+    p_vl.add_argument("--gender", help="female, male, neutral (comma-separated)")
+    p_vl.add_argument("--pitch", help="low, medium, high (comma-separated)")
+    p_vl.add_argument("--mine", action="store_true", help="Only voices designed in this project")
+    p_vl.add_argument("--limit", type=int, default=50, help="Max voices. Default: 50")
+    p_vl.set_defaults(func=cmd_voice_list)
+    p_vx = vsub.add_parser("delete", help="Delete a designed voice (a project holds at most 200)")
+    p_vx.add_argument("voice_id")
+    p_vx.set_defaults(func=cmd_voice_delete)
 
     p_mu = sub.add_parser("music", help="Generate music with Lyria (clip 4¢ = 30 s, song 8¢ = ~2 min)")
     p_mu.add_argument("--prompt", required=True, help="Music prompt: genre first, instruments, mood, BPM, key, structure")

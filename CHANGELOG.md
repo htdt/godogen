@@ -1,5 +1,10 @@
 # Changelog
 
+**2026-09-25 — Gemini 3.8 TTS, designed character voices**
+- `asset_gen.py speech` runs Gemini 3.8 Flash TTS through the Interactions API (~0.25¢ per 10 s line; `--model gemini-3.8-flash-lite-tts` for bulk). The text is a verbatim transcript: whole-line delivery goes in `--style`, moments in inline `<tags>`, and `--speakers` takes `Name (style): text` lines staged in conversational mode with `|backchannels|`.
+- `asset_gen.py voice design` creates a persistent `voice_...` from a one- or two-sentence description and saves its in-character audition (~1–2¢). `voice list` browses the 2,000+ voice library by language, accent, gender and pitch; `voice delete` frees a slot.
+- `api.md` covers casting (library voices for realistic humans, designed voices for everything else), barks from tags alone, dialogue clips, the refusal of child voices, and using the user's own replicated voice.
+
 **2026-09-24 — Local asset generation by default, audio**
 - Assets come from [godogen_assets](https://github.com/htdt/godogen_assets) by default: free local generators for images (Qwen-Image), textured 3D (TRELLIS.2), humanoid rigging (Make-It-Animatable), Kimodo moves (`gen-moves`, `add-moves`), lip-sync, sound effects (Stable Audio 3) and voice lines (Qwen3-TTS). `asset-gen/SKILL.md` is a TL;DR linking to its docs; its README carries the setup, and `publish.sh` writes the checkout recorded in `.godogen_assets` into the published skill.
 - Paid APIs live in `asset-gen/api.md`, read only when the local tools are missing or can't make an asset: Gemini / Grok images, animated sprites from Grok video, Tripo 3D, Gemini TTS voice acting (`asset_gen.py speech`) and Lyria music (`asset_gen.py music`), with `loop_audio.py` cutting seamless music loops. API keys and the Tripo CLI are optional.
