@@ -1,5 +1,10 @@
 # Changelog
 
+**2026-09-26 — GDScript and three.js**
+- `--engine godot-gdscript`: Godot 4 in statically typed GDScript on any Godot build, with the same build-time scene builders and movie-writer capture as C#. With no compiler, the guide gates on `--check-only` per script and on `SCRIPT ERROR` in the log (a runtime error leaves the exit code at 0), and names the silent drop of `set()` before `set_script()`.
+- `--engine threejs`: three.js + Vite + TypeScript at a live URL; the agent picks physics (Rapier) and UI itself. The guide covers color space, physical light units and shadow bounds, rigged clones, the WebGPU→WebGL2 fallback, and headless Chrome capture stepped from the capture script.
+- README "Choosing an engine" compares the five options: how you watch, 2D, C# vs GDScript, Babylon.js vs three.js, Bevy.
+
 **2026-09-25 — Gemini 3.8 TTS, designed character voices**
 - `asset_gen.py speech` runs Gemini 3.8 Flash TTS through the Interactions API (~0.25¢ per 10 s line; `--model gemini-3.8-flash-lite-tts` for bulk). The text is a verbatim transcript: whole-line delivery goes in `--style`, moments in inline `<tags>`, and `--speakers` takes `Name (style): text` lines staged in conversational mode with `|backchannels|`.
 - `asset_gen.py voice design` creates a persistent `voice_...` from a one- or two-sentence description and saves its in-character audition (~1–2¢). `voice list` browses the 2,000+ voice library by language, accent, gender and pitch; `voice delete` frees a slot.

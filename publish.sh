@@ -2,8 +2,10 @@
 # Publish Godogen runtime files into a target game repo.
 #
 # Usage:
-#   ./publish.sh --engine godot|bevy|babylon --agent claude|codex --out <dir> [--force]
-#   ./publish.sh --engine godot|bevy|babylon --agent claude|codex <dir> [--force]
+#   ./publish.sh --engine <engine> --agent claude|codex --out <dir> [--force]
+#   ./publish.sh --engine <engine> --agent claude|codex <dir> [--force]
+#
+# Engines: godot (C#), godot-gdscript, bevy, babylon, threejs — README.md#choosing-an-engine
 #
 # A published repo carries only docs: the runtime manifest (CLAUDE.md / AGENTS.md),
 # a per-engine guide (<engine>.md), and the asset-gen skill. The agent scaffolds
@@ -21,7 +23,7 @@ OUT=""
 FORCE=0
 
 usage() {
-    sed -n '1,10p' "$0" >&2
+    sed -n '1,8p' "$0" >&2
 }
 
 while [ $# -gt 0 ]; do
@@ -44,15 +46,16 @@ while [ $# -gt 0 ]; do
 done
 
 case "$ENGINE" in
-    godot)   ENGINE_DISPLAY="Godot" ;;
+    godot|godot-gdscript) ENGINE_DISPLAY="Godot" ;;
     bevy)    ENGINE_DISPLAY="Bevy" ;;
     babylon) ENGINE_DISPLAY="Babylon.js" ;;
-    *) echo "error: --engine must be godot, bevy, or babylon" >&2; usage; exit 1 ;;
+    threejs) ENGINE_DISPLAY="three.js" ;;
+    *) echo "error: --engine must be godot, godot-gdscript, bevy, babylon, or threejs" >&2; usage; exit 1 ;;
 esac
 
 # Root for runtime-loaded generated assets, substituted into the asset docs.
 case "$ENGINE" in
-    babylon) RUNTIME_ASSET_DIR="src/assets" ;;
+    babylon|threejs) RUNTIME_ASSET_DIR="src/assets" ;;
     *)       RUNTIME_ASSET_DIR="assets" ;;
 esac
 
@@ -153,10 +156,13 @@ if [ ! -f "$TARGET/.gitignore" ]; then
             godot)
                 printf 'assets\nscreenshots\n.godot\n*.import\nbin/\nobj/\n'
                 ;;
+            godot-gdscript)
+                printf 'assets\nscreenshots\n.godot\n*.import\n'
+                ;;
             bevy)
                 printf '/target\n/screenshots\n'
                 ;;
-            babylon)
+            babylon|threejs)
                 printf '/node_modules\n/dist\n/screenshots\n'
                 ;;
         esac

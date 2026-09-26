@@ -6,8 +6,8 @@ This repository is not a published game repo. It is the source that `publish.sh`
 
 - `prompts/runtime.md` — the engine-agnostic runtime manifest text
 - `asset-gen/` — the asset-generation skill, the one skill every published repo carries: local generation through [godogen_assets](https://github.com/htdt/godogen_assets) by default (`SKILL.md`), paid APIs in `api.md`
-- `engines/babylon.md`, `engines/godot.md`, `engines/bevy.md` — per-engine guides (stack, project sketch, capture recipe, silent-failure traps)
-- `publish.sh` — renders a runtime repo with `--engine {godot,bevy,babylon}`, `--agent {claude,codex}`; the asset-gen skill gets the local godogen_assets path from `.godogen_assets` (git-ignored)
+- `engines/godot.md` (C#), `engines/godot-gdscript.md`, `engines/bevy.md`, `engines/babylon.md`, `engines/threejs.md` — per-engine guides (stack, project sketch, capture recipe, silent-failure traps)
+- `publish.sh` — renders a runtime repo with `--engine {godot,godot-gdscript,bevy,babylon,threejs}`, `--agent {claude,codex}`; the asset-gen skill gets the local godogen_assets path from `.godogen_assets` (git-ignored)
 - `scripts/` — render helpers: `render_dir.py` (token substitution), `generate_codex_metadata.py` (Codex `openai.yaml`)
 
 ## Editing Rules

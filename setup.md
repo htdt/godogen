@@ -4,7 +4,7 @@ Shared workstation setup for the consolidated Godogen source repo.
 
 ## .NET 9 SDK
 
-Godot 4.5+ requires .NET 9.
+Godot 4.5+ C# projects require .NET 9.
 
 ### Linux (Ubuntu/Debian)
 
@@ -39,7 +39,7 @@ rustc --version
 
 ## Node.js And Browser
 
-Babylon.js projects need Node.js 22.12+; the optional Tripo CLI (`npm install -g tripo-cli`) needs 20+:
+Babylon.js and three.js projects need Node.js 22.12+; the optional Tripo CLI (`npm install -g tripo-cli`) needs 20+:
 
 ```bash
 node --version
@@ -53,7 +53,7 @@ command -v google-chrome || command -v chromium || command -v chromium-browser
 export CHROME_BIN=/path/to/chrome
 ```
 
-Babylon capture prefers hardware WebGL2. A fallback to a software renderer (SwiftShader, llvmpipe, lavapipe, etc.) on a GPU-equipped host means the browser GPU path is misconfigured and worth fixing; on a GPU-less host it still captures, at reduced quality and speed.
+Browser capture prefers hardware WebGL2. A fallback to a software renderer (SwiftShader, llvmpipe, lavapipe, etc.) on a GPU-equipped host means the browser GPU path is misconfigured and worth fixing; on a GPU-less host it still captures, at reduced quality and speed.
 
 ## System Packages
 
@@ -88,11 +88,11 @@ In a published game repo, the same asset-generation requirements file lives at:
 
 `asset_gen.py` needs `google-genai` 2.25+ for Gemini images, TTS, voice design and Lyria.
 
-## Godot (.NET edition)
+## Godot
 
-The **.NET edition** is required for Godot projects. The standard Godot build cannot run C# scripts.
+C# projects (`--engine godot`) need the **.NET edition**: the standard build cannot run C# scripts. GDScript projects (`--engine godot-gdscript`) run on either, so an installed .NET edition covers both; for GDScript alone, the [standard build](#standard-build-gdscript-only) is enough.
 
-### Linux
+### .NET edition, Linux
 
 ```bash
 VERSION=$(curl -s https://api.github.com/repos/godotengine/godot/releases/latest | grep -oP '"tag_name": "\K[^"]+' | sed 's/-stable//')
@@ -106,7 +106,7 @@ sudo mv Godot_v${VERSION}-stable_mono_linux_x86_64/GodotSharp /usr/local/bin/God
 
 `GodotSharp/` must live next to the `godot` binary. Godot resolves it relative to itself.
 
-### macOS
+### .NET edition, macOS
 
 ```bash
 brew install --cask godot-mono
@@ -115,13 +115,27 @@ printf '#!/bin/sh\nexec /Applications/Godot_mono.app/Contents/MacOS/Godot "$@"\n
 sudo chmod +x /usr/local/bin/godot
 ```
 
-`godot` must be a wrapper script, not a symlink. Godot resolves `GodotSharp/` (in the bundle's `Contents/Resources/`) from the path it was invoked as, so through a symlink it looks in `/usr/local/bin/` and fails — as a silent hang, since macOS shows fatal errors in a modal that `--headless` can't dismiss. Skip the plain `godot` cask: its `godot` command runs the build without C#.
+`godot` must be a wrapper script, not a symlink. Godot resolves `GodotSharp/` (in the bundle's `Contents/Resources/`) from the path it was invoked as, so through a symlink it looks in `/usr/local/bin/` and fails — as a silent hang, since macOS shows fatal errors in a modal that `--headless` can't dismiss. For C#, skip the plain `godot` cask: its `godot` command runs the build without C#.
+
+### Standard build (GDScript only)
+
+```bash
+# Linux
+VERSION=$(curl -s https://api.github.com/repos/godotengine/godot/releases/latest | grep -oP '"tag_name": "\K[^"]+' | sed 's/-stable//')
+cd /tmp
+wget https://github.com/godotengine/godot/releases/download/${VERSION}-stable/Godot_v${VERSION}-stable_linux.x86_64.zip
+unzip Godot_v${VERSION}-stable_linux.x86_64.zip
+sudo mv Godot_v${VERSION}-stable_linux.x86_64 /usr/local/bin/godot
+
+# macOS
+brew install --cask godot
+```
 
 ### Verify
 
 ```bash
 dotnet --version                    # 9.0.x
-godot --version                     # 4.x.x.stable.mono
+godot --version                     # 4.x.x.stable.mono (.NET edition)
 timeout 60 godot --headless --quit  # may show harmless RID warnings
 ```
 
