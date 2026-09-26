@@ -91,13 +91,6 @@ Pick the engine and host agent:
 
 Pass `--force` to wipe existing contents at the target before re-publishing.
 
-## Running on a server
-
-A full generation run can take hours, so it's convenient to offload it to a server — ideally a GPU instance, since engine rendering and video capture are much faster with hardware acceleration.
-
-- Keep the session alive across SSH drops with `tmux` or `screen`.
-- Enable remote control so you can check in and steer the run from any device — both Claude Code and Codex have official remote-control interfaces.
-
 ## Changelog
 
 See [CHANGELOG.md](CHANGELOG.md).
