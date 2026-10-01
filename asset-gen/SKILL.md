@@ -18,11 +18,12 @@ Assets come from [godogen_assets](https://github.com/htdt/godogen_assets): local
 | `gen3d` | textured GLB from an image | `mesh/` |
 | `mia-rig` | Mixamo-rigged humanoid from a GLB | `rig/` |
 | `add-moves`, `gen-moves` | idle/walk/run/jump onto a rig; custom moves from text prompts | `motion/` |
+| `grip-prop` | a prop made holdable; `add-moves --hold` puts it in a character's hand | `motion/` |
 | `lipsync` | speaking mouth + lip-synced clip from a voice line | `lipsync/` |
 | `stable-audio` | sound effects, seamless ambience loops | `sfx/` |
 | `qwen-tts` | voice lines from a description, or cloned from a reference line | `voice/` |
 
-A character: `qwen-image rgba` (T-pose) → `gen3d` → `mia-rig --fingers --anim none` → `add-moves`, with `gen-moves` for custom moves and `lipsync` for speech. Props stop after `gen3d`.
+A character: `qwen-image rgba` (T-pose) → `gen3d` → `mia-rig --fingers --anim none` → `add-moves`, with `gen-moves` for custom moves and `lipsync` for speech. Props stop after `gen3d`; one a character holds goes on through `grip-prop` and `add-moves --hold`, never by an offset tuned in the engine.
 
 - **Always pass `-o`** into the project; without it, results land in the godogen_assets checkout.
 - **One GPU job at a time, minutes per call.** Run GPU tools as one sequential batch with a long timeout or in the background, never as parallel calls.
@@ -33,7 +34,7 @@ A character: `qwen-image rgba` (T-pose) → `gen3d` → `mia-rig --fingers --ani
 - **Audio format.** Every tool picks it from the `-o` extension. Bevy's default features decode only Ogg Vorbis, so write `.ogg` for Bevy.
 - **Review before building on it.** Look at every PNG. You can't look at a GLB or hear a WAV: render GLBs (`${GODOGEN_ASSETS}/README.md`, Checking results) and read audio as a spectrogram (`${GODOGEN_ASSETS}/sfx/README.md`).
 
-Moves that drive gameplay — root-motion locomotion, attacks, state machines, anything held, ridden or aimed: read `${ASSET_GEN_SKILL_DIR}/motion.md`.
+Moves that drive gameplay — root-motion locomotion, attacks, state machines, anything held, ridden or aimed, characters that touch each other: read `${ASSET_GEN_SKILL_DIR}/motion.md`.
 
 ## Paid APIs
 

@@ -1,5 +1,9 @@
 # Changelog
 
+**2026-10-01 — Held props and contact**
+- A character holds a prop through godogen_assets' `grip-prop` and `add-moves --hold`: the prop's handle is found, the hand gets a `grip_r` / `grip_l` node to parent the prop to with an identity transform, its fingers close on the handle, and `rootmotion.json` carries the prop's path per clip, with strike timing read from its tip.
+- `motion.md` gains "Held props and contact": the one-number attachment check, moves generated for their prop, and how two characters meet (events and distances read from data, IK on the contact, every exchange verified on the posed skeleton), with the full rules in godogen_assets' `motion/HELD_PROPS.md`. Impact timing describes `frameData` as measured on the move alone.
+
 **2026-09-26 — GDScript and three.js**
 - `--engine godot-gdscript`: Godot 4 in statically typed GDScript on any Godot build, with the same build-time scene builders and movie-writer capture as C#. With no compiler, the guide gates on `--check-only` per script and on `SCRIPT ERROR` in the log (a runtime error leaves the exit code at 0), and names the silent drop of `set()` before `set_script()`.
 - `--engine threejs`: three.js + Vite + TypeScript at a live URL; the agent picks physics (Rapier) and UI itself. The guide covers color space, physical light units and shadow bounds, rigged clones, the WebGPU→WebGL2 fallback, and headless Chrome capture stepped from the capture script.
