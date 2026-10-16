@@ -68,6 +68,7 @@ Every engine gets the same loop — build, generate assets, run, prove — so pi
 - Node.js 22.12+ and npm for Babylon.js and three.js projects
 - Chrome or Chromium with hardware WebGL2 for browser capture (Babylon.js, three.js)
 - Python 3 with pip
+- [Blender](https://www.blender.org/download/) on `PATH` (recommended) — the agent scripts it for 3D models and animation the generators don't make well
 - [godogen_assets](https://github.com/htdt/godogen_assets) for local asset generation (NVIDIA GPU), set up per its README and recorded in `.godogen_assets` ([setup.md](setup.md))
 - Optional API keys as environment variables, for assets the local tools can't make (or all of them, without godogen_assets):
   - `GOOGLE_API_KEY` — [Google AI Studio](https://aistudio.google.com/) for Gemini images, Gemini TTS and Lyria music

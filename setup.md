@@ -146,6 +146,18 @@ ls "$(dirname "$(which godot)")"/GodotSharp/   # Linux: must sit next to the bin
 head -2 "$(which godot)"                       # macOS: must be the wrapper script above
 ```
 
+## Blender (Recommended)
+
+The agent scripts Blender headless for 3D the generators don't make well: exact or articulated models, edits to generated GLBs, mechanical and non-humanoid animation. Any recent release on `PATH` as `blender`:
+
+```bash
+sudo snap install blender --classic   # Linux; or a tarball from blender.org with blender on PATH
+brew install --cask blender           # macOS
+blender --version
+```
+
+godogen_assets ships its own Blender (`deps/blender`), which the agent falls back to through `asset-blender` when `blender` is missing.
+
 ## Local Asset Generation
 
 Assets are generated locally by default with [godogen_assets](https://github.com/htdt/godogen_assets): images, textured 3D models, rigged humanoids with generated moves and lip-sync, sound effects and voice lines, free on the machine's NVIDIA GPU (reference: RTX 3060 12 GB, 24 GB RAM). Without it, every asset goes to the paid APIs below.

@@ -36,6 +36,16 @@ A character: `qwen-image rgba` (T-pose) → `gen3d` → `mia-rig --fingers --ani
 
 Moves that drive gameplay — root-motion locomotion, attacks, state machines, anything held, ridden or aimed, characters that touch each other: read `${ASSET_GEN_SKILL_DIR}/motion.md`.
 
+## Blender
+
+Some 3D is better built than generated. A `bpy` script run headless (`blender -b -P make_turret.py`, exporting with `bpy.ops.export_scene.gltf`) is often the better path when:
+
+- the shape must be exact or articulated: a vehicle whose wheels turn, a door on its hinge, a turret that aims, kit pieces that snap together;
+- a generated GLB needs work: split into parts, new pivots, decimation, several merged into one;
+- the animation is outside the humanoid tools: mechanical parts, a creature of a few bones, keyframed or procedural clips.
+
+Check what it writes like any GLB. Without `blender` on `PATH`, `asset-blender script.py -- args` runs the script in godogen_assets' Blender (its `print` goes to stderr).
+
 ## Paid APIs
 
 `${ASSET_GEN_SKILL_DIR}/api.md` covers Gemini / xAI Grok images, animated sprites from Grok video, Tripo 3D, Gemini TTS and Lyria music. Read it only when an asset needs one:
