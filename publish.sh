@@ -5,7 +5,7 @@
 #   ./publish.sh --engine <engine> --agent claude|codex --out <dir> [--force]
 #   ./publish.sh --engine <engine> --agent claude|codex <dir> [--force]
 #
-# Engines: godot (C#), godot-gdscript, bevy, babylon, threejs — README.md#choosing-an-engine
+# Engines: godot (C#), godot-gdscript, bevy, babylon, threejs, starhermit — README.md#choosing-an-engine
 #
 # A published repo carries only docs: the runtime manifest (CLAUDE.md / AGENTS.md),
 # a per-engine guide (<engine>.md), and the asset-gen skill. The agent scaffolds
@@ -50,7 +50,8 @@ case "$ENGINE" in
     bevy)    ENGINE_DISPLAY="Bevy" ;;
     babylon) ENGINE_DISPLAY="Babylon.js" ;;
     threejs) ENGINE_DISPLAY="three.js" ;;
-    *) echo "error: --engine must be godot, godot-gdscript, bevy, babylon, or threejs" >&2; usage; exit 1 ;;
+    starhermit) ENGINE_DISPLAY="StarHermit" ;;
+    *) echo "error: --engine must be godot, godot-gdscript, bevy, babylon, threejs, or starhermit" >&2; usage; exit 1 ;;
 esac
 
 # Root for runtime-loaded generated assets, substituted into the asset docs.
@@ -164,6 +165,9 @@ if [ ! -f "$TARGET/.gitignore" ]; then
                 ;;
             babylon|threejs)
                 printf '/node_modules\n/dist\n/screenshots\n'
+                ;;
+            starhermit)
+                printf '/node_modules\n/.starhermit\n/screenshots\n'
                 ;;
         esac
     } > "$TARGET/.gitignore"

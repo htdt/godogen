@@ -55,6 +55,12 @@ export CHROME_BIN=/path/to/chrome
 
 Browser capture prefers hardware WebGL2. A fallback to a software renderer (SwiftShader, llvmpipe, lavapipe, etc.) on a GPU-equipped host means the browser GPU path is misconfigured and worth fixing; on a GPU-less host it still captures, at reduced quality and speed.
 
+## StarHermit
+
+For `--engine starhermit`, get a current, non-revoked runtime from [engine releases](https://wiki.starhermit.com/docs/engine-releases.html). Windows and Linux archives include `starhermit`, release metadata and the web manifest; keep them together outside the game repo and add that directory to `PATH`. Check the archive's SHA-256 against its `native.json`. Linux requires glibc 2.35+; native play also requires a display and graphics/audio drivers. `starhermit --version` verifies the installation; headless checks and packaging need no display.
+
+On macOS, use the [standalone developer tools](https://wiki.starhermit.com/engine/tools/README.html) (`starhermit-tools`) to package and validate files, then playtest in a browser. These tools also run on Windows and Linux. Node.js/npm runs TypeScript 5+ checks against declarations from the chosen runtime. See [the engine guide](engines/starhermit.md) for scaffolding, execution checks and browser previews.
+
 ## System Packages
 
 ```bash

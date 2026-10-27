@@ -1,6 +1,6 @@
 # Godogen — From Prompt to Playable Game
 
-Godogen turns a natural-language game brief into a playable Godot, Bevy, Babylon.js, or three.js project. The agent builds the game, generates assets, runs the engine, and proves the result from the running game.
+Godogen turns a natural-language game brief into a playable Godot, Bevy, Babylon.js, three.js, or StarHermit project. The agent builds the game, generates assets, runs the engine, and proves the result from the running game.
 
 It is not a game engine, a code generator, or an asset marketplace. It is a source repo that publishes a thin runtime — a manifest, an engine guide, and an asset skill — into a fresh game repo that Claude Code or Codex then builds in.
 
@@ -10,7 +10,7 @@ The repo is organized by engine, with the cross-engine pieces shared:
 
 - `prompts/runtime.md` — the runtime manifest
 - `asset-gen/` — the `asset-gen` skill
-- `engines/godot.md` (C#), `engines/godot-gdscript.md`, `engines/bevy.md`, `engines/babylon.md`, `engines/threejs.md` — per-engine guides
+- `engines/godot.md` (C#), `engines/godot-gdscript.md`, `engines/bevy.md`, `engines/babylon.md`, `engines/threejs.md`, `engines/starhermit.md` — per-engine guides
 
 Engine and host agent are selected at render time:
 
@@ -40,6 +40,7 @@ The manifest states only this intent; everything about *how to show and capture*
 - **Bevy** — Rust, current stable Bevy resolved and pinned at build time, ECS scenes spawned `OnEnter`. The guide points the agent at the installed source for current APIs and gives the offscreen `RenderTarget::Image` capture recipe.
 - **Babylon.js** — TypeScript/Vite, served at a live URL. The guide covers the side-effect-import trap, Havok physics, and headless Chrome capture.
 - **three.js** — TypeScript/Vite, served at a live URL; the agent picks physics (Rapier) and UI itself. The guide covers color space, physical lights, rigged clones, the WebGPU fallback, and step-driven headless Chrome capture.
+- **StarHermit** — TypeScript against built-in host modules, packaged for browsers and the native client. The guide covers runtime declarations, native headless execution checks, hash-indexed web uploads and browser capture.
 
 [README.md](../README.md#choosing-an-engine) has the guide to choosing between them.
 
@@ -55,4 +56,4 @@ The manifest states only this intent; everything about *how to show and capture*
 
 ## Runtime Limitations
 
-The runtime does not ship mobile/native packaging.
+Packaging follows each engine guide; StarHermit uses its prebuilt runtime and web packaging tools.

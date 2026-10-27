@@ -1,5 +1,9 @@
 # Changelog
 
+**2026-10-27 — StarHermit engine support**
+- `--engine starhermit` publishes a StarHermit guide for Claude Code or Codex, with package-relative `assets/` paths and engine-specific ignores.
+- The guide covers TypeScript host declarations, runtime checks, browser/native packaging, local browser previews and proof capture, with setup linked to the public developer wiki.
+
 **2026-10-16 — Local assets by default, audio, GDScript and three.js**
 - Assets come from [godogen_assets](https://github.com/htdt/godogen_assets) by default: free local generators for images (Qwen-Image), textured 3D (TRELLIS.2), humanoid rigging (Make-It-Animatable), Kimodo moves (`gen-moves`, `add-moves`), lip-sync, sound effects (Stable Audio 3) and voice lines (Qwen3-TTS). `asset-gen/SKILL.md` is a TL;DR linking to its docs; its README carries the setup, and `publish.sh` writes the checkout recorded in `.godogen_assets` into the published skill.
 - Blender is a recommended dependency: `asset-gen` scripts it headless for 3D better built than generated — exact or articulated models, edits to generated GLBs, mechanical and non-humanoid animation — and falls back to godogen_assets' own Blender through `asset-blender` when `blender` isn't on `PATH`.
