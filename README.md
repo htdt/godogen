@@ -26,7 +26,7 @@ Engine and host agent (Claude vs Codex) are publish-time render choices, not sep
 - **Godot 4** — C# or statically typed GDScript projects with build-time scene generation, runtime scripts, and Jolt physics.
 - **Bevy** — Rust/Bevy projects with code-first ECS scenes and offscreen capture.
 - **Babylon.js** and **three.js** — TypeScript/Vite browser games served at a live URL.
-- **HTML** — text-first 2D games in the DOM: type and CSS for the look, TypeScript/Vite, served at a live URL.
+- **HTML** — 2D games built on the DOM: type and CSS for the look, canvas and three.js for motion and effects, TypeScript/Vite, served at a live URL.
 - **Asset generation** — images, transparent sprites and animated GIF sprites from GPT-Image-2.6, batched at half price. Textured 3D models, rigged humanoids with generated moves and lip-sync, sound effects and voice lines are generated locally and for free with [godogen_assets](https://github.com/htdt/godogen_assets), and Blender builds exact or articulated 3D. Grok sprite video, Tripo3D, Gemini TTS voice acting and Lyria music fill the rest. Your brief decides the spend: ask for free or local and images come from local Qwen-Image too.
 - **Building blocks, not process** — the guides carry the stack, project sketch, capture recipe and silent-failure traps. How to check the game and what to hand back are the model's call.
 
@@ -45,7 +45,7 @@ Every engine gets the same loop — build, generate assets, run — so pick by w
 
 **How you'll watch.** On a remote box or steering from your phone, a browser engine wins: the dev server gives you a URL you refresh while the agent edits. Godot and Bevy run as desktop apps — from a headless server you see them in a recorded video, or by pulling the repo and running it locally. On your own desktop the engines are even here.
 
-**2D.** Godot has a dedicated 2D engine (pixel-space nodes, tilemaps, 2D physics) and is the natural pick for 2D. Bevy handles 2D well; Babylon.js and three.js are 3D-first and draw 2D as sprites and planes in a 3D scene. For 2D that is mostly text, panels and buttons, `html` skips the scene entirely: the DOM is the renderer, type and CSS are the art, it needs no GPU, and it plays on a phone.
+**2D.** Godot has a dedicated 2D engine (pixel-space nodes, tilemaps, 2D physics) and is the natural pick for 2D. Bevy handles 2D well; Babylon.js and three.js are 3D-first and draw 2D as sprites and planes in a 3D scene. For 2D that is mostly text, panels and buttons, `html` builds on the DOM instead of a scene: type and CSS are the art, with canvas and three.js layered in for animation, effects and 3D moments.
 
 **Godot: C# or GDScript.** Same engine, scenes, and capture; only the language differs.
 - C# compiles: `dotnet build` type-checks the whole project before anything runs, so mistakes surface early ([comparison](docs/gdscript-vs-csharp.md)). It needs the .NET build of Godot and the .NET SDK.
@@ -67,7 +67,7 @@ Every engine gets the same loop — build, generate assets, run — so pick by w
 - [Godot 4](https://godotengine.org/download/) on `PATH` for Godot projects — the .NET build for C#; either build for GDScript
 - Rust/Cargo for Bevy projects
 - Node.js 22.12+ and npm for Babylon.js, three.js and HTML projects
-- Chrome or Chromium for headless browser runs — with hardware WebGL2 for Babylon.js and three.js capture; HTML needs no GPU
+- Chrome or Chromium for headless browser runs — with hardware WebGL2 for Babylon.js and three.js capture, and for HTML games that use three.js
 - Python 3 with pip
 - [Blender](https://www.blender.org/download/) on `PATH` (recommended) — the agent scripts it for 3D models and animation the generators don't make well
 - [godogen_assets](https://github.com/htdt/godogen_assets) for local asset generation (NVIDIA GPU), set up per its README and recorded in `.godogen_assets` ([setup.md](setup.md))
