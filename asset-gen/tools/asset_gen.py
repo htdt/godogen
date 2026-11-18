@@ -33,6 +33,7 @@ import requests
 import xai_sdk
 from google import genai
 from google.genai import types
+from PIL import Image
 
 TOOLS_DIR = Path(__file__).parent
 
@@ -129,9 +130,18 @@ def _image_cents(usage: dict | None, batch: bool) -> float:
     return round(usd * 100 / (2 if batch else 1), 2)
 
 
-def _save_image(resp: dict, output: Path) -> dict:
+ALPHA_FLOOR = 16  # edits with a transparent background leave a faint haze (alpha ~10) where it should be clear
+
+
+def _save_image(resp: dict, output: Path, transparent: bool = False) -> dict:
     output.parent.mkdir(parents=True, exist_ok=True)
-    output.write_bytes(base64.b64decode(resp["data"][0]["b64_json"]))
+    data = base64.b64decode(resp["data"][0]["b64_json"])
+    if transparent and output.suffix.lower() in (".png", ".webp"):
+        img = Image.open(io.BytesIO(data)).convert("RGBA")
+        img.putalpha(img.getchannel("A").point(lambda a: 0 if a <= ALPHA_FLOOR else a))
+        img.save(output, lossless=True) if output.suffix.lower() == ".webp" else img.save(output)
+    else:
+        output.write_bytes(data)
     return {k: resp[k] for k in ("size", "quality") if resp.get(k)}
 
 
@@ -163,7 +173,7 @@ def cmd_image(args):
         sys.exit(1)
 
     output = Path(args.output)
-    extra = _save_image(resp, output)
+    extra = _save_image(resp, output, args.transparent)
     print(f"Saved: {output}", file=sys.stderr)
     result_json(True, path=str(output), cost_cents=_image_cents(resp.get("usage"), batch=False), **extra)
 
@@ -263,7 +273,7 @@ def cmd_batch(args):
                 resp = row.get("response") or {}
                 body = resp.get("body") or {}
                 if resp.get("status_code") == 200 and body.get("data"):
-                    extra = _save_image(body, Path(job["o"]))
+                    extra = _save_image(body, Path(job["o"]), bool(job.get("transparent")))
                     results[row["custom_id"]] = {"ok": True, "path": job["o"],
                                                  "cost_cents": _image_cents(body.get("usage"), batch=True), **extra}
                 else:

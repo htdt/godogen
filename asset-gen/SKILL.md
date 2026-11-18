@@ -14,7 +14,7 @@ description: |
 
 Choose by asset type, then let the user's words decide: a budget, "free" or "local only", or "best quality".
 
-- **Images.** GPT-Image-2.6 Sunburst (`${ASSET_GEN_SKILL_DIR}/api.md`) makes everything the player looks at: characters, sprites, animated sprites, backgrounds, key art, UI with text, and the reference images that 3D is built from. It is paid: ~2¢ for a batched 1024x1024 at medium. Local `qwen-image` is free but only good for basic assets (flat textures, simple icons, placeholders); use it for everything only when the user asks for free or local, or when `OPENAI_API_KEY` isn't set.
+- **Images.** GPT-Image-2.6 Sunburst (`${ASSET_GEN_SKILL_DIR}/api.md`) makes everything the player looks at: characters, sprites, animated sprites, backgrounds, key art, UI with text, and the reference images that 3D is built from. It is paid: 2.2¢ for a batched 1024x1024 at medium. Local `qwen-image` is free but only good for basic assets (flat textures, simple icons, placeholders); use it for everything only when the user asks for free or local, or when `OPENAI_API_KEY` isn't set.
 - **3D.** Local first. `gen3d` turns a reference image into a textured GLB, and the humanoid tools rig and animate it. Blender builds what generation doesn't (below). Use Tripo (api.md) when godogen_assets isn't set up, or to rig a non-humanoid.
 - **Audio.** Use local `stable-audio` and `qwen-tts` for sound effects and voice lines. The paid APIs cover music, a voice that acts many emotions, barks, two-speaker dialogue, and languages `qwen-tts` lacks.
 

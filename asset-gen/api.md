@@ -6,14 +6,19 @@ Keys: `OPENAI_API_KEY` (images, animated GIF sprites), `XAI_API_KEY` (sprite vid
 
 ## Images — GPT-Image-2.6 Sunburst
 
-- **Batch by default.** Put every image of a set in one JSONL and run `batch`: half price, but slower, with up to 24 h guaranteed. Use `image` (live, full price) only for what the next step waits on: the reference a set derives from, a style draft, a single redo.
-- **Quality.** `medium` (the default) for sprites, props, icons and tiles. `high` for the reference that a set or a 3D model is built from, dense text, and full-screen art. `low` for composition drafts. `xhigh` and `max` are untested here and cost more; keep them for large key art.
+- **Batch by default.** Put every image of a set in one JSONL and run `batch`: half price, but it takes ~30–60 min (24 h guaranteed), so start it early and keep building meanwhile. Use `image` (live, full price, ~20 s) only for what the next step waits on: the reference a set derives from, a style draft, a single redo.
+- **Quality.** `medium` (the default) for sprites, props, icons and tiles. `high` costs only ~20% more: use it for the reference that a set or a 3D model is built from, dense text, and full-screen art. `low` is already clean on flat, stylized props, and works for drafts and GIF cycles. `xhigh` and `max` are untested here; keep them for large key art.
 - **Real transparency.** `--transparent` (`"transparent": true` in a job) returns real alpha, 1-bit in a GIF. Leave the background out of the prompt.
 - **References.** `--image ref.png`, repeatable up to 16: the first image is the one edited, the rest guide it. Prompt only what changes. Add `--complexity low` for focused edits (a recolor, a pose, a variant); the default `high` replans the whole scene and can change what should stay.
 - **Size.** `WIDTHxHEIGHT` in multiples of 16, ratio 1:3–3:1, edge ≤3840, 0.66–8.3 MP, so the smallest still is 1024x640. The default is 1024x1024. A 1080p background is `1920x1088`, cropped afterwards.
 - **Drafts.** `--model flare --quality low` returns in seconds at the same token price.
 
-A live 1024x1024 at `medium` costs ~4.4¢ and takes ~20 s; a batched one costs half. Cost grows with quality, pixels and each reference image. `cost_cents` is computed from the token usage the API returns.
+| 1024x1024 | low | medium | high |
+|-----------|-----|--------|------|
+| live | 2.5¢ | 4.4¢ | 5.3¢ |
+| batch | 1.25¢ | 2.2¢ | 2.6¢ |
+
+Cost grows with pixels, and a reference image adds ~0.4¢ (batched). `cost_cents` is computed from the token usage the API returns.
 
 ```bash
 python3 ${ASSET_GEN_SKILL_DIR}/tools/asset_gen.py image --quality high --transparent \
@@ -50,8 +55,8 @@ python3 ${ASSET_GEN_SKILL_DIR}/tools/asset_gen.py image --image knight.png --tra
   -o walk.gif --prompt "The same knight walking to the right in a smooth walk cycle, side view, fixed camera; the eighth frame flows back into the first"
 ```
 
-- **Frames.** `--frames` takes 2–16 (default 9). `--frame-ms` sets the delay per frame, 20–2000 ms (default 200); it is also the playback rate.
-- **Output.** Each frame is 512x512 with `auto` size, and the GIF loops forever. 8 medium frames cost ~4¢ live.
+- **Frames.** `--frames` takes 2–16 (default 9). `--frame-ms` sets the delay per frame, 20–2000 ms (default 200); it is also the playback rate. GIF jobs batch like stills.
+- **Output.** Each frame is 512x512 with `auto` size, and the GIF loops forever. 8 medium frames cost ~3.8¢ live; 6 low frames cost 1.3¢ batched.
 - **Consistency.** Frames keep the reference's design, and the character moves in place.
 - **Prompt.** Describe the motion and how the loop closes, and fix the camera.
 - **Alpha.** It is 1-bit, so edges are hard.
@@ -189,7 +194,7 @@ python3 ${ASSET_GEN_SKILL_DIR}/tools/loop_audio.py music_src/shop_theme.mp3 --bp
 
 ## Costs
 
-Quick reference: 1024x1024 medium image ~4.4¢ live, half batched · 8-frame medium GIF ~4¢ live · sprite video 14¢/s at 720p · Gemini TTS ~0.25¢ per 10 s line, a designed voice 1–2¢ (both double from 2027) · Lyria 4¢ per 30 s clip, 8¢ per song. Tripo bills in credits (≈1¢): ~30 per model, ~25 to rig, ~10 per retargeted clip — `tripo balance` before a batch, and report the `credits_consumed` the CLI returns rather than an estimate.
+Quick reference: 1024x1024 image 2.2¢ batched at medium (4.4¢ live) · 8-frame medium GIF ~3.8¢ live · sprite video 14¢/s at 720p · Gemini TTS ~0.25¢ per 10 s line, a designed voice 1–2¢ (both double from 2027) · Lyria 4¢ per 30 s clip, 8¢ per song. Tripo bills in credits (≈1¢): ~30 per model, ~25 to rig, ~10 per retargeted clip — `tripo balance` before a batch, and report the `credits_consumed` the CLI returns rather than an estimate.
 
 ## Output and logging
 
