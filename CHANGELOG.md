@@ -2,7 +2,7 @@
 
 **2026-11-18 — GPT-Image-2.6 Sunburst images, batched**
 - Paid images come from OpenAI's `gpt-image-2.6-sunburst` (`OPENAI_API_KEY`); Gemini and Grok images are retired. `asset_gen.py batch jobs.jsonl` sends a whole set through the Batch API at half price, polls until every image is saved, and resumes from `jobs.jsonl.batch.json` rather than resubmitting; `asset_gen.py image` is the live call for whatever the next step waits on. Costs are computed from the token usage the API returns.
-- `--transparent` returns real alpha (1-bit in GIF), so stills skip rembg. `--image` takes up to 16 references, and `--complexity low` keeps focused edits from replanning the scene. `--model flare` makes fast drafts.
+- `--transparent` returns real alpha (1-bit in GIF), so background removal is gone: `rembg_matting.py`, `rembg.md` and the `rembg` / `pymatting` / `onnxruntime-gpu` requirements. Grok video frames keep their solid background. `--image` takes up to 16 references, and `--complexity low` keeps focused edits from replanning the scene. `--model flare` makes fast drafts.
 - Animated GIF output (`-o x.gif --frames 2–16 --frame-ms`) makes short sprite cycles from a reference in one call; Grok video stays for longer or smoother motion. `api.md` carries the quality guide and measured costs.
 
 **2026-10-16 — Local assets by default, audio, GDScript and three.js**

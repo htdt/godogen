@@ -8,7 +8,7 @@ Keys: `OPENAI_API_KEY` (images, animated GIF sprites), `XAI_API_KEY` (sprite vid
 
 - **Batch by default.** Put every image of a set in one JSONL and run `batch`: half price, but slower, with up to 24 h guaranteed. Use `image` (live, full price) only for what the next step waits on: the reference a set derives from, a style draft, a single redo.
 - **Quality.** `medium` (the default) for sprites, props, icons and tiles. `high` for the reference that a set or a 3D model is built from, dense text, and full-screen art. `low` for composition drafts. `xhigh` and `max` are untested here and cost more; keep them for large key art.
-- **Real transparency.** `--transparent` (`"transparent": true` in a job) returns real alpha, 1-bit in a GIF: no matting. Leave the background out of the prompt.
+- **Real transparency.** `--transparent` (`"transparent": true` in a job) returns real alpha, 1-bit in a GIF. Leave the background out of the prompt.
 - **References.** `--image ref.png`, repeatable up to 16: the first image is the one edited, the rest guide it. Prompt only what changes. Add `--complexity low` for focused edits (a recolor, a pose, a variant); the default `high` replans the whole scene and can change what should stay.
 - **Size.** `WIDTHxHEIGHT` in multiples of 16, ratio 1:3–3:1, edge ≤3840, 0.66–8.3 MP, so the smallest still is 1024x640. The default is 1024x1024. A 1080p background is `1920x1088`, cropped afterwards.
 - **Drafts.** `--model flare --quality low` returns in seconds at the same token price.
@@ -54,23 +54,22 @@ python3 ${ASSET_GEN_SKILL_DIR}/tools/asset_gen.py image --image knight.png --tra
 - **Output.** Each frame is 512x512 with `auto` size, and the GIF loops forever. 8 medium frames cost ~4¢ live.
 - **Consistency.** Frames keep the reference's design, and the character moves in place.
 - **Prompt.** Describe the motion and how the loop closes, and fix the camera.
-- **Alpha.** It is 1-bit, so edges are hard. For soft edges (smoke, glow, fur), use a solid background and matte the frames with rembg (below).
+- **Alpha.** It is 1-bit, so edges are hard.
 - **Frames for the engine.** Only HTML plays a GIF directly. Elsewhere, split it with `magick walk.gif -coalesce frames/%02d.png` and play the frames at `--frame-ms`.
 
 ### Video
 
-For motion longer or smoother than 16 frames, or a soft-edged one-shot: **reference → pose → video → extract frames → loop-trim → rembg.**
+For motion longer or smoother than 16 frames: **reference → pose → video → extract frames → loop-trim.** Frames keep the video's solid background; nothing here mattes it out, so this fits a scene drawn in that color, or a color key in the engine's sprite shader.
 
-1. Reference (1024x1024, neutral pose, solid BG, without `--transparent`: video needs the background) — anchors everything.
+1. Reference (1024x1024, neutral pose, without `--transparent`: video needs a solid background, in a color distinct from the subject) — anchors everything.
 2. Pose per action: `--image` from the reference with `--complexity low`, prompt only the action.
 3. Video from the pose frame: `asset_gen.py video --image pose.png --duration 2 -o walk.mp4` (Grok, needs `XAI_API_KEY`; `--duration` 1–15s; `--resolution` 720p at 14¢/s, or 480p at 8¢/s — enough for small sprites).
 4. Extract: `ffmpeg -i walk.mp4 -vsync 0 frames/%04d.png`.
 5. Loop-trim looping cycles (walk/idle): `tools/find_loop_frame.py frames/` returns the loop frame; delete frames past it. Skip for one-shots (attack/death).
-6. Batch matte: `tools/rembg_matting.py --batch frames/ -o clean/` (`${ASSET_GEN_SKILL_DIR}/rembg.md`).
 
 Reuse one reference for all of a character's actions. **Chaining** (feed action A's last frame as action B's start) keeps positional continuity — keep chains ≤2 deep, they drift.
 
-- **Mixed sizes:** image frames are ~1024px, video frames smaller (960px square at 720p). Downscale everything to the smallest source before matting (`magick in.png -resize 960x960 out.png`).
+- **Mixed sizes:** image frames are ~1024px, video frames smaller (960px square at 720p). Downscale everything to the smallest source (`magick in.png -resize 960x960 out.png`).
 - **Playback fps:** source videos are ~24fps — drive sprite playback off elapsed time at ~1/24s, and only restart a loop when the animation state actually changes.
 
 ## 3D models
@@ -91,7 +90,7 @@ tripo anim retarget @hero --animation preset:biped:walk preset:biped:idle --json
 - Rig: `rig:model=v1.0-20240301` for bipeds, with the `preset:biped:*` clips below. The CLI's default rig (v2.5) covers quadrupeds, avians, etc. with `preset:<name>` clips (`idle walk run dive climb jump slash shoot hurt fall turn`). `rig-check` in the chain aborts before rigging if the mesh isn't riggable. `--animate-in-place` when game code drives locomotion.
 - Don't assume the preset name survives into the GLB; inspect the imported clip names before wiring playback.
 
-Source image for `make`: 3/4 elevated angle, solid white/gray background, matte finish, opaque glass, single centered subject — and **no** `--transparent` or rembg (Tripo needs the solid bg). For characters, generate the reference in a T-pose.
+Source image for `make`: 3/4 elevated angle, solid white/gray background, matte finish, opaque glass, single centered subject — and **no** `--transparent` (Tripo needs the solid bg). For characters, generate the reference in a T-pose.
 
 v1.0 biped retarget presets (pass as `preset:biped:<name>`):
 
