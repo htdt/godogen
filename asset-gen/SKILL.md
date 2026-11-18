@@ -32,33 +32,23 @@ A character: `qwen-image rgba` (T-pose) → `gen3d` → `mia-rig --fingers --ani
 - **Small sprites.** A 1024px image downscaled to 64px looks muddy: design display sizes ≥128px, prompt bold flat forms, or generate a kit (several objects in one image) and slice it with `python3 ${ASSET_GEN_SKILL_DIR}/tools/grid_slice.py kit.png -o out/ --grid 2x2 --names "a,b,c,d"`.
 - **Direction.** Generators get left/right and facing wrong; generate one direction and flip at runtime.
 - **Audio format.** Every tool picks it from the `-o` extension. Bevy's default features decode only Ogg Vorbis, so write `.ogg` for Bevy.
-- **Review before building on it.** Look at every PNG. You can't look at a GLB or hear a WAV: render GLBs (`${GODOGEN_ASSETS}/README.md`, Checking results) and read audio as a spectrogram (`${GODOGEN_ASSETS}/sfx/README.md`).
+- **Seeing GLBs and audio.** Render GLBs to images (`${GODOGEN_ASSETS}/README.md`, Checking results); read audio as a spectrogram (`${GODOGEN_ASSETS}/sfx/README.md`).
 
 Moves that drive gameplay — root-motion locomotion, attacks, state machines, anything held, ridden or aimed, characters that touch each other: read `${ASSET_GEN_SKILL_DIR}/motion.md`.
 
 ## Blender
 
-Some 3D is better built than generated. A `bpy` script run headless (`blender -b -P make_turret.py`, exporting with `bpy.ops.export_scene.gltf`) is often the better path when:
-
-- the shape must be exact or articulated: a vehicle whose wheels turn, a door on its hinge, a turret that aims, kit pieces that snap together;
-- a generated GLB needs work: split into parts, new pivots, decimation, several merged into one;
-- the animation is outside the humanoid tools: mechanical parts, a creature of a few bones, keyframed or procedural clips.
-
-Check what it writes like any GLB. Without `blender` on `PATH`, `asset-blender script.py -- args` runs the script in godogen_assets' Blender (its `print` goes to stderr).
+A `bpy` script run headless (`blender -b -P make_turret.py`, exporting with `bpy.ops.export_scene.gltf`) builds the 3D the generators don't: exact or articulated shapes (wheels that turn, a turret that aims, snap-together kit pieces), work on a generated GLB (split, new pivots, decimate, merge), and animation outside the humanoid tools (mechanical parts, a creature of a few bones, keyframed or procedural clips). Without `blender` on `PATH`, `asset-blender script.py -- args` runs the script in godogen_assets' Blender (its `print` goes to stderr).
 
 ## Paid APIs
 
-`${ASSET_GEN_SKILL_DIR}/api.md` covers Gemini / xAI Grok images, animated sprites from Grok video, Tripo 3D, Gemini TTS and Lyria music. Read it only when an asset needs one:
-
-- godogen_assets isn't on this machine (its checkout above reads `none`), or a command answers `not installed` — that part isn't set up;
-- the local tools don't make it: frame-by-frame animated 2D sprites, music, one character voice acting many emotions, vocal barks, two-speaker dialogue, a language `qwen-tts` lacks, a rig for a non-humanoid;
-- a local result stays wrong after rewording and a few seeds.
+`${ASSET_GEN_SKILL_DIR}/api.md` covers Gemini / xAI Grok images, animated sprites from Grok video, Tripo 3D, Gemini TTS and Lyria music: what the local tools don't make (frame-by-frame animated 2D sprites, music, one character voice acting many emotions, vocal barks, two-speaker dialogue, a language `qwen-tts` lacks, a rig for a non-humanoid), and everything when godogen_assets isn't set up (its checkout above reads `none`, or a command answers `not installed`).
 
 Paid calls cost real money: confirm with the user before the first one.
 
 ## Asset manifest (in README.md)
 
-Track every generated asset in `README.md` with an **in-game Size** column — without it, coders consistently scale assets wrong. `gen3d` models come out 1.0 tall with no real scale, so this column is where their size is decided:
+Track every generated asset in `README.md` with an **in-game Size** column. `gen3d` models come out 1.0 tall with no real scale, so this column is where their size is decided:
 
 - 3D models: meters, e.g. `4m long`, `1.8m tall`, `0.3m`
 - Textures: tile size, e.g. `2m tile`

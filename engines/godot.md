@@ -9,8 +9,6 @@ Stack: **Godot 4 (.NET / Mono build)**, **C#**. All Godot C# classes must be `pa
 - `scripts/*.cs` runtime behavior · `scenes/*.tscn` scenes · `assets/` **only** files the running game loads (keep generation inputs/refs outside it).
 - Build gate: `dotnet build`, then `godot --headless --import` after asset changes, then `godot --headless --quit` (RID-leak warnings on headless exit are benign).
 
-The user watches by running the project themselves (`godot --path .` or the editor) — keep it building and importing cleanly so each run reflects current state.
-
 ## Scenes are generated at build time, not by hand
 
 Write scenes as **C# `SceneTree` scripts** that run once headless and emit a `.tscn`: `godot --headless --script scenes/BuildX.cs`. A builder builds the node hierarchy, sets properties, attaches scripts, packs, and `Quit()`s — it contains **no** runtime logic (no `_Ready`/`_Process`, signals, or game state). Build **leaf scenes first**, parents after.
@@ -50,9 +48,9 @@ Most Godot behavior the model already knows; these few fail with no error:
 - **C# enum names:** training data is GDScript-biased, so guessed C# enum names are often wrong (`BGMode.Sky`, not `BGModeEnum.Sky`). Verify against the installed Godot — read the C# API in the Godot docs/assemblies rather than guessing.
 - Frame-rate-independent damping: `speed *= Mathf.Exp(-rate * delta)`, not `speed *= (1 - drag)` per tick.
 
-## Capture (proof video)
+## Capture
 
-Hardware **Vulkan** (Metal on macOS) gives correct rendering and is required for video; software Vulkan (`llvmpipe`/`lavapipe`) can still do stills but skip video and report it. macOS has no `xvfb`, so capture runs in a real window there — adding `--headless` to `--write-movie` aborts (`Parameter "t" is null`).
+Video needs hardware **Vulkan** (Metal on macOS); software Vulkan (`llvmpipe`/`lavapipe`) is good for stills only. macOS has no `xvfb`, so capture runs in a real window there — adding `--headless` to `--write-movie` aborts (`Parameter "t" is null`).
 
 Capture deterministically with Godot's movie writer from a dedicated capture `SceneTree` script under `test/`:
 
@@ -64,4 +62,4 @@ ffmpeg -y -framerate 30 -pattern_type glob -i 'screenshots/result/frame*.png' \
   -c:v libx264 -pix_fmt yuv420p -movflags +faststart screenshots/result/video.mp4
 ```
 
-`--fixed-fps` makes motion deterministic (450 frames @30fps = 15s). **Pre-position the camera** in the builder/`_Initialize` (the first movie frame renders before `_Process`). Drive capture-time input from the script, not live keys. The clip must show the behavior progressing across the whole window — no dead time, no single looped frame.
+`--fixed-fps` makes motion deterministic (450 frames @30fps = 15s). **Pre-position the camera** in the builder/`_Initialize` (the first movie frame renders before `_Process`). Drive capture-time input from the script, not live keys.

@@ -20,7 +20,7 @@ Pick a prompt bg color that is (1) **distinct from the subject** so the mask sep
 Deps in `${ASSET_GEN_SKILL_DIR}/tools/requirements.txt` (`pip install rembg[gpu,cli]`, or `rembg[cpu,cli]`). The script auto-detects CUDA and falls back to CPU with a warning.
 
 ```bash
-# single image — always pass --preview
+# single image
 python3 ${ASSET_GEN_SKILL_DIR}/tools/rembg_matting.py img/car.png -o img/car_nobg.png --preview
 # batch (video frames): BiRefNet loads once, bg sampled per-frame for color drift
 python3 ${ASSET_GEN_SKILL_DIR}/tools/rembg_matting.py --batch frames/ -o clean/
@@ -38,9 +38,9 @@ python3 ${ASSET_GEN_SKILL_DIR}/tools/rembg_matting.py --batch frames/ -o clean/
 
 Output reports `BG color`, `Mask: fg=… (%)`, and the selected `Regime`. If the bg color is wrong (corners aren't bg) or `Transparent: 0`, regenerate the image with the subject centered on a solid bg.
 
-## QA verification
+## Preview
 
-Always pass `--preview` — it writes a `_qa.png` (the result composited on a contrasting color). ${AGENT_NAME} cannot judge transparency from a raw PNG; reading the `_qa` is the only reliable check. Delete it after inspection.
+Alpha doesn't show in a raw PNG. `--preview` writes a `_qa.png` (the result composited on a contrasting color) so the matte can be seen; delete it afterwards.
 
 ## Fixing results
 

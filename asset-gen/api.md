@@ -1,6 +1,6 @@
 # Paid APIs
 
-For assets the local tools can't make on this machine (SKILL.md, Paid APIs). Every call costs real money: confirm the spend with the user before generating, and record it in the asset manifest.
+For assets the local tools can't make on this machine (SKILL.md, Paid APIs). Every call costs real money; record it in the asset manifest.
 
 Keys: `GOOGLE_API_KEY` (Gemini images, Gemini TTS, Lyria), `XAI_API_KEY` (Grok images, sprite video), `TRIPO_API_KEY` (the `tripo` CLI). Images, video and audio go through `${ASSET_GEN_SKILL_DIR}/tools/asset_gen.py`; 3D goes through the `tripo` CLI.
 
@@ -11,7 +11,7 @@ Keys: `GOOGLE_API_KEY` (Gemini images, Gemini TTS, Lyria), `XAI_API_KEY` (Grok i
 | Gemini 3.1 Flash Image | `--model gemini` | 5¢ (512) · 7¢ (1K) · 10¢ (2K) · 15¢ (4K) | ~10 s per image |
 | Grok Imagine Image 2.0 | `--model grok` | 6¢ (1K) · 8¢ (2K), +1¢ per reference image | 1–2 min per image |
 
-Gemini and Grok are equally strong: both follow detailed prompts closely, and both slip on small details — a miscounted item, a mirrored left/right. Use whichever key is set; with both, `asset_gen.py` defaults to Gemini for speed. When an asset is quality-critical (a character reference that anchors 3D or animation, a hero image) and both keys are set, generate it with both and keep the better one.
+Gemini and Grok are equally strong: both follow detailed prompts closely, and both slip on small details — a miscounted item, a mirrored left/right. With both keys set, `asset_gen.py` defaults to Gemini for speed.
 
 ```bash
 python3 ${ASSET_GEN_SKILL_DIR}/tools/asset_gen.py image \
@@ -24,13 +24,11 @@ python3 ${ASSET_GEN_SKILL_DIR}/tools/asset_gen.py image \
 
 **Transparency:** these models can't make it. Read `${ASSET_GEN_SKILL_DIR}/rembg.md`; key rule: **never prompt for a "transparent background"** (the generator bakes a checkerboard) — prompt a solid color, then matte it out.
 
-Review every PNG before any GLB conversion — a bad image wastes 30+ credits downstream.
-
 ## Animated sprites
 
 Recipe: **reference → pose → video → extract frames → loop-trim → rembg.**
 
-1. Reference (1K, neutral pose, solid BG) — anchors everything; review carefully.
+1. Reference (1K, neutral pose, solid BG) — anchors everything.
 2. Pose per action: image-to-image from the reference, prompt only the action.
 3. Video from the pose frame: `asset_gen.py video --image pose.png --duration 2 -o walk.mp4` (Grok, needs `XAI_API_KEY`; `--duration` 1–15s; `--resolution` 720p at 14¢/s, or 480p at 8¢/s — enough for small sprites).
 4. Extract: `ffmpeg -i walk.mp4 -vsync 0 frames/%04d.png`.
@@ -159,15 +157,8 @@ python3 ${ASSET_GEN_SKILL_DIR}/tools/loop_audio.py music_src/shop_theme.mp3 --bp
 
 ## Costs
 
-Quick reference: 1K image 6–7¢ · 2K background 8–10¢ · a quality-critical image generated on both models ~13¢ · sprite video 14¢/s at 720p · Gemini TTS ~0.25¢ per 10 s line, a designed voice 1–2¢ (both double from 2027) · Lyria 4¢ per 30 s clip, 8¢ per song. Tripo bills in credits (≈1¢): ~30 per model, ~25 to rig, ~10 per retargeted clip — `tripo balance` before a batch, and report the `credits_consumed` the CLI returns rather than an estimate.
+Quick reference: 1K image 6–7¢ · 2K background 8–10¢ · sprite video 14¢/s at 720p · Gemini TTS ~0.25¢ per 10 s line, a designed voice 1–2¢ (both double from 2027) · Lyria 4¢ per 30 s clip, 8¢ per song. Tripo bills in credits (≈1¢): ~30 per model, ~25 to rig, ~10 per retargeted clip — `tripo balance` before a batch, and report the `credits_consumed` the CLI returns rather than an estimate.
 
 ## Output and logging
 
-Each `asset_gen.py` command prints JSON to stdout: `{"ok": true, "path": "...", "cost_cents": 7}`; `tripo` prints its own with `--json`. Progress goes to stderr — redirect it to a temp file and read only on failure to keep context clean:
-
-```bash
-_log=$(mktemp)
-result=$(python3 ${ASSET_GEN_SKILL_DIR}/tools/asset_gen.py image --prompt "..." -o p.png 2>"$_log") || tail -20 "$_log"
-```
-
-Generate independent API images in parallel (multiple Bash calls in one message).
+Each `asset_gen.py` command prints JSON to stdout: `{"ok": true, "path": "...", "cost_cents": 7}`; `tripo` prints its own with `--json`. Progress goes to stderr. Unlike the local GPU tools, API calls can run in parallel.

@@ -19,8 +19,6 @@ opt-level = 3
 
 Build gate: `cargo fmt` · `cargo check` · `cargo build`. Construct the world from systems run `OnEnter(state)` (spawn a world root, camera, lights, UI), mark entities for teardown on state exit, and keep `src/lib.rs` as the single `App`-wiring point.
 
-The user watches by running the project themselves (`cargo run`) — keep it compiling and launching cleanly.
-
 ## Verify against the installed version
 
 A few things that have bitten real builds and won't error at compile time — check them if they bite:
@@ -29,7 +27,7 @@ A few things that have bitten real builds and won't error at compile time — ch
 - UI box properties (`border_radius`, layout) live **inside** the `Node` component, not as separately spawned bundle items.
 - Procedural meshes are back-face culled by default — terrain wound the wrong way renders invisible (looks like "broken generation"; it's index order). A transform anchor with visible children needs both `Transform` and `Visibility`.
 
-## Capture (proof video)
+## Capture
 
 Do **not** record the windowed binary — on headless Linux the primary-window path panics under virtual X even when it runs fine on a desktop. Use a **dedicated offscreen capture binary** (`src/bin/capture.rs`) in the same crate that reuses the real scene code but renders to a `RenderTarget::Image`:
 
@@ -46,6 +44,6 @@ ffmpeg -y -framerate 30 -i "$RESULT/frame%05d.png" \
   -c:v libx264 -pix_fmt yuv420p -movflags +faststart "$RESULT/video.mp4"
 ```
 
-Software Vulkan (`llvmpipe`) is acceptable for capture — just slower. The clip must show the behavior progressing across its full length: varied action, no dead time, no single looped frame.
+Software Vulkan (`llvmpipe`) works for capture — just slower.
 
 Bevy's `headless_renderer` and `screenshot` examples show the exact offscreen-render and still-capture wiring — read them from the Bevy repo for the current API.

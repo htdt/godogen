@@ -39,14 +39,14 @@ rustc --version
 
 ## Node.js And Browser
 
-Babylon.js and three.js projects need Node.js 22.12+; the optional Tripo CLI (`npm install -g tripo-cli`) needs 20+:
+Babylon.js, three.js and HTML projects need Node.js 22.12+; the optional Tripo CLI (`npm install -g tripo-cli`) needs 20+:
 
 ```bash
 node --version
 npm --version
 ```
 
-Browser capture requires Chrome or Chromium with hardware WebGL2. Install one system browser and set `CHROME_BIN` if it is not on a common path:
+Headless browser runs need Chrome or Chromium — with hardware WebGL2 for Babylon.js and three.js capture; HTML games need no GPU. Install one system browser and set `CHROME_BIN` if it is not on a common path:
 
 ```bash
 command -v google-chrome || command -v chromium || command -v chromium-browser
@@ -63,7 +63,7 @@ sudo apt-get install vulkan-tools xvfb ffmpeg imagemagick
 
 - **vulkan-tools** — `vulkaninfo` for GPU validation
 - **xvfb** — virtual X11 display for headless Godot/Bevy runs and capture
-- **ffmpeg** — MP4 encoding of proof videos and sprite frame extraction
+- **ffmpeg** — MP4 encoding of captured frames and sprite frame extraction
 - **imagemagick** — image resize, flip, crop for sprite pipelines
 
 On macOS:
