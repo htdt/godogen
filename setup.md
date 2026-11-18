@@ -86,7 +86,7 @@ In a published game repo, the same asset-generation requirements file lives at:
 - `.claude/skills/asset-gen/tools/requirements.txt` for Claude Code
 - `.agents/skills/asset-gen/tools/requirements.txt` for Codex
 
-`asset_gen.py` needs `google-genai` 2.25+ for Gemini images, TTS, voice design and Lyria.
+`asset_gen.py` needs `google-genai` 2.25+ for Gemini TTS, voice design and Lyria.
 
 ## Godot
 
@@ -172,11 +172,11 @@ echo "$PWD" > /path/to/godogen/.godogen_assets   # run in the godogen_assets che
 
 Paid generation covers what the local tools can't make — or every asset, on a machine without them. Set in environment:
 
-- `GOOGLE_API_KEY` — Gemini images, Gemini TTS voice acting, Lyria music
-- `XAI_API_KEY` — xAI Grok images and animated-sprite video
+- `OPENAI_API_KEY` — GPT-Image-2.6 images and animated GIF sprites, live or through the Batch API at half price
+- `XAI_API_KEY` — xAI Grok animated-sprite video
+- `GOOGLE_API_KEY` — Gemini TTS voice acting, Lyria music
 - `TRIPO_API_KEY` — image-to-3D and non-humanoid rigging via the `tripo` CLI (`npm install -g tripo-cli`, Node 20+)
 
-With both image keys, Gemini is the default and quality-critical images are generated on each.
 
 ## Verify Rendering
 

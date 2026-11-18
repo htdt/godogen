@@ -1,5 +1,10 @@
 # Changelog
 
+**2026-11-18 — GPT-Image-2.6 Sunburst images, batched**
+- Paid images come from OpenAI's `gpt-image-2.6-sunburst` (`OPENAI_API_KEY`); Gemini and Grok images are retired. `asset_gen.py batch jobs.jsonl` sends a whole set through the Batch API at half price, polls until every image is saved, and resumes from `jobs.jsonl.batch.json` rather than resubmitting; `asset_gen.py image` is the live call for whatever the next step waits on. Costs are computed from the token usage the API returns.
+- `--transparent` returns real alpha (1-bit in GIF), so stills skip rembg. `--image` takes up to 16 references, and `--complexity low` keeps focused edits from replanning the scene. `--model flare` makes fast drafts.
+- Animated GIF output (`-o x.gif --frames 2–16 --frame-ms`) makes short sprite cycles from a reference in one call; Grok video stays for longer or smoother motion. `api.md` carries the quality guide and measured costs.
+
 **2026-10-16 — Local assets by default, audio, GDScript and three.js**
 - Assets come from [godogen_assets](https://github.com/htdt/godogen_assets) by default: free local generators for images (Qwen-Image), textured 3D (TRELLIS.2), humanoid rigging (Make-It-Animatable), Kimodo moves (`gen-moves`, `add-moves`), lip-sync, sound effects (Stable Audio 3) and voice lines (Qwen3-TTS). `asset-gen/SKILL.md` is a TL;DR linking to its docs; its README carries the setup, and `publish.sh` writes the checkout recorded in `.godogen_assets` into the published skill.
 - Blender is a recommended dependency: `asset-gen` scripts it headless for 3D better built than generated — exact or articulated models, edits to generated GLBs, mechanical and non-humanoid animation — and falls back to godogen_assets' own Blender through `asset-blender` when `blender` isn't on `PATH`.

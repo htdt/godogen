@@ -5,7 +5,7 @@ short_description: Generate game images, 3D models, animated characters, sound e
 default_prompt: "Use ${ASSET_SKILL_COMMAND} to generate images, 3D models, characters, or audio for this game."
 allow_implicit_invocation: true
 description: |
-  Generate game assets, locally and free by default with godogen_assets: images and transparent PNGs (Qwen-Image), textured GLB models (TRELLIS.2), rigged humanoids with generated moves and lip-synced speech, sound effects and voice lines. Paid APIs cover what the local tools can't make — Gemini / xAI Grok images, animated sprites from video, Tripo 3D, Gemini TTS voice acting, Lyria music. Use whenever a game needs generated art or audio.
+  Generate game assets, locally and free by default with godogen_assets: images and transparent PNGs (Qwen-Image), textured GLB models (TRELLIS.2), rigged humanoids with generated moves and lip-synced speech, sound effects and voice lines. Paid APIs cover what the local tools can't make — GPT-Image-2.6 images and animated GIF sprites (batched at half price), sprites from Grok video, Tripo 3D, Gemini TTS voice acting, Lyria music. Use whenever a game needs generated art or audio.
 ---
 
 # Asset Generator
@@ -42,7 +42,7 @@ A `bpy` script run headless (`blender -b -P make_turret.py`, exporting with `bpy
 
 ## Paid APIs
 
-`${ASSET_GEN_SKILL_DIR}/api.md` covers Gemini / xAI Grok images, animated sprites from Grok video, Tripo 3D, Gemini TTS and Lyria music: what the local tools don't make (frame-by-frame animated 2D sprites, music, one character voice acting many emotions, vocal barks, two-speaker dialogue, a language `qwen-tts` lacks, a rig for a non-humanoid), and everything when godogen_assets isn't set up (its checkout above reads `none`, or a command answers `not installed`).
+`${ASSET_GEN_SKILL_DIR}/api.md` covers GPT-Image-2.6 Sunburst images and animated GIF sprites, sprites from Grok video, Tripo 3D, Gemini TTS and Lyria music: what the local tools don't make (frame-by-frame animated 2D sprites, music, one character voice acting many emotions, vocal barks, two-speaker dialogue, a language `qwen-tts` lacks, a rig for a non-humanoid), and everything when godogen_assets isn't set up (its checkout above reads `none`, or a command answers `not installed`).
 
 Paid calls cost real money: confirm with the user before the first one.
 

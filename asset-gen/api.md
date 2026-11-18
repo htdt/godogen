@@ -2,38 +2,71 @@
 
 For assets the local tools can't make on this machine (SKILL.md, Paid APIs). Every call costs real money; record it in the asset manifest.
 
-Keys: `GOOGLE_API_KEY` (Gemini images, Gemini TTS, Lyria), `XAI_API_KEY` (Grok images, sprite video), `TRIPO_API_KEY` (the `tripo` CLI). Images, video and audio go through `${ASSET_GEN_SKILL_DIR}/tools/asset_gen.py`; 3D goes through the `tripo` CLI.
+Keys: `OPENAI_API_KEY` (images, animated GIF sprites), `XAI_API_KEY` (sprite video), `GOOGLE_API_KEY` (Gemini TTS, Lyria), `TRIPO_API_KEY` (the `tripo` CLI). Images, video and audio go through `${ASSET_GEN_SKILL_DIR}/tools/asset_gen.py`; 3D goes through the `tripo` CLI.
 
-## Images
+## Images — GPT-Image-2.6 Sunburst
 
-| Model | Flag | Cost | Notes |
-|-------|------|------|-------|
-| Gemini 3.1 Flash Image | `--model gemini` | 5¢ (512) · 7¢ (1K) · 10¢ (2K) · 15¢ (4K) | ~10 s per image |
-| Grok Imagine Image 2.0 | `--model grok` | 6¢ (1K) · 8¢ (2K), +1¢ per reference image | 1–2 min per image |
+- **Batch by default.** Put every image of a set in one JSONL and run `batch`: half price, but slower, with up to 24 h guaranteed. Use `image` (live, full price) only for what the next step waits on: the reference a set derives from, a style draft, a single redo.
+- **Quality.** `medium` (the default) for sprites, props, icons and tiles. `high` for the reference that a set or a 3D model is built from, dense text, and full-screen art. `low` for composition drafts. `xhigh` and `max` are untested here and cost more; keep them for large key art.
+- **Real transparency.** `--transparent` (`"transparent": true` in a job) returns real alpha, 1-bit in a GIF: no matting. Leave the background out of the prompt.
+- **References.** `--image ref.png`, repeatable up to 16: the first image is the one edited, the rest guide it. Prompt only what changes. Add `--complexity low` for focused edits (a recolor, a pose, a variant); the default `high` replans the whole scene and can change what should stay.
+- **Size.** `WIDTHxHEIGHT` in multiples of 16, ratio 1:3–3:1, edge ≤3840, 0.66–8.3 MP, so the smallest still is 1024x640. The default is 1024x1024. A 1080p background is `1920x1088`, cropped afterwards.
+- **Drafts.** `--model flare --quality low` returns in seconds at the same token price.
 
-Gemini and Grok are equally strong: both follow detailed prompts closely, and both slip on small details — a miscounted item, a mirrored left/right. With both keys set, `asset_gen.py` defaults to Gemini for speed.
+A live 1024x1024 at `medium` costs ~4.4¢ and takes ~20 s; a batched one costs half. Cost grows with quality, pixels and each reference image. `cost_cents` is computed from the token usage the API returns.
 
 ```bash
-python3 ${ASSET_GEN_SKILL_DIR}/tools/asset_gen.py image \
-  --prompt "the full prompt" -o ${RUNTIME_ASSET_DIR}/img/car.png
+python3 ${ASSET_GEN_SKILL_DIR}/tools/asset_gen.py image --quality high --transparent \
+  --prompt "the full prompt" -o ${RUNTIME_ASSET_DIR}/img/knight.png
 ```
 
-`--model` (default `gemini` when its key is set, else `grok`) · `--size` (default `1K`; Gemini also `512`/`4K`) · `--aspect-ratio` (default `1:1`; also `16:9`, `9:16`, `4:3`, `3:4`, `3:2`, `2:3`).
+`-o` picks the format: `.png`, `.webp`, `.jpg`, `.gif`.
 
-**Image-to-image:** pass `--image ref.png` and the model sees the reference — prompt only for what changes (angle, pose, recolor), don't re-describe appearance. Use this for style families, variants, and multi-view sets.
+### Batch
 
-**Transparency:** these models can't make it. Read `${ASSET_GEN_SKILL_DIR}/rembg.md`; key rule: **never prompt for a "transparent background"** (the generator bakes a checkerboard) — prompt a solid color, then matte it out.
+```bash
+cat > img_jobs.jsonl <<'EOF'
+{"prompt": "...", "o": "assets/img/chest.png", "transparent": true}
+{"prompt": "The same knight, sword raised overhead", "o": "assets/img/knight_cheer.png", "image": "assets/img/knight.png", "complexity": "low", "transparent": true}
+{"prompt": "...", "o": "assets/img/forest_bg.png", "size": "1920x1088", "quality": "high"}
+EOF
+python3 ${ASSET_GEN_SKILL_DIR}/tools/asset_gen.py batch img_jobs.jsonl
+```
+
+- **Jobs.** Each line takes `prompt` and `o`, plus any of `image` (a path or a list), `quality`, `model`, `size`, `transparent`, `complexity`, `frames`, `frame_ms`. `--quality` and `--model` set the default for lines that leave them out.
+- **References come from earlier runs.** A job can't use another job's output from the same batch as its reference.
+- **Waiting.** The command polls until every image is saved, then prints one JSON object with a result per image. Run long sets in the background. `--no-wait` submits and returns.
+- **Resuming.** The batch ids are kept in `img_jobs.jsonl.batch.json`, and rerunning the same command resumes instead of resubmitting. Once a set is collected, a rerun only reports its results, so files edited since are safe. Edit the jobs file and rerun to submit a new batch once the old one has finished.
+- **Failures.** A failed image reports its error; retry it from a new jobs file. OpenAI guarantees only 24 h, so a slow batch isn't a failure.
 
 ## Animated sprites
 
-Recipe: **reference → pose → video → extract frames → loop-trim → rembg.**
+### GIF
 
-1. Reference (1K, neutral pose, solid BG) — anchors everything.
-2. Pose per action: image-to-image from the reference, prompt only the action.
+A short cycle (idle, walk, attack, a spinning pickup) comes out as one GIF made from the character's reference:
+
+```bash
+python3 ${ASSET_GEN_SKILL_DIR}/tools/asset_gen.py image --image knight.png --transparent --frames 8 --frame-ms 100 \
+  -o walk.gif --prompt "The same knight walking to the right in a smooth walk cycle, side view, fixed camera; the eighth frame flows back into the first"
+```
+
+- **Frames.** `--frames` takes 2–16 (default 9). `--frame-ms` sets the delay per frame, 20–2000 ms (default 200); it is also the playback rate.
+- **Output.** Each frame is 512x512 with `auto` size, and the GIF loops forever. 8 medium frames cost ~4¢ live.
+- **Consistency.** Frames keep the reference's design, and the character moves in place.
+- **Prompt.** Describe the motion and how the loop closes, and fix the camera.
+- **Alpha.** It is 1-bit, so edges are hard. For soft edges (smoke, glow, fur), use a solid background and matte the frames with rembg (below).
+- **Frames for the engine.** Only HTML plays a GIF directly. Elsewhere, split it with `magick walk.gif -coalesce frames/%02d.png` and play the frames at `--frame-ms`.
+
+### Video
+
+For motion longer or smoother than 16 frames, or a soft-edged one-shot: **reference → pose → video → extract frames → loop-trim → rembg.**
+
+1. Reference (1024x1024, neutral pose, solid BG, without `--transparent`: video needs the background) — anchors everything.
+2. Pose per action: `--image` from the reference with `--complexity low`, prompt only the action.
 3. Video from the pose frame: `asset_gen.py video --image pose.png --duration 2 -o walk.mp4` (Grok, needs `XAI_API_KEY`; `--duration` 1–15s; `--resolution` 720p at 14¢/s, or 480p at 8¢/s — enough for small sprites).
 4. Extract: `ffmpeg -i walk.mp4 -vsync 0 frames/%04d.png`.
 5. Loop-trim looping cycles (walk/idle): `tools/find_loop_frame.py frames/` returns the loop frame; delete frames past it. Skip for one-shots (attack/death).
-6. Batch matte: `tools/rembg_matting.py --batch frames/ -o clean/`.
+6. Batch matte: `tools/rembg_matting.py --batch frames/ -o clean/` (`${ASSET_GEN_SKILL_DIR}/rembg.md`).
 
 Reuse one reference for all of a character's actions. **Chaining** (feed action A's last frame as action B's start) keeps positional continuity — keep chains ≤2 deep, they drift.
 
@@ -58,7 +91,7 @@ tripo anim retarget @hero --animation preset:biped:walk preset:biped:idle --json
 - Rig: `rig:model=v1.0-20240301` for bipeds, with the `preset:biped:*` clips below. The CLI's default rig (v2.5) covers quadrupeds, avians, etc. with `preset:<name>` clips (`idle walk run dive climb jump slash shoot hurt fall turn`). `rig-check` in the chain aborts before rigging if the mesh isn't riggable. `--animate-in-place` when game code drives locomotion.
 - Don't assume the preset name survives into the GLB; inspect the imported clip names before wiring playback.
 
-Source image for `make`: 3/4 elevated angle, solid white/gray background, matte finish, opaque glass, single centered subject — and **do not** rembg it (Tripo needs the solid bg). For characters, generate the reference in a T-pose.
+Source image for `make`: 3/4 elevated angle, solid white/gray background, matte finish, opaque glass, single centered subject — and **no** `--transparent` or rembg (Tripo needs the solid bg). For characters, generate the reference in a T-pose.
 
 v1.0 biped retarget presets (pass as `preset:biped:<name>`):
 
@@ -157,7 +190,7 @@ python3 ${ASSET_GEN_SKILL_DIR}/tools/loop_audio.py music_src/shop_theme.mp3 --bp
 
 ## Costs
 
-Quick reference: 1K image 6–7¢ · 2K background 8–10¢ · sprite video 14¢/s at 720p · Gemini TTS ~0.25¢ per 10 s line, a designed voice 1–2¢ (both double from 2027) · Lyria 4¢ per 30 s clip, 8¢ per song. Tripo bills in credits (≈1¢): ~30 per model, ~25 to rig, ~10 per retargeted clip — `tripo balance` before a batch, and report the `credits_consumed` the CLI returns rather than an estimate.
+Quick reference: 1024x1024 medium image ~4.4¢ live, half batched · 8-frame medium GIF ~4¢ live · sprite video 14¢/s at 720p · Gemini TTS ~0.25¢ per 10 s line, a designed voice 1–2¢ (both double from 2027) · Lyria 4¢ per 30 s clip, 8¢ per song. Tripo bills in credits (≈1¢): ~30 per model, ~25 to rig, ~10 per retargeted clip — `tripo balance` before a batch, and report the `credits_consumed` the CLI returns rather than an estimate.
 
 ## Output and logging
 

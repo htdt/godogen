@@ -1,11 +1,10 @@
 # Background Removal
 
-Matte a solid background out of an asset that needs transparency.
+Matte a solid background out of frames that need transparency: video sprite frames, and GIF frames whose edges are too soft for 1-bit alpha.
 
-Applies to: characters, props, icons, UI, animated sprite frames.
-Does NOT apply to: textures, backgrounds, 3D model references (Tripo needs the solid bg; `gen3d` removes it itself), `qwen-image rgba` output (already has real alpha).
+Stills don't need it: `asset_gen.py image --transparent` and `qwen-image rgba` return real alpha. Never matte textures, backgrounds or 3D model references (Tripo needs the solid bg; `gen3d` removes it itself).
 
-**Never prompt for a "transparent background" — the generator draws a checkerboard. Prompt a solid color, then remove it.**
+**Never prompt for a "transparent background" — a generator without a transparency flag draws a checkerboard. Prompt a solid color, then remove it.**
 
 ## BG color strategy
 
@@ -20,9 +19,9 @@ Pick a prompt bg color that is (1) **distinct from the subject** so the mask sep
 Deps in `${ASSET_GEN_SKILL_DIR}/tools/requirements.txt` (`pip install rembg[gpu,cli]`, or `rembg[cpu,cli]`). The script auto-detects CUDA and falls back to CPU with a warning.
 
 ```bash
-# single image
-python3 ${ASSET_GEN_SKILL_DIR}/tools/rembg_matting.py img/car.png -o img/car_nobg.png --preview
-# batch (video frames): BiRefNet loads once, bg sampled per-frame for color drift
+# single frame
+python3 ${ASSET_GEN_SKILL_DIR}/tools/rembg_matting.py frames/0001.png -o clean/0001.png --preview
+# batch: BiRefNet loads once, bg sampled per-frame for color drift
 python3 ${ASSET_GEN_SKILL_DIR}/tools/rembg_matting.py --batch frames/ -o clean/
 ```
 

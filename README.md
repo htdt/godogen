@@ -27,7 +27,7 @@ Engine and host agent (Claude vs Codex) are publish-time render choices, not sep
 - **Bevy** — Rust/Bevy projects with code-first ECS scenes and offscreen capture.
 - **Babylon.js** and **three.js** — TypeScript/Vite browser games served at a live URL.
 - **HTML** — text-first 2D games in the DOM: type and CSS for the look, TypeScript/Vite, served at a live URL.
-- **Asset generation** — local and free by default with [godogen_assets](https://github.com/htdt/godogen_assets): images with real transparency, textured 3D models, rigged humanoids with generated moves and lip-sync, sound effects and voice lines. Paid APIs fill what it can't make: Gemini or xAI Grok images, animated sprites from Grok video, Tripo3D, Gemini TTS voice acting, Lyria music.
+- **Asset generation** — local and free by default with [godogen_assets](https://github.com/htdt/godogen_assets): images with real transparency, textured 3D models, rigged humanoids with generated moves and lip-sync, sound effects and voice lines. Paid APIs fill what it can't make: GPT-Image-2.6 images and animated GIF sprites, sprites from Grok video, Tripo3D, Gemini TTS voice acting, Lyria music.
 - **Building blocks, not process** — the guides carry the stack, project sketch, capture recipe and silent-failure traps. How to check the game and what to hand back are the model's call.
 
 ## Choosing an engine
@@ -72,8 +72,9 @@ Every engine gets the same loop — build, generate assets, run — so pick by w
 - [Blender](https://www.blender.org/download/) on `PATH` (recommended) — the agent scripts it for 3D models and animation the generators don't make well
 - [godogen_assets](https://github.com/htdt/godogen_assets) for local asset generation (NVIDIA GPU), set up per its README and recorded in `.godogen_assets` ([setup.md](setup.md))
 - Optional API keys as environment variables, for assets the local tools can't make (or all of them, without godogen_assets):
-  - `GOOGLE_API_KEY` — [Google AI Studio](https://aistudio.google.com/) for Gemini images, Gemini TTS and Lyria music
-  - `XAI_API_KEY` — [xAI Grok](https://console.x.ai/home) for images and animated-sprite video
+  - `OPENAI_API_KEY` — [OpenAI](https://platform.openai.com/api-keys) for GPT-Image-2.6 images and animated GIF sprites
+  - `XAI_API_KEY` — [xAI Grok](https://console.x.ai/home) for animated-sprite video
+  - `GOOGLE_API_KEY` — [Google AI Studio](https://aistudio.google.com/) for Gemini TTS and Lyria music
   - `TRIPO_API_KEY` — [Tripo](https://developers.tripo3d.ai/) for 3D generation (used by the `tripo` CLI: `npm install -g tripo-cli`, Node.js 20+)
 - System packages from [setup.md](setup.md): `vulkan-tools`, `xvfb`, `ffmpeg`, `imagemagick`, plus platform-specific extras
 - Tested on Ubuntu, Debian, and macOS
