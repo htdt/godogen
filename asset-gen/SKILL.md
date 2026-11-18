@@ -5,16 +5,28 @@ short_description: Generate game images, 3D models, animated characters, sound e
 default_prompt: "Use ${ASSET_SKILL_COMMAND} to generate images, 3D models, characters, or audio for this game."
 allow_implicit_invocation: true
 description: |
-  Generate game assets, locally and free by default with godogen_assets: images and transparent PNGs (Qwen-Image), textured GLB models (TRELLIS.2), rigged humanoids with generated moves and lip-synced speech, sound effects and voice lines. Paid APIs cover what the local tools can't make — GPT-Image-2.6 images and animated GIF sprites (batched at half price), sprites from Grok video, Tripo 3D, Gemini TTS voice acting, Lyria music. Use whenever a game needs generated art or audio.
+  Generate game assets: images, transparent sprites and animated GIF sprites (GPT-Image-2.6, batched at half price), textured GLB models, rigged humanoids with generated moves and lip-synced speech, sound effects and voice lines (local and free with godogen_assets), 3D built in Blender, plus Grok sprite video, Tripo 3D, Gemini TTS voice acting and Lyria music. Use whenever a game needs generated art or audio.
 ---
 
 # Asset Generator
 
-Assets come from [godogen_assets](https://github.com/htdt/godogen_assets): local generators on this machine's GPU, one command per task, free. Its checkout here is `${GODOGEN_ASSETS}`, and its docs are the reference; this page is the TL;DR plus what the game needs on top. Read `${GODOGEN_ASSETS}/README.md` once (conventions, a character start to finish, checking results), and a part's README up to `How it works` before first using its tool.
+## Where assets come from
+
+Choose by asset type, then let the user's words decide: a budget, "free" or "local only", or "best quality".
+
+- **Images.** GPT-Image-2.6 Sunburst (`${ASSET_GEN_SKILL_DIR}/api.md`) makes everything the player looks at: characters, sprites, animated sprites, backgrounds, key art, UI with text, and the reference images that 3D is built from. It is paid: ~2¢ for a batched 1024x1024 at medium. Local `qwen-image` is free but only good for basic assets (flat textures, simple icons, placeholders); use it for everything only when the user asks for free or local, or when `OPENAI_API_KEY` isn't set.
+- **3D.** Local first. `gen3d` turns a reference image into a textured GLB, and the humanoid tools rig and animate it. Blender builds what generation doesn't (below). Use Tripo (api.md) when godogen_assets isn't set up, or to rig a non-humanoid.
+- **Audio.** Use local `stable-audio` and `qwen-tts` for sound effects and voice lines. The paid APIs cover music, a voice that acts many emotions, barks, two-speaker dialogue, and languages `qwen-tts` lacks.
+
+When the brief says nothing about spending, propose paid images with an estimate for the whole set when you confirm the first paid call. The user can choose free local images instead. Without godogen_assets (its checkout below reads `none`, or a command answers `not installed`), 3D and audio come from the paid APIs too.
+
+## Local: godogen_assets
+
+[godogen_assets](https://github.com/htdt/godogen_assets) runs local generators on this machine's GPU, one command per task, for free. Its checkout here is `${GODOGEN_ASSETS}`, and its docs are the reference; this page is the TL;DR plus what the game needs on top. Read `${GODOGEN_ASSETS}/README.md` once (conventions, a character start to finish, checking results). Before first using a part's tool, read its README up to `How it works`.
 
 | Command | Makes | README in the checkout |
 |---------|-------|------------------------|
-| `qwen-image` | PNG from text; `rgba`: real transparency; `edit -i ref.png`: image-to-image | `image/` |
+| `qwen-image` | basic PNGs from text; `rgba`: real transparency; `edit -i ref.png`: image-to-image | `image/` |
 | `gen3d` | textured GLB from an image | `mesh/` |
 | `mia-rig` | Mixamo-rigged humanoid from a GLB | `rig/` |
 | `add-moves`, `gen-moves` | idle/walk/run/jump onto a rig; custom moves from text prompts | `motion/` |
@@ -23,12 +35,12 @@ Assets come from [godogen_assets](https://github.com/htdt/godogen_assets): local
 | `stable-audio` | sound effects, seamless ambience loops | `sfx/` |
 | `qwen-tts` | voice lines from a description, or cloned from a reference line | `voice/` |
 
-A character: `qwen-image rgba` (T-pose) → `gen3d` → `mia-rig --fingers --anim none` → `add-moves`, with `gen-moves` for custom moves and `lipsync` for speech. Props stop after `gen3d`; one a character holds goes on through `grip-prop` and `add-moves --hold`, never by an offset tuned in the engine.
+A character: a transparent T-pose reference (`asset_gen.py image --transparent --quality high`, or `qwen-image rgba`) → `gen3d` → `mia-rig --fingers --anim none` → `add-moves`, with `gen-moves` for custom moves and `lipsync` for speech. Props stop after `gen3d`; one a character holds goes on through `grip-prop` and `add-moves --hold`, never by an offset tuned in the engine.
 
 - **Always pass `-o`** into the project; without it, results land in the godogen_assets checkout.
 - **One GPU job at a time, minutes per call.** Run GPU tools as one sequential batch with a long timeout or in the background, never as parallel calls.
 - **Game budget.** `gen3d` defaults to ~500k triangles and 2048² textures; pass `--faces` / `--tex` (30000 / 1024 for a character).
-- **Style families.** Generate one hero asset, derive the rest with `qwen-image edit -i hero.png`, prompting only what changes.
+- **Style families.** Generate one hero asset and derive the rest from it (`--image hero.png` in api.md, or `qwen-image edit -i hero.png`), prompting only what changes.
 - **Small sprites.** A 1024px image downscaled to 64px looks muddy: design display sizes ≥128px, prompt bold flat forms, or generate a kit (several objects in one image) and slice it with `python3 ${ASSET_GEN_SKILL_DIR}/tools/grid_slice.py kit.png -o out/ --grid 2x2 --names "a,b,c,d"`.
 - **Direction.** Generators get left/right and facing wrong; generate one direction and flip at runtime.
 - **Audio format.** Every tool picks it from the `-o` extension. Bevy's default features decode only Ogg Vorbis, so write `.ogg` for Bevy.
@@ -42,9 +54,7 @@ A `bpy` script run headless (`blender -b -P make_turret.py`, exporting with `bpy
 
 ## Paid APIs
 
-`${ASSET_GEN_SKILL_DIR}/api.md` covers GPT-Image-2.6 Sunburst images and animated GIF sprites, sprites from Grok video, Tripo 3D, Gemini TTS and Lyria music: what the local tools don't make (frame-by-frame animated 2D sprites, music, one character voice acting many emotions, vocal barks, two-speaker dialogue, a language `qwen-tts` lacks, a rig for a non-humanoid), and everything when godogen_assets isn't set up (its checkout above reads `none`, or a command answers `not installed`).
-
-Paid calls cost real money: confirm with the user before the first one.
+`${ASSET_GEN_SKILL_DIR}/api.md` covers GPT-Image-2.6 Sunburst images and animated GIF sprites, sprites from Grok video, Tripo 3D, Gemini TTS and Lyria music. Paid calls cost real money: confirm with the user before the first one.
 
 ## Asset manifest (in README.md)
 

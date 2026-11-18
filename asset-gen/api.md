@@ -1,6 +1,6 @@
 # Paid APIs
 
-For assets the local tools can't make on this machine (SKILL.md, Paid APIs). Every call costs real money; record it in the asset manifest.
+Images by default, plus what the local tools can't make (SKILL.md, Where assets come from). Every call costs real money; record it in the asset manifest.
 
 Keys: `OPENAI_API_KEY` (images, animated GIF sprites), `XAI_API_KEY` (sprite video), `GOOGLE_API_KEY` (Gemini TTS, Lyria), `TRIPO_API_KEY` (the `tripo` CLI). Images, video and audio go through `${ASSET_GEN_SKILL_DIR}/tools/asset_gen.py`; 3D goes through the `tripo` CLI.
 

@@ -160,7 +160,7 @@ godogen_assets ships its own Blender (`deps/blender`), which the agent falls bac
 
 ## Local Asset Generation
 
-Assets are generated locally by default with [godogen_assets](https://github.com/htdt/godogen_assets): images, textured 3D models, rigged humanoids with generated moves and lip-sync, sound effects and voice lines, free on the machine's NVIDIA GPU (reference: RTX 3060 12 GB, 24 GB RAM). Without it, every asset goes to the paid APIs below.
+[godogen_assets](https://github.com/htdt/godogen_assets) generates textured 3D models, rigged humanoids with generated moves and lip-sync, sound effects and voice lines, plus basic images, free on the machine's NVIDIA GPU (reference: RTX 3060 12 GB, 24 GB RAM). Without it, those assets go to the paid APIs below.
 
 GPUs and drivers differ too much for one script, so its [README](https://github.com/htdt/godogen_assets#setup) (Setup) is a manual for a Claude Code or Codex agent to follow on the machine at hand. Once its commands are on `PATH` (`./setup.sh link`), record the checkout in this repo — `publish.sh` writes the path into every published asset-gen skill:
 
@@ -168,9 +168,9 @@ GPUs and drivers differ too much for one script, so its [README](https://github.
 echo "$PWD" > /path/to/godogen/.godogen_assets   # run in the godogen_assets checkout; git-ignored
 ```
 
-## API Keys (Optional)
+## API Keys
 
-Paid generation covers what the local tools can't make — or every asset, on a machine without them. Set in environment:
+Images come from OpenAI unless the user asks for free or local; the other keys cover what the local tools can't make, or everything on a machine without them. Set in environment:
 
 - `OPENAI_API_KEY` — GPT-Image-2.6 images and animated GIF sprites, live or through the Batch API at half price
 - `XAI_API_KEY` — xAI Grok animated-sprite video

@@ -42,7 +42,7 @@ The engine guide carries only what the model can't infer or discover quickly: th
 
 **Trust the model.** The runtime ships no scaffold, no planner, and no review or delivery rules. The model recreates boilerplate from a short sketch, decomposes the work, and decides how to check it and what to hand back; the guides spend their words only on building blocks it genuinely can't know.
 
-**Local-first asset generation.** Assets come from [godogen_assets](https://github.com/htdt/godogen_assets), free on the machine's GPU; paid APIs (GPT-Image-2.6, Grok video, Tripo3D, Gemini TTS, Lyria) fill only what it can't make, with the cost confirmed with the user first. The asset manifest in `README.md` tracks paths, in-game sizes, and costs so implementation doesn't lose them.
+**Each asset from its best source.** Images come from GPT-Image-2.6, batched at half price. 3D, rigging, motion, sound effects and voice come from [godogen_assets](https://github.com/htdt/godogen_assets), free on the machine's GPU, and from Blender scripts. Other paid APIs (Grok video, Tripo3D, Gemini TTS, Lyria) fill the gaps. The user's brief sets the spend: free or local holds, and otherwise the cost is confirmed with the user first. The asset manifest in `README.md` tracks paths, in-game sizes, and costs so implementation doesn't lose them.
 
 **One source, many targets.** Engine and host agent are render-time choices over one source tree.
 
