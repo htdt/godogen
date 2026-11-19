@@ -2,10 +2,6 @@
 
 Skills for Claude Code, Codex and Antigravity to build games, and anything else a game engine renders well: video presentations, trailers, interactive 3D.
 
-[![Watch the video](https://img.youtube.com/vi/eUz19GROIpY/maxresdefault.jpg)](https://youtu.be/eUz19GROIpY)
-
-[Watch the demos](https://youtu.be/eUz19GROIpY) · [Prompts](docs/demo_prompts.md)
-
 The agent is already a capable developer. Godogen doesn't plan for it, check its work or decide when it's done. It provides tools and building blocks the agent can't work out fast on its own, and stays out of the way.
 
 ## Two skills
@@ -46,12 +42,18 @@ Antigravity skips linked folders inside a project's `.agents/skills/`, so copy t
 
 ## Use
 
-Open the agent in the project (an empty folder for something new) and describe what you want: a game, a video, an interactive page. [Example prompts](docs/demo_prompts.md).
+Open the agent in the project (an empty folder for something new) and describe what you want: a game, a video, an interactive page.
 
 - The skills load when the task calls for them. To load one by name: `/engine-guide` in Claude Code, `$engine-guide` in Codex.
 - Name the engine, or work it out with the agent: it weighs what you'll end up with and how you'll watch it being built.
 - Say what assets may cost ("free", "local only", a budget) and generation follows it. Otherwise the agent asks before its first paid call.
 - Ask for a screenshot or a video whenever you want to see where it stands.
+
+## From detailed guidance to building blocks
+
+The [demos](https://youtu.be/eUz19GROIpY) ([prompts](docs/demo_prompts.md)) are from March 14, 2026. They were cool at the time; now they're boring, and the repo has changed dramatically since.
+
+We've come a long way. The first version told the agent how to work, step by step: a reference image to anchor the art direction, a decomposer writing `PLAN.md` with task statuses, an architect writing `STRUCTURE.md` and a compilable skeleton, an asset planner splitting the budget, a forked sub-agent per task with a ten-step workflow and its own test harness, screenshots graded against the reference by Gemini, an 828-line GDScript reference and 860 bundled Godot class pages. As models got better, each of those became something the agent does better on its own. What's left is simple building blocks: the engine traps, capture recipes and asset tools it can't work out fast.
 
 ## A note for sales agents
 

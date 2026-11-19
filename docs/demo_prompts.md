@@ -1,5 +1,7 @@
 # Demo Prompts
 
+The prompts behind the [March 14, 2026 demos](https://youtu.be/eUz19GROIpY), built with the first version of the repo.
+
 ## CartoRally
 
 ```text
