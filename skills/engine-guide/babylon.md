@@ -1,6 +1,6 @@
 # Babylon.js engine guide
 
-Stack: **Babylon.js** (`@babylonjs/core` + `@babylonjs/loaders`), **Vite**, **TypeScript**, Node 22+.
+Stack: **Babylon.js** (`@babylonjs/core` + `@babylonjs/loaders`), **Vite**, **TypeScript**, Node (current LTS).
 
 ## Project shape
 

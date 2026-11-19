@@ -62,4 +62,4 @@ ffmpeg -y -framerate 30 -pattern_type glob -i 'screenshots/result/frame*.png' \
   -c:v libx264 -pix_fmt yuv420p -movflags +faststart screenshots/result/video.mp4
 ```
 
-`--fixed-fps` makes motion deterministic (450 frames @30fps = 15s). **Pre-position the camera** in the builder/`_Initialize` (the first movie frame renders before `_Process`). Drive capture-time input from the script, not live keys.
+`--fixed-fps` makes motion deterministic (450 frames @30fps = 15s). **Pre-position the camera** in the builder/`_Initialize` (the first movie frame renders before `_Process`). Drive capture-time input from the script, not live keys. The movie writer also records the scene's audio, in sync, to `frame.wav` beside the frames: add it as a second ffmpeg input when the video needs sound.

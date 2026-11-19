@@ -1,6 +1,6 @@
 # HTML engine guide
 
-Stack: **DOM + CSS + TypeScript**, **Vite**, Node 22+, with `<canvas>` and **three.js** wherever motion or a scene makes the game better. No UI framework: the page is the game. Made for 2D games built around text and UI — interactive fiction, card and board games, roguelikes on a character grid, puzzles, management and incremental games.
+Stack: **DOM + CSS + TypeScript**, **Vite**, Node (current LTS), with `<canvas>` and **three.js** wherever motion or a scene makes the game better. No UI framework: the page is the game. Made for 2D games built around text and UI — interactive fiction, card and board games, roguelikes on a character grid, puzzles, management and incremental games.
 
 ## Project shape
 

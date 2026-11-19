@@ -2,7 +2,7 @@
 
 Images by default, plus what the local tools can't make (SKILL.md, Where assets come from). Every call costs real money; record it in the asset manifest.
 
-Keys: `OPENAI_API_KEY` (images, animated GIF sprites), `XAI_API_KEY` (sprite video), `GOOGLE_API_KEY` (Gemini TTS, Lyria), `TRIPO_API_KEY` (the `tripo` CLI). Images, video and audio go through `${ASSET_GEN_SKILL_DIR}/tools/asset_gen.py`; 3D goes through the `tripo` CLI.
+Keys, which the user creates: `OPENAI_API_KEY` (images, animated GIF sprites; platform.openai.com/api-keys), `XAI_API_KEY` (sprite video; console.x.ai), `GOOGLE_API_KEY` (Gemini TTS, Lyria; aistudio.google.com), `TRIPO_API_KEY` (the `tripo` CLI; developers.tripo3d.ai). Images, video and audio go through `scripts/asset_gen.py`; 3D goes through the `tripo` CLI.
 
 ## Images — GPT-Image-2.6 Sunburst
 
@@ -21,8 +21,8 @@ Keys: `OPENAI_API_KEY` (images, animated GIF sprites), `XAI_API_KEY` (sprite vid
 Cost grows with pixels, and a reference image adds ~0.4¢ (batched). `cost_cents` is computed from the token usage the API returns.
 
 ```bash
-python3 ${ASSET_GEN_SKILL_DIR}/tools/asset_gen.py image --quality high --transparent \
-  --prompt "the full prompt" -o ${RUNTIME_ASSET_DIR}/img/knight.png
+python3 scripts/asset_gen.py image --quality high --transparent \
+  --prompt "the full prompt" -o assets/img/knight.png
 ```
 
 `-o` picks the format: `.png`, `.webp`, `.jpg`, `.gif`.
@@ -35,7 +35,7 @@ cat > img_jobs.jsonl <<'EOF'
 {"prompt": "The same knight, sword raised overhead", "o": "assets/img/knight_cheer.png", "image": "assets/img/knight.png", "complexity": "low", "transparent": true}
 {"prompt": "...", "o": "assets/img/forest_bg.png", "size": "1920x1088", "quality": "high"}
 EOF
-python3 ${ASSET_GEN_SKILL_DIR}/tools/asset_gen.py batch img_jobs.jsonl
+python3 scripts/asset_gen.py batch img_jobs.jsonl
 ```
 
 - **Jobs.** Each line takes `prompt` and `o`, plus any of `image` (a path or a list), `quality`, `model`, `size`, `transparent`, `complexity`, `frames`, `frame_ms`. `--quality` and `--model` set the default for lines that leave them out.
@@ -51,7 +51,7 @@ python3 ${ASSET_GEN_SKILL_DIR}/tools/asset_gen.py batch img_jobs.jsonl
 A short cycle (idle, walk, attack, a spinning pickup) comes out as one GIF made from the character's reference:
 
 ```bash
-python3 ${ASSET_GEN_SKILL_DIR}/tools/asset_gen.py image --image knight.png --transparent --frames 8 --frame-ms 100 \
+python3 scripts/asset_gen.py image --image knight.png --transparent --frames 8 --frame-ms 100 \
   -o walk.gif --prompt "The same knight walking to the right in a smooth walk cycle, side view, fixed camera; the eighth frame flows back into the first"
 ```
 
@@ -70,7 +70,7 @@ For motion longer or smoother than 16 frames: **reference → pose → video →
 2. Pose per action: `--image` from the reference with `--complexity low`, prompt only the action.
 3. Video from the pose frame: `asset_gen.py video --image pose.png --duration 2 -o walk.mp4` (Grok, needs `XAI_API_KEY`; `--duration` 1–15s; `--resolution` 720p at 14¢/s, or 480p at 8¢/s — enough for small sprites).
 4. Extract: `ffmpeg -i walk.mp4 -vsync 0 frames/%04d.png`.
-5. Loop-trim looping cycles (walk/idle): `tools/find_loop_frame.py frames/` returns the loop frame; delete frames past it. Skip for one-shots (attack/death).
+5. Loop-trim looping cycles (walk/idle): `scripts/find_loop_frame.py frames/` returns the loop frame; delete frames past it. Skip for one-shots (attack/death).
 
 Reuse one reference for all of a character's actions. **Chaining** (feed action A's last frame as action B's start) keeps positional continuity — keep chains ≤2 deep, they drift.
 
@@ -82,9 +82,9 @@ Reuse one reference for all of a character's actions. **Chaining** (feed action 
 The `tripo` CLI (`npm install -g tripo-cli`) owns the whole 3D path: submit, poll, download, credit pre-check, refunds on failure. Its own agent docs are the reference — `tripo docs --llm`, then `tripo docs --topic commands/process` / `examples/animation` / `common-errors` — this section only covers what is specific to game use here.
 
 ```bash
-tripo make ref.png --name car -p face_limit=30000 -p auto_size=true --json --yes -o ${RUNTIME_ASSET_DIR}/glb
-tripo make ref.png --name hero --then rig-check,rig:model=v1.0-20240301 --json --yes -o ${RUNTIME_ASSET_DIR}/glb
-tripo anim retarget @hero --animation preset:biped:walk preset:biped:idle --json --yes -o ${RUNTIME_ASSET_DIR}/glb
+tripo make ref.png --name car -p face_limit=30000 -p auto_size=true --json --yes -o assets/glb
+tripo make ref.png --name hero --then rig-check,rig:model=v1.0-20240301 --json --yes -o assets/glb
+tripo anim retarget @hero --animation preset:biped:walk preset:biped:idle --json --yes -o assets/glb
 ```
 
 - `make` is blocking (default timeout 30 min) and prints one JSON line: read `model_file`, `preview.png` and `credits_consumed` from it. Never add your own shorter timeout, never resubmit because a task_id appeared in stderr. If the process does die, `tripo task watch <id> --download` finishes the same task for free.
@@ -123,8 +123,8 @@ The text is spoken verbatim, so direction never goes in it. Each kind of directi
 - **What happens at a moment** goes inline as angle-bracket tags: `<laugh>`, `<sigh>`, `<gasp>`, `<groan>`, `<short pause>`, etc. ([full list](https://ai.google.dev/gemini-api/docs/speech-generation#vocal-bursts)). CAPS stresses a word.
 
 ```bash
-python3 ${ASSET_GEN_SKILL_DIR}/tools/asset_gen.py speech --voice Algenib --style "proud, a little amused" \
-  -o ${RUNTIME_ASSET_DIR}/audio/dwarf_01.ogg --text "<chuckle> Aye, that blade'll hold. <short pause> Forged it meself, three nights without sleep."
+python3 scripts/asset_gen.py speech --voice Algenib --style "proud, a little amused" \
+  -o assets/audio/dwarf_01.ogg --text "<chuckle> Aye, that blade'll hold. <short pause> Forged it meself, three nights without sleep."
 ```
 
 - **Natural lines.** Write lines as people talk ("Oh, uh... hm, fine."); plain transcripts beat heavy styling.
@@ -139,7 +139,7 @@ python3 ${ASSET_GEN_SKILL_DIR}/tools/asset_gen.py speech --voice Algenib --style
 **Everything else** (creatures, villains, wizards, stylized heroes) gets a designed voice:
 
 ```bash
-python3 ${ASSET_GEN_SKILL_DIR}/tools/asset_gen.py voice design --name Grukk --gender male \
+python3 scripts/asset_gen.py voice design --name Grukk --gender male \
   --prompt "A small, wiry cave goblin with a high, nasal, raspy voice; sneaky and quick, giggles at his own schemes." \
   -o voices/grukk_audition.wav
 ```
@@ -155,8 +155,8 @@ python3 ${ASSET_GEN_SKILL_DIR}/tools/asset_gen.py voice design --name Grukk --ge
 Games usually play lines one at a time: one file per line. `--speakers` is for one clip where the timing between two characters matters (a cutscene, radio chatter, a bark exchange):
 
 ```bash
-python3 ${ASSET_GEN_SKILL_DIR}/tools/asset_gen.py speech --speakers "Guard=Orus,Grukk=voice_abc123" \
-  -o ${RUNTIME_ASSET_DIR}/audio/bridge_toll.ogg --text "Guard (bored): Toll is five coppers. |five?!| Five.
+python3 scripts/asset_gen.py speech --speakers "Guard=Orus,Grukk=voice_abc123" \
+  -o assets/audio/bridge_toll.ogg --text "Guard (bored): Toll is five coppers. |five?!| Five.
 Grukk (outraged): FIVE? <gasp> For a BRIDGE?"
 ```
 
@@ -169,7 +169,7 @@ Grukk (outraged): FIVE? <gasp> For a BRIDGE?"
 Prompting: [Lyria prompt guide](https://ai.google.dev/gemini-api/docs/lyria-prompt-guide).
 
 ```bash
-python3 ${ASSET_GEN_SKILL_DIR}/tools/asset_gen.py music -o music_src/shop_theme.mp3 --prompt \
+python3 scripts/asset_gen.py music -o music_src/shop_theme.mp3 --prompt \
   "Lo-Fi Hip Hop, cozy village shop theme, 85 BPM, in F major, warm Rhodes piano, soft vinyl crackle, brushed drums, upright bass. Instrumental only, no vocals."
 ```
 
@@ -186,7 +186,7 @@ python3 ${ASSET_GEN_SKILL_DIR}/tools/asset_gen.py music -o music_src/shop_theme.
 Lyria pieces start and end like pieces; it has no loop mode. To make a loop, put a BPM in the prompt, then cut whole bars with `loop_audio.py`. It crossfades the audio past the cut into the start, so the file loops with plain engine looping:
 
 ```bash
-python3 ${ASSET_GEN_SKILL_DIR}/tools/loop_audio.py music_src/shop_theme.mp3 --bpm 85 --bars 8 --start-bars 1 -o ${RUNTIME_ASSET_DIR}/audio/shop_loop.ogg
+python3 scripts/loop_audio.py music_src/shop_theme.mp3 --bpm 85 --bars 8 --start-bars 1 -o assets/audio/shop_loop.ogg
 ```
 
 - **Intro.** `--start-bars` skips it.

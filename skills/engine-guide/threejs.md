@@ -1,6 +1,6 @@
 # three.js engine guide
 
-Stack: **three.js** (`three`), **Vite**, **TypeScript**, Node 22+.
+Stack: **three.js** (`three`), **Vite**, **TypeScript**, Node (current LTS).
 
 > three ships a release a month and deprecates as it goes, so the installed one is likely newer than this model's training data. When the console warns that something is deprecated, follow it; for exact shapes read `node_modules/three/src` (addons under `node_modules/three/examples/jsm`), not memory.
 

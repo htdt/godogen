@@ -1,6 +1,6 @@
 # Bevy engine guide
 
-Stack: **current stable Bevy**, Rust (edition 2024). Run `cargo add bevy` to resolve the latest stable release (skip any `-rc` prerelease), pin the exact version it writes, and keep every `bevy_*` crate on that same minor — mismatched minors pull two copies of bevy into the dependency tree and their types stop unifying.
+Stack: **current stable Bevy**, current stable Rust. Run `cargo add bevy` to resolve the latest stable release (skip any `-rc` prerelease), pin the exact version it writes, and keep every `bevy_*` crate on that same minor — mismatched minors pull two copies of bevy into the dependency tree and their types stop unifying.
 
 > Whatever minor you land on is likely newer than this model's training data, so APIs may have changed under you. **Verify shapes against the installed version** rather than from memory: read the source under `~/.cargo/registry/src/.../bevy-*`, run `cargo doc --open`, or grep the crate. When a runtime log names a missing feature or a moved item, trust it over recollection.
 
