@@ -1,6 +1,6 @@
 ---
 name: Feature Request
-about: Propose a change or addition to the autonomous pipeline
+about: Propose a change or addition to the skills
 title: ''
 labels: enhancement
 assignees: ''
@@ -12,7 +12,7 @@ assignees: ''
 
 ## Why
 
-<!-- How does this improve the autonomous pipeline? What concrete problem does it solve?
+<!-- How does this improve what the agent builds? What concrete problem does it solve?
      Include evidence if you can: failed generations, error logs, before/after comparisons. -->
 
 ## Why not something simpler?

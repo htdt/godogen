@@ -1,18 +1,18 @@
 # Godogen Source Repo
 
-This repository is not a published game repo. It is the source that `publish.sh` renders into a runtime game repo for a chosen engine and host agent.
+This repository holds two agent skills in the open Agent Skills format, which Claude Code, Codex and Antigravity share. Users install them with `npx skills add htdt/godogen`, which finds them in `skills/`, or link a clone (README.md, Install). Nothing is rendered: the files here are what the agent reads.
 
-## Source Layout
+## Layout
 
-- `prompts/runtime.md` — the engine-agnostic runtime manifest text
-- `asset-gen/` — the asset-generation skill, the one skill every published repo carries: local generation through [godogen_assets](https://github.com/htdt/godogen_assets) by default (`SKILL.md`), paid APIs in `api.md`
-- `engines/godot.md` (C#), `engines/godot-gdscript.md`, `engines/bevy.md`, `engines/babylon.md`, `engines/threejs.md` — per-engine guides (stack, project sketch, capture recipe, silent-failure traps)
-- `publish.sh` — renders a runtime repo with `--engine {godot,godot-gdscript,bevy,babylon,threejs}`, `--agent {claude,codex}`; the asset-gen skill gets the local godogen_assets path from `.godogen_assets` (git-ignored)
-- `scripts/` — render helpers: `render_dir.py` (token substitution), `generate_codex_metadata.py` (Codex `openai.yaml`)
+- `skills/engine-guide/` — `SKILL.md` (choosing an engine, uses beyond games), `setup.md` (installing each toolchain), and one guide per engine: `godot.md` (C#), `godot-gdscript.md`, `bevy.md`, `babylon.md`, `threejs.md`, `html.md` (stack, project sketch, capture recipe, silent-failure traps)
+- `skills/asset-gen/` — asset generation: local through [godogen_assets](https://github.com/htdt/godogen_assets) (`SKILL.md`, with its own Setup), paid APIs (`api.md`), game-side animation (`motion.md`), `scripts/`
 
 ## Editing Rules
 
-- Do not create or maintain `.claude/skills/` or `.agents/skills/` in this source repo.
-- Local generation is documented and coded in godogen_assets. `asset-gen` links to its docs with a short TL;DR and adds only what the game side needs; never copy its instructions or tools here.
-- Don't give obvious guidance. The agent is a highly capable LLM, and the deliverable (a recorded video, or a live URL the user watches) surfaces its own mistakes — so keep the guides to what the model can't infer or discover fast.
+- Skills live only in `skills/`. Do not create `.claude/skills/` or `.agents/skills/` in this repo.
+- Frontmatter is `name` (equal to the directory name) and `description`, nothing host-specific: no Claude Code fields or `${CLAUDE_*}` variables, no Codex `agents/openai.yaml`.
+- Setup is written for the agent, which installs what a project needs. It resolves current stable releases at install time; never pin a version from memory. Only what the user alone can provide (API keys, hardware) goes in the README.
+- A skill's files reference each other by paths relative to the skill directory. The godogen_assets checkout is `$GODOGEN_ASSETS`, defined in `asset-gen/SKILL.md` from where its commands resolve.
+- Local generation is documented and coded in godogen_assets. `asset-gen` links to its docs with a short TL;DR and adds only what the project side needs; never copy its instructions or tools here.
+- Don't give obvious guidance. The agent is a highly capable LLM that plans, verifies and decides what to deliver on its own — so keep the guides to building blocks: what the model can't infer or discover fast.
 - When you change or remove a feature, describe the new state on its own terms. Name the new thing as if it were always the design.

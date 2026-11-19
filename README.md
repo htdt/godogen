@@ -1,99 +1,64 @@
 # Godogen
 
-Autonomous game development for Godot (C# or GDScript), Bevy, Babylon.js, and three.js with Claude Code and Codex.
+Skills for Claude Code, Codex and Antigravity to build games, and anything else a game engine renders well: video presentations, trailers, interactive 3D.
 
-[![Watch the video](https://img.youtube.com/vi/eUz19GROIpY/maxresdefault.jpg)](https://youtu.be/eUz19GROIpY)
+The agent is already a capable developer. Godogen doesn't plan for it, check its work or decide when it's done. It provides tools and building blocks the agent can't work out fast on its own, and stays out of the way.
 
-[Watch the demos](https://youtu.be/eUz19GROIpY) · [Prompts](docs/demo_prompts.md)
+## Two skills
 
-Describe a game. The agent builds it, generates assets, runs the engine, and proves the result — as a live game you watch and steer, or as a recorded video when you're not there. It reads the situation and decides which, in the run.
+- **engine-guide**: Godot (C# or GDScript), Bevy, Babylon.js, three.js and HTML. How to choose between them, a project sketch, headless capture to screenshots and video, and the traps that fail without an error. You pick the engine with the agent, per project.
+- **asset-gen**: images, sprites and animated sprites from GPT-Image-2.6; textured 3D, rigged and animated humanoids, sound effects and voice, free on your GPU with [godogen_assets](https://github.com/htdt/godogen_assets); Blender for exact 3D; paid APIs for the rest. Your brief sets the spend.
 
-This repo is not a game. It is the source for a generator that produces games: **godogen -> game repo -> game**. You publish into a fresh game repo — choosing engine and host-agent flavor — then the agent runs inside that repo and builds the actual game from a short engine guide.
+## Install
 
-## Source layout
-
-A published repo is intentionally thin: a runtime manifest, a one-page engine guide, and the asset-generation skill. The agent recreates everything else (project scaffold, capture tooling) from the guide.
-
-- `prompts/runtime.md` — the runtime manifest
-- `asset-gen/` — the cross-engine asset-generation skill
-- `engines/godot.md`, `engines/godot-gdscript.md`, `engines/bevy.md`, `engines/babylon.md`, `engines/threejs.md` — per-engine guides
-- [publish.sh](publish.sh) — renders the runtime layout for the chosen engine and host agent
-
-Engine and host agent (Claude vs Codex) are publish-time render choices, not separate source trees.
-
-## What the agent does
-
-- **Godot 4** — C# or statically typed GDScript projects with build-time scene generation, runtime scripts, and Jolt physics.
-- **Bevy** — Rust/Bevy projects with code-first ECS scenes and offscreen capture.
-- **Babylon.js** and **three.js** — TypeScript/Vite browser games served at a live URL.
-- **Asset generation** — local and free by default with [godogen_assets](https://github.com/htdt/godogen_assets): images with real transparency, textured 3D models, rigged humanoids with generated moves and lip-sync, sound effects and voice lines. Paid APIs fill what it can't make: Gemini or xAI Grok images, animated sprites from Grok video, Tripo3D, Gemini TTS voice acting, Lyria music.
-- **Proof over claims** — the agent judges results from the running game (a live URL or a recorded clip), not from a clean compile, so visible defects drive the next iteration.
-- **You choose your involvement** — watch the live game (a Babylon.js or three.js URL, or a Godot/Bevy project you run) and steer at decision points, or leave the run unattended and get a 15–20s proof recording at the end. The agent takes its cue from how you frame the task.
-
-## Choosing an engine
-
-Every engine gets the same loop — build, generate assets, run, prove — so pick by what you want to hold at the end and how you want to watch along the way.
-
-| `--engine` | Language | You watch | Pick it for |
-|---|---|---|---|
-| `godot` | C# | the project, run or opened in the Godot editor | desktop 2D or 3D games; the fewest runtime surprises in long unattended runs |
-| `godot-gdscript` | GDScript | the same | a Godot project you'll keep developing yourself in the editor |
-| `bevy` | Rust | `cargo run` | a Rust codebase: ECS, no editor, many entities |
-| `babylon` | TypeScript | a live URL | a browser game that leans on engine systems: physics, GUI, particles, animation |
-| `threejs` | TypeScript | a live URL | a browser game that leans on its look: custom shaders, stylized rendering, a light page |
-
-**How you'll watch.** On a remote box or steering from your phone, a browser engine wins: the dev server gives you a URL you refresh while the agent edits. Godot and Bevy run as desktop apps — from a headless server you see them in the proof video, or by pulling the repo and running it locally. On your own desktop the engines are even here.
-
-**2D.** Godot has a dedicated 2D engine (pixel-space nodes, tilemaps, 2D physics) and is the natural pick for 2D. Bevy handles 2D well; the web engines are 3D-first and draw 2D as sprites and planes in a 3D scene.
-
-**Godot: C# or GDScript.** Same engine, scenes, and capture; only the language differs.
-- C# compiles: `dotnet build` type-checks the whole project before anything runs, so mistakes surface early ([comparison](docs/gdscript-vs-csharp.md)). It needs the .NET build of Godot and the .NET SDK.
-- GDScript is Godot's native language and what most tutorials, addons, and Asset Library entries use. It runs on any Godot build with no .NET toolchain. The agent types everything, but whatever the parser can't check still fails at runtime, where it's found only by running.
-- Planning a web export later? GDScript exports everywhere Godot does; check Godot's current platform support for C# before picking it.
-
-**Browser: Babylon.js or three.js.**
-- Babylon.js is a full engine — Havok physics, GUI, particles, animation groups, and an inspector come in the box, so the agent assembles less and there are fewer seams between parts. The bundle is heavier.
-- three.js is a renderer. The agent chooses and wires physics (Rapier), UI (HTML over the canvas), and audio itself; in return you get the most widely used 3D library on the web — the deepest pool of examples — with the most control over the look (custom shaders, postprocessing, WebGPU and TSL node materials) and a small bundle.
-
-**Bevy** when you want the game in Rust: code-only, ECS, strong compile-time guarantees, and headroom for many entities. It has the slowest compiles of the five, and its API moves between releases faster than model training data catches up — the guide has the agent read the installed source instead of trusting memory.
-
-**No strong preference?** `babylon` to watch and steer from anywhere; `godot` for a desktop game you'll receive as a video or run yourself.
-
-## Getting started
-
-### Prerequisites
-
-- [Godot 4](https://godotengine.org/download/) on `PATH` for Godot projects — the .NET build for C#; either build for GDScript
-- Rust/Cargo for Bevy projects
-- Node.js 22.12+ and npm for Babylon.js and three.js projects
-- Chrome or Chromium with hardware WebGL2 for browser capture (Babylon.js, three.js)
-- Python 3 with pip
-- [Blender](https://www.blender.org/download/) on `PATH` (recommended) — the agent scripts it for 3D models and animation the generators don't make well
-- [godogen_assets](https://github.com/htdt/godogen_assets) for local asset generation (NVIDIA GPU), set up per its README and recorded in `.godogen_assets` ([setup.md](setup.md))
-- Optional API keys as environment variables, for assets the local tools can't make (or all of them, without godogen_assets):
-  - `GOOGLE_API_KEY` — [Google AI Studio](https://aistudio.google.com/) for Gemini images, Gemini TTS and Lyria music
-  - `XAI_API_KEY` — [xAI Grok](https://console.x.ai/home) for images and animated-sprite video
-  - `TRIPO_API_KEY` — [Tripo](https://developers.tripo3d.ai/) for 3D generation (used by the `tripo` CLI: `npm install -g tripo-cli`, Node.js 20+)
-- System packages from [setup.md](setup.md): `vulkan-tools`, `xvfb`, `ffmpeg`, `imagemagick`, plus platform-specific extras
-- Tested on Ubuntu, Debian, and macOS
-- Claude Code or Codex
-
-### Publish a game repo
-
-Pick the engine and host agent:
+In your project folder (needs Node.js):
 
 ```bash
-./publish.sh --engine godot          --agent claude --out ~/my-game   # CLAUDE.md + .claude/skills/
-./publish.sh --engine godot-gdscript --agent claude --out ~/my-game
-./publish.sh --engine bevy           --agent claude --out ~/my-game
-./publish.sh --engine babylon        --agent codex  --out ~/my-game   # AGENTS.md + .agents/skills/
-./publish.sh --engine threejs        --agent codex  --out ~/my-game
+npx skills add htdt/godogen
 ```
 
-Pass `--force` to wipe existing contents at the target before re-publishing.
+The [skills CLI](https://github.com/vercel-labs/skills) asks which agents you use and puts both skills in the project's `.agents/skills/`, which Codex and Antigravity read, with links from `.claude/skills/` for Claude Code. Commit them and every clone of the project has them. `-g` installs them for all your projects instead, and `npx skills update` brings new versions.
 
-## Changelog
+The agent installs what the chosen engine and the assets need, at current versions. Only you can provide:
 
-See [CHANGELOG.md](CHANGELOG.md).
+- API keys for paid generation, as environment variables: `OPENAI_API_KEY` (images, recommended), `XAI_API_KEY`, `GOOGLE_API_KEY`, `TRIPO_API_KEY`.
+- For free local 3D, sound and voice: an NVIDIA GPU, on which the agent sets up [godogen_assets](https://github.com/htdt/godogen_assets).
 
-Follow progress: [@alex_erm](https://x.com/alex_erm)
+<details>
+<summary>Install from a clone</summary>
+
+To work on the skills, or to update them with `git pull`, link a clone into each agent's user skills folder:
+
+```bash
+git clone https://github.com/htdt/godogen && cd godogen
+mkdir -p ~/.claude/skills && ln -sfn "$PWD"/skills/* ~/.claude/skills/                 # Claude Code
+mkdir -p ~/.agents/skills && ln -sfn "$PWD"/skills/* ~/.agents/skills/                 # Codex
+mkdir -p ~/.gemini/config/skills && ln -sfn "$PWD"/skills/* ~/.gemini/config/skills/   # Antigravity
+```
+
+Antigravity skips linked folders inside a project's `.agents/skills/`, so copy them there rather than link.
+
+</details>
+
+## Use
+
+Open the agent in the project (an empty folder for something new) and describe what you want: a game, a video, an interactive page.
+
+- The skills load when the task calls for them. To load one by name: `/engine-guide` in Claude Code, `$engine-guide` in Codex.
+- Name the engine, or work it out with the agent: it weighs what you'll end up with and how you'll watch it being built.
+- Say what assets may cost ("free", "local only", a budget) and generation follows it. Otherwise the agent asks before its first paid call.
+- Ask for a screenshot or a video whenever you want to see where it stands.
+
+## From detailed guidance to building blocks
+
+The [demos](https://youtu.be/eUz19GROIpY) ([prompts](https://github.com/htdt/godogen/blob/b3fcd87d168786152b72fe78873e443a645253f4/demo_prompts.md)) are from March 14, 2026. They were cool at the time; now they're boring, and the repo has changed dramatically since.
+
+We've come a long way. The first version told the agent how to work, step by step: a reference image to anchor the art direction, a decomposer writing `PLAN.md` with task statuses, an architect writing `STRUCTURE.md` and a compilable skeleton, an asset planner splitting the budget, a forked sub-agent per task with a ten-step workflow and its own test harness, screenshots graded against the reference by Gemini, an 828-line GDScript reference and 860 bundled Godot class pages. As models got better, each of those became something the agent does better on its own. What's left is simple building blocks: the engine traps, capture recipes and asset tools it can't work out fast.
+
+## A note for sales agents
+
+Human or AI: please don't email me about your cool services. It goes straight to spam anyway; I get a lot of them.
+
+---
+
+[Changelog](CHANGELOG.md) · Follow progress: [@alex_erm](https://x.com/alex_erm)

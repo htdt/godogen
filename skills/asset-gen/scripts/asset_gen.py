@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
-"""Asset Generator CLI - creates images, videos, speech and music (Gemini / xAI Grok / Lyria).
+"""Asset Generator CLI - creates images, videos, speech and music (OpenAI GPT-Image / xAI Grok / Gemini / Lyria).
 
 Subcommands:
-  image     Generate a PNG from a prompt (Gemini 5-15¢ or Grok 6-8¢)
+  image     Generate one PNG / WebP / JPEG / GIF now (GPT-Image-2.6 Sunburst, billed from token usage)
+  batch     Generate a JSONL list of images through the Batch API at half price
   video     Generate MP4 video from prompt + reference image (8-14¢/sec, Grok)
   speech    Speak a transcript with Gemini 3.8 TTS (~0.25¢ per 10 s line)
   voice     Design a persistent character voice (~2¢), list voices, delete one
@@ -15,17 +16,19 @@ Output: JSON to stdout. Progress to stderr.
 
 import argparse
 import base64
+import hashlib
 import io
 import json
-import os
 import re
 import subprocess
 import sys
 import tempfile
+import time
 import wave
 from datetime import date
 from pathlib import Path
 
+import openai
 import requests
 import xai_sdk
 from google import genai
@@ -48,27 +51,14 @@ def result_json(ok: bool, path: str | None = None, cost_cents: float = 0, error:
     print(json.dumps(d))
 
 
-# --- Image backends ---
+# --- Images (OpenAI GPT-Image-2.6) ---
 
-GEMINI_MODEL = "gemini-3.1-flash-image"
-GEMINI_SIZES = ["512", "1K", "2K", "4K"]
-GEMINI_COSTS = {"512": 5, "1K": 7, "2K": 10, "4K": 15}
-GEMINI_ASPECT_RATIOS = [
-    "1:1", "1:4", "1:8", "2:3", "3:2", "3:4", "4:1", "4:3",
-    "4:5", "5:4", "8:1", "9:16", "16:9", "21:9",
-]
-
-GROK_MODEL = "grok-imagine-image-2.0"
-GROK_QUALITY = "medium"
-GROK_SIZES = ["1K", "2K"]
-GROK_COSTS = {"1K": 6, "2K": 8}  # medium quality; xAI's billed cost_usd is reported when present
-GROK_ASPECT_RATIOS = [
-    "1:1", "16:9", "9:16", "4:3", "3:4", "3:2", "2:3",
-    "2:1", "1:2", "19.5:9", "9:19.5", "20:9", "9:20", "auto",
-]
-
-ALL_SIZES = ["512", "1K", "2K", "4K"]
-ALL_ASPECT_RATIOS = sorted(set(GEMINI_ASPECT_RATIOS + GROK_ASPECT_RATIOS))
+IMAGE_MODELS = {"sunburst": "gpt-image-2.6-sunburst", "flare": "gpt-image-2.6-flare"}
+IMAGE_QUALITIES = ["low", "medium", "high", "xhigh", "max"]
+IMAGE_QUALITY = "medium"
+IMAGE_FORMATS = {".png": "png", ".webp": "webp", ".jpg": "jpeg", ".jpeg": "jpeg", ".gif": "gif"}
+IMAGE_USD_PER_M = {"text_in": 5.0, "image_in": 8.0, "image_out": 30.0}  # standard rates; Batch bills half
+BATCH_DONE = {"completed", "failed", "expired", "cancelled"}
 
 
 def _mime_for_image(path: Path) -> str:
@@ -92,121 +82,214 @@ def _billed_cents(resp, estimate: int) -> int:
     return round(usd * 100) if usd else estimate
 
 
-def _default_backend() -> str | None:
-    """Gemini when its key is set (faster, same quality), else Grok."""
-    if os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY"):
-        return "gemini"
-    if os.environ.get("XAI_API_KEY"):
-        return "grok"
-    return None
+def _image_request(job: dict) -> tuple[str, dict]:
+    """One image job -> (endpoint, JSON body). The same body goes live or into a Batch line."""
+    out = Path(job["o"])
+    fmt = IMAGE_FORMATS.get(out.suffix.lower())
+    if fmt is None:
+        raise ValueError(f"{out}: output extension must be one of {', '.join(IMAGE_FORMATS)}")
+    model = job.get("model", "sunburst")
+    if model not in IMAGE_MODELS:
+        raise ValueError(f"{out}: model must be one of {', '.join(IMAGE_MODELS)}")
+    quality = job.get("quality", IMAGE_QUALITY)
+    if quality not in IMAGE_QUALITIES:
+        raise ValueError(f"{out}: quality must be one of {', '.join(IMAGE_QUALITIES)}")
+    body = {"model": IMAGE_MODELS[model], "prompt": job["prompt"], "quality": quality,
+            "size": job.get("size") or ("auto" if fmt == "gif" else "1024x1024"), "output_format": fmt}
+    if job.get("complexity"):
+        body["complexity"] = job["complexity"]
+    if job.get("transparent"):
+        if fmt not in ("png", "webp", "gif"):  # GIF alpha is 1-bit
+            raise ValueError(f"{out}: transparency needs a .png, .webp or .gif output")
+        body["background"] = "transparent"
+    if fmt == "gif":
+        body["frame_count"] = job.get("frames", 9)
+        body["frame_duration_ms"] = job.get("frame_ms", 200)
+    elif "frames" in job or "frame_ms" in job:
+        raise ValueError(f"{out}: frames / frame_ms need a .gif output")
+    refs = job.get("image") or []
+    if isinstance(refs, str):
+        refs = [refs]
+    if not refs:
+        return "/v1/images/generations", body
+    for ref in refs:
+        if not Path(ref).exists():
+            raise ValueError(f"Reference image not found: {ref}")
+    body["images"] = [{"image_url": _image_data_uri(Path(ref))} for ref in refs]
+    return "/v1/images/edits", body
 
 
-def _generate_gemini(args, output: Path, cost: int):
-    config = types.GenerateContentConfig(
-        response_modalities=["IMAGE"],
-        image_config=types.ImageConfig(
-            image_size=args.size,
-            aspect_ratio=args.aspect_ratio,
-        ),
-    )
-
-    contents = []
-    if args.image:
-        ref_path = Path(args.image)
-        if not ref_path.exists():
-            result_json(False, error=f"Reference image not found: {ref_path}")
-            sys.exit(1)
-        contents.append(types.Part.from_bytes(data=ref_path.read_bytes(), mime_type=_mime_for_image(ref_path)))
-    contents.append(args.prompt)
-
-    client = genai.Client()
-    response = client.models.generate_content(
-        model=GEMINI_MODEL,
-        contents=contents,
-        config=config,
-    )
-
-    if response.parts is None:
-        reason = "unknown"
-        if response.candidates and response.candidates[0].finish_reason:
-            reason = response.candidates[0].finish_reason
-        result_json(False, error=f"Generation blocked (reason: {reason})")
-        sys.exit(1)
-
-    for part in response.parts:
-        if part.inline_data is not None:
-            # Re-encode as real PNG (Gemini may return JPEG data)
-            img = Image.open(io.BytesIO(part.inline_data.data))
-            img.save(output, format="PNG")
-            print(f"Saved: {output}", file=sys.stderr)
-            result_json(True, path=str(output), cost_cents=cost)
-            return
-
-    result_json(False, error="No image returned")
-    sys.exit(1)
+def _image_cents(usage: dict | None, batch: bool) -> float:
+    """Cost from the token usage the API reports."""
+    if not usage:
+        return 0.0
+    details = usage.get("input_tokens_details") or {}
+    text_in = details.get("text_tokens", 0 if details else usage.get("input_tokens", 0))
+    usd = (text_in * IMAGE_USD_PER_M["text_in"] + details.get("image_tokens", 0) * IMAGE_USD_PER_M["image_in"]
+           + usage.get("output_tokens", 0) * IMAGE_USD_PER_M["image_out"]) / 1e6
+    return round(usd * 100 / (2 if batch else 1), 2)
 
 
-def _generate_grok(args, output: Path, cost: int):
-    image_url = None
-    if args.image:
-        ref_path = Path(args.image)
-        if not ref_path.exists():
-            result_json(False, error=f"Reference image not found: {ref_path}")
-            sys.exit(1)
-        image_url = _image_data_uri(ref_path)
+ALPHA_FLOOR = 16  # edits with a transparent background leave a faint haze (alpha ~10) where it should be clear
 
-    try:
-        client = xai_sdk.Client()
-        resp = client.image.sample(
-            prompt=args.prompt,
-            model=GROK_MODEL,
-            image_url=image_url,
-            aspect_ratio=args.aspect_ratio,
-            resolution=args.size.lower(),
-            quality=GROK_QUALITY,
-        )
-        # xAI returns JPEG; convert to real PNG
-        img = Image.open(io.BytesIO(resp.image))
-        img.save(output, format="PNG")
-    except Exception as e:
-        result_json(False, error=str(e))
-        sys.exit(1)
 
-    print(f"Saved: {output}", file=sys.stderr)
-    result_json(True, path=str(output), cost_cents=_billed_cents(resp, cost))
+def _save_image(resp: dict, output: Path, transparent: bool = False) -> dict:
+    output.parent.mkdir(parents=True, exist_ok=True)
+    data = base64.b64decode(resp["data"][0]["b64_json"])
+    if transparent and output.suffix.lower() in (".png", ".webp"):
+        img = Image.open(io.BytesIO(data)).convert("RGBA")
+        img.putalpha(img.getchannel("A").point(lambda a: 0 if a <= ALPHA_FLOOR else a))
+        img.save(output, lossless=True) if output.suffix.lower() == ".webp" else img.save(output)
+    else:
+        output.write_bytes(data)
+    return {k: resp[k] for k in ("size", "quality") if resp.get(k)}
+
+
+def _job_from_args(args) -> dict:
+    job = {"prompt": args.prompt, "o": args.output, "model": args.model, "quality": args.quality,
+           "image": args.image, "transparent": args.transparent}
+    for key, value in (("size", args.size), ("complexity", args.complexity),
+                       ("frames", args.frames), ("frame_ms", args.frame_ms)):
+        if value is not None:
+            job[key] = value
+    return job
 
 
 def cmd_image(args):
-    backend = args.model or _default_backend()
-    size = args.size
-
-    if backend is None:
-        result_json(False, error="No image API key: set GEMINI_API_KEY (or GOOGLE_API_KEY) or XAI_API_KEY")
+    try:
+        endpoint, body = _image_request(_job_from_args(args))
+    except ValueError as e:
+        result_json(False, error=str(e))
         sys.exit(1)
 
-    if backend == "gemini":
-        if size not in GEMINI_SIZES:
-            result_json(False, error=f"Gemini does not support size {size}. Use: {', '.join(GEMINI_SIZES)}")
-            sys.exit(1)
-        cost = GEMINI_COSTS[size]
-    else:
-        if size not in GROK_SIZES:
-            result_json(False, error=f"Grok does not support size {size}. Use: {', '.join(GROK_SIZES)}")
-            sys.exit(1)
-        cost = GROK_COSTS[size]
+    label = f"{body['model']} {body['quality']} {body['size']} {body['output_format']}"
+    if "images" in body:
+        label += f", {len(body['images'])} reference(s)"
+    print(f"Generating image ({label})...", file=sys.stderr)
+    try:
+        resp = openai.OpenAI().post(endpoint.removeprefix("/v1"), body=body, cast_to=object)
+    except openai.APIError as e:
+        result_json(False, error=str(e))
+        sys.exit(1)
 
     output = Path(args.output)
-    output.parent.mkdir(parents=True, exist_ok=True)
+    extra = _save_image(resp, output, args.transparent)
+    print(f"Saved: {output}", file=sys.stderr)
+    result_json(True, path=str(output), cost_cents=_image_cents(resp.get("usage"), batch=False), **extra)
 
-    label = f"{backend} {size} {args.aspect_ratio}"
-    if args.image:
-        label += " (image-to-image)"
-    print(f"Generating image ({label})...", file=sys.stderr)
 
-    if backend == "gemini":
-        _generate_gemini(args, output, cost)
-    else:
-        _generate_grok(args, output, cost)
+def _batch_errors(batch) -> str:
+    errors = getattr(batch.errors, "data", None) or []
+    return "; ".join(f"line {e.line}: {e.message}" if e.line else e.message for e in errors) or batch.status
+
+
+def cmd_batch(args):
+    jobs_path = Path(args.jobs)
+    state_path = jobs_path.with_name(jobs_path.name + ".batch.json")
+    lines = jobs_path.read_text()
+    jobs = [json.loads(line) for line in lines.splitlines() if line.strip()]
+    for job in jobs:
+        job.setdefault("quality", args.quality)
+        job.setdefault("model", args.model)
+    jobs_hash = hashlib.sha256(json.dumps(jobs, sort_keys=True).encode()).hexdigest()[:16]
+
+    client = openai.OpenAI()
+    state = json.loads(state_path.read_text()) if state_path.exists() else None
+    if state and state["jobs_hash"] == jobs_hash and "images" in state:
+        images = state["images"]
+        print(f"Already collected; delete {state_path} to generate again", file=sys.stderr)
+        result_json(all(r["ok"] for r in images), cost_cents=round(sum(r.get("cost_cents", 0) for r in images), 2),
+                    images=images)
+        return
+    if state and state["jobs_hash"] != jobs_hash:
+        running = [b["id"] for b in state["batches"] if client.batches.retrieve(b["id"]).status not in BATCH_DONE]
+        if running:
+            result_json(False, error=f"{jobs_path} changed while batches {', '.join(running)} still run: "
+                                     f"wait for them (rerun with the old file) or cancel them before resubmitting")
+            sys.exit(1)
+        state = None
+
+    if state is None:
+        groups: dict[tuple[str, str], list[str]] = {}
+        requests_by_group: dict[tuple[str, str], list[str]] = {}
+        problems = []
+        for i, job in enumerate(jobs):
+            try:
+                endpoint, body = _image_request(job)
+            except ValueError as e:
+                problems.append(f"job {i + 1}: {e}")
+                continue
+            except KeyError as e:
+                problems.append(f"job {i + 1}: missing {e}")
+                continue
+            key = (endpoint, body["model"])  # a batch takes one endpoint and one model
+            groups.setdefault(key, []).append(str(i))
+            requests_by_group.setdefault(key, []).append(
+                json.dumps({"custom_id": str(i), "method": "POST", "url": endpoint, "body": body}))
+        if problems:
+            result_json(False, error="; ".join(problems))
+            sys.exit(1)
+        state = {"jobs_hash": jobs_hash, "batches": []}
+        for (endpoint, model), lines_out in requests_by_group.items():
+            data = ("\n".join(lines_out) + "\n").encode()
+            upload = client.files.create(file=(f"{jobs_path.stem}.jsonl", io.BytesIO(data)), purpose="batch")
+            batch = client.batches.create(input_file_id=upload.id, endpoint=endpoint, completion_window="24h")
+            state["batches"].append({"id": batch.id, "endpoint": endpoint, "model": model,
+                                     "jobs": groups[(endpoint, model)]})
+            print(f"Submitted {batch.id}: {len(lines_out)} image(s), {model} {endpoint}", file=sys.stderr)
+        state_path.write_text(json.dumps(state, indent=1))
+
+    seen = {}
+    while True:
+        try:
+            batches = [client.batches.retrieve(b["id"]) for b in state["batches"]]
+        except (openai.APIConnectionError, openai.InternalServerError) as e:
+            print(f"Status check failed, retrying: {e}", file=sys.stderr)
+            time.sleep(args.poll)
+            continue
+        for b in batches:
+            c = b.request_counts
+            status = f"{b.status} {c.completed + c.failed}/{c.total}" if c else b.status
+            if seen.get(b.id) != status:
+                print(f"{b.id}: {status}", file=sys.stderr)
+                seen[b.id] = status
+        if all(b.status in BATCH_DONE for b in batches) or args.no_wait:
+            break
+        time.sleep(args.poll)
+
+    if not all(b.status in BATCH_DONE for b in batches):
+        result_json(True, state=str(state_path), status={b.id: seen[b.id] for b in batches},
+                    note=f"still running; rerun `batch {args.jobs}` to wait and collect")
+        return
+
+    results: dict[str, dict] = {}
+    for b in batches:
+        for file_id in (b.output_file_id, b.error_file_id):
+            if not file_id:
+                continue
+            for line in client.files.content(file_id).text.splitlines():
+                row = json.loads(line)
+                job = jobs[int(row["custom_id"])]
+                resp = row.get("response") or {}
+                body = resp.get("body") or {}
+                if resp.get("status_code") == 200 and body.get("data"):
+                    extra = _save_image(body, Path(job["o"]), bool(job.get("transparent")))
+                    results[row["custom_id"]] = {"ok": True, "path": job["o"],
+                                                 "cost_cents": _image_cents(body.get("usage"), batch=True), **extra}
+                else:
+                    err = (body.get("error") or row.get("error") or {}).get("message", "no image returned")
+                    results[row["custom_id"]] = {"ok": False, "path": job["o"], "error": err}
+        if b.status != "completed":  # failed validation, expired or cancelled: its unfinished jobs get the reason
+            for custom_id in next(s for s in state["batches"] if s["id"] == b.id)["jobs"]:
+                results.setdefault(custom_id, {"ok": False, "path": jobs[int(custom_id)]["o"],
+                                               "error": f"batch {b.status}: {_batch_errors(b)}"})
+    images = [results.get(str(i), {"ok": False, "path": job["o"], "error": "missing from batch output"})
+              for i, job in enumerate(jobs)]
+    total = round(sum(r.get("cost_cents", 0) for r in images), 2)
+    state["images"] = images  # a rerun reports these instead of overwriting files edited since
+    state_path.write_text(json.dumps(state, indent=1))
+    print(f"Saved {sum(r['ok'] for r in images)}/{len(images)} image(s)", file=sys.stderr)
+    result_json(all(r["ok"] for r in images), cost_cents=total, images=images)
 
 
 def cmd_video(args):
@@ -464,21 +547,40 @@ def cmd_music(args):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Asset Generator — images, videos, speech and music (Gemini / xAI Grok / Lyria)")
+    parser = argparse.ArgumentParser(description="Asset Generator — images (GPT-Image-2.6), video (Grok), speech and music (Gemini, Lyria)")
     sub = parser.add_subparsers(dest="command", required=True)
 
-    p_img = sub.add_parser("image", help="Generate a PNG image (Gemini 5-15¢ or Grok 6-8¢)")
+    p_img = sub.add_parser("image", help="Generate one image now at the standard rate (GPT-Image-2.6)")
     p_img.add_argument("--prompt", required=True, help="Full image generation prompt")
-    p_img.add_argument("--model", choices=["gemini", "grok"], default=None,
-                       help="Backend: gemini (5-15¢, ~10s) or grok (6-8¢, 1-2 min); same quality. "
-                            "Default: gemini if GEMINI_API_KEY/GOOGLE_API_KEY is set, else grok.")
-    p_img.add_argument("--size", choices=ALL_SIZES, default="1K",
-                       help="Resolution. Grok: 1K, 2K. Gemini: 512, 1K, 2K, 4K. Default: 1K.")
-    p_img.add_argument("--aspect-ratio", choices=ALL_ASPECT_RATIOS, default="1:1",
-                       help="Aspect ratio. Default: 1:1")
-    p_img.add_argument("--image", default=None, help="Reference image for image-to-image edit")
-    p_img.add_argument("-o", "--output", required=True, help="Output PNG path")
+    p_img.add_argument("-o", "--output", required=True,
+                       help="Output path; the extension picks the format: .png .webp .jpg .gif")
+    p_img.add_argument("--model", choices=list(IMAGE_MODELS), default="sunburst",
+                       help="sunburst (detail, consistent edits) or flare (fast drafts). Default: sunburst")
+    p_img.add_argument("--quality", choices=IMAGE_QUALITIES, default=IMAGE_QUALITY,
+                       help=f"Rendering quality. Default: {IMAGE_QUALITY}")
+    p_img.add_argument("--size", default=None,
+                       help="WIDTHxHEIGHT (multiples of 16, ratio 1:3-3:1, edge <=3840) or auto. "
+                            "Default: 1024x1024; auto for GIF (size of each frame)")
+    p_img.add_argument("--image", action="append", default=None,
+                       help="Reference image (repeat for up to 16); the first is the one edited")
+    p_img.add_argument("--transparent", action="store_true", help="Real alpha background (.png/.webp; 1-bit in .gif)")
+    p_img.add_argument("--complexity", choices=["low", "medium", "high"], default=None,
+                       help="How much the model plans the scene. API default: high")
+    p_img.add_argument("--frames", type=int, default=None, help="GIF frame count, 2-16. Default: 9")
+    p_img.add_argument("--frame-ms", type=int, default=None, help="GIF delay per frame, 20-2000 ms. Default: 200")
     p_img.set_defaults(func=cmd_image)
+
+    p_bat = sub.add_parser("batch", help="Generate a JSONL list of images via the Batch API at half price")
+    p_bat.add_argument("jobs", help="JSONL, one image per line: {\"prompt\", \"o\"} plus any of "
+                                    "image (path or list), quality, model, size, transparent, complexity, frames, frame_ms")
+    p_bat.add_argument("--quality", choices=IMAGE_QUALITIES, default=IMAGE_QUALITY,
+                       help=f"Quality for jobs that don't set one. Default: {IMAGE_QUALITY}")
+    p_bat.add_argument("--model", choices=list(IMAGE_MODELS), default="sunburst",
+                       help="Model for jobs that don't set one. Default: sunburst")
+    p_bat.add_argument("--no-wait", action="store_true",
+                       help="Submit (or check) and return; rerun the same command to wait and collect")
+    p_bat.add_argument("--poll", type=int, default=15, help="Seconds between status checks. Default: 15")
+    p_bat.set_defaults(func=cmd_batch)
 
     p_vid = sub.add_parser("video", help="Generate MP4 video from prompt + reference image (8¢/sec 480p, 14¢/sec 720p)")
     p_vid.add_argument("--prompt", required=True, help="Video generation prompt")

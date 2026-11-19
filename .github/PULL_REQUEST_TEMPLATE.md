@@ -10,4 +10,4 @@ Closes #
 
 ## Testing
 
-<!-- How did you verify this works? For skill changes, include end-to-end pipeline output or a summary of results. -->
+<!-- How did you verify this works? For skill changes, include the output of an end-to-end build or a summary of results. -->

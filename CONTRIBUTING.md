@@ -2,9 +2,9 @@
 
 ## Philosophy
 
-Godogen is an autonomous pipeline. The goal is to generate the best possible games with as little human guidance as possible. Every piece of this repo exists to serve that goal.
+Godogen is building blocks for coding agents. The agent is already capable: it plans, builds, checks its work and decides what to deliver. These skills exist to give it what it can't work out fast on its own, and to stay out of its way otherwise.
 
-We keep things lean and focused. We don't add features just to have them — we'd rather have one clear, well-built tool than several mediocre ones. Less surface area means easier maintenance and better agent efficiency. If a new feature doesn't make the pipeline meaningfully better at producing games autonomously, it doesn't belong here.
+We keep things lean and focused. We don't add features just to have them — we'd rather have one clear, well-built tool than several mediocre ones. Less surface area means easier maintenance and better agent efficiency. If a new feature doesn't make the agent meaningfully better at what it builds, it doesn't belong here.
 
 ## How to Contribute
 
@@ -15,7 +15,7 @@ We keep things lean and focused. We don't add features just to have them — we'
 In your issue, explain:
 
 - **What** you want to change or add.
-- **Why** — how does this improve the autonomous pipeline? What concrete problem does it solve? Show evidence if you can (failed generations, error logs, before/after comparisons).
+- **Why** — how does this improve what the agent builds? What concrete problem does it solve? Show evidence if you can (failed generations, error logs, before/after comparisons).
 - **Why not something simpler** — if there's a lighter-weight way to achieve the same result, explain why your approach is better.
 
 Wait for maintainer approval before writing code. This saves everyone's time — yours included.
@@ -39,12 +39,12 @@ Once approved, open a PR that references the issue. Keep it focused on what was 
 - Fix a bug that causes generation failures or degraded output.
 - Improve output quality in a measurable way (better scenes, fewer broken scripts, more reliable asset generation).
 - Reduce token usage or API costs without sacrificing quality.
-- Improve reliability of the pipeline (fewer crashes, better error recovery).
+- Improve reliability (fewer crashes, better error recovery).
 - Improve or correct the engine guides or asset-generation reference material.
 
 **We'll likely close contributions that:**
 
-- Add features the pipeline doesn't need to function.
+- Add process the agent can decide on its own: plans, checklists, review steps.
 - Introduce alternative approaches when the existing one works fine.
 - Add configuration options for things that should have good defaults.
 - Are large refactors without a demonstrated problem they solve.
@@ -54,7 +54,7 @@ Once approved, open a PR that references the issue. Keep it focused on what was 
 
 - Match the existing style and conventions in the repo.
 - Keep changes minimal and surgical. Small, focused PRs are easier to review and merge.
-- If your change touches a skill, test it by running the pipeline end-to-end and include the output or a summary of results.
+- If your change touches a skill, test it by having an agent build something with it end to end, and include the output or a summary of results.
 
 ## PRs Without an Approved Issue Will Be Closed
 

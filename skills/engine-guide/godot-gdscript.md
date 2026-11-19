@@ -8,8 +8,6 @@ Stack: **Godot 4**, **GDScript**, statically typed. Any Godot 4 build runs it �
 - `scripts/*.gd` runtime behavior · `scenes/*.tscn` scenes · `assets/` **only** files the running game loads (keep generation inputs/refs outside it).
 - Build gate: `godot --headless --import` after asset changes and after adding or renaming a `class_name` (other scripts can't resolve it until then), then `godot --headless --check-only --script <file>.gd` on each changed script (exit 1 on parse and type errors), then `godot --headless --quit` (RID/ObjectDB-leak errors on headless exit are benign).
 
-The user watches by running the project themselves (`godot --path .` or the editor) — keep it importing cleanly so each run reflects current state.
-
 ## Types are the only compile step
 
 The parser checks what it can type; untyped code fails at runtime, and only on the path that runs. Type every declaration and signature. `:=` rejects values the parser can't type — calls on an untyped receiver (`load(...).instantiate()`), `abs`/`clamp`/`lerp`/`min`/`max`, reads from untyped arrays and dictionaries — so annotate the type (`var s: PackedScene = load(...)`) or use the typed variants (`absf`, `clampf`, `lerpf`, `maxi`, ...).
@@ -58,9 +56,9 @@ Most Godot behavior the model already knows; these few fail with no error:
 - **`.gdignore`** in a directory makes the importer skip it silently — only `screenshots/` should have one, never `assets/`.
 - Frame-rate-independent damping: `speed *= exp(-rate * delta)`, not `speed *= (1 - drag)` per tick.
 
-## Capture (proof video)
+## Capture
 
-Hardware **Vulkan** (Metal on macOS) gives correct rendering and is required for video; software Vulkan (`llvmpipe`/`lavapipe`) can still do stills but skip video and report it. macOS has no `xvfb`, so capture runs in a real window there — adding `--headless` to `--write-movie` aborts (`Parameter "t" is null`).
+Video needs hardware **Vulkan** (Metal on macOS); software Vulkan (`llvmpipe`/`lavapipe`) is good for stills only. macOS has no `xvfb`, so capture runs in a real window there — adding `--headless` to `--write-movie` aborts (`Parameter "t" is null`).
 
 Capture deterministically with Godot's movie writer from a dedicated capture `SceneTree` script under `test/`:
 
@@ -72,4 +70,4 @@ ffmpeg -y -framerate 30 -pattern_type glob -i 'screenshots/result/frame*.png' \
   -c:v libx264 -pix_fmt yuv420p -movflags +faststart screenshots/result/video.mp4
 ```
 
-`--fixed-fps` makes motion deterministic (450 frames @30fps = 15s). **Pre-position the camera** in the builder/`_initialize()` (the first movie frame renders before `_process`) — but `_ready()` of nodes added there runs after `_initialize()` returns and overwrites what it set on them. Autoloads are loaded, yet a `SceneTree` script can't name them — use `root.get_node("Name")`. Drive capture-time input from the script, not live keys. The clip must show the behavior progressing across the whole window — no dead time, no single looped frame.
+`--fixed-fps` makes motion deterministic (450 frames @30fps = 15s). **Pre-position the camera** in the builder/`_initialize()` (the first movie frame renders before `_process`) — but `_ready()` of nodes added there runs after `_initialize()` returns and overwrites what it set on them. Autoloads are loaded, yet a `SceneTree` script can't name them — use `root.get_node("Name")`. Drive capture-time input from the script, not live keys. The movie writer also records the scene's audio, in sync, to `frame.wav` beside the frames: add it as a second ffmpeg input when the video needs sound.
