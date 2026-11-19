@@ -20,10 +20,10 @@ When the brief says nothing about spending, propose paid images with an estimate
 
 ## Local: godogen_assets
 
-[godogen_assets](https://github.com/htdt/godogen_assets) runs local generators on this machine's GPU, one command per task, for free. Its docs are the reference; this page is the TL;DR plus what a project needs on top. Its checkout is where its commands resolve, `$GODOGEN_ASSETS` below:
+[godogen_assets](https://github.com/htdt/godogen_assets) runs local generators on this machine's GPU, one command per task, for free. Its docs are the reference; this page is the TL;DR plus what a project needs on top. Its checkout is where its commands resolve, `$GODOGEN_ASSETS` below. The lookup fails when the commands aren't on `PATH`, which means godogen_assets isn't set up:
 
 ```bash
-GODOGEN_ASSETS=$(dirname "$(dirname "$(readlink -f "$(command -v gen3d)")")")
+p=$(command -v gen3d) && GODOGEN_ASSETS=$(dirname "$(dirname "$(readlink -f "$p")")")
 ```
 
 Read `$GODOGEN_ASSETS/README.md` once (conventions, a character start to finish, checking results). Before first using a part's tool, read its README up to `How it works`.
