@@ -51,7 +51,7 @@ Open the agent in the project (an empty folder for something new) and describe w
 
 ## From detailed guidance to building blocks
 
-The [demos](https://youtu.be/eUz19GROIpY) ([prompts](docs/demo_prompts.md)) are from March 14, 2026. They were cool at the time; now they're boring, and the repo has changed dramatically since.
+The [demos](https://youtu.be/eUz19GROIpY) ([prompts](https://github.com/htdt/godogen/blob/b3fcd87d168786152b72fe78873e443a645253f4/demo_prompts.md)) are from March 14, 2026. They were cool at the time; now they're boring, and the repo has changed dramatically since.
 
 We've come a long way. The first version told the agent how to work, step by step: a reference image to anchor the art direction, a decomposer writing `PLAN.md` with task statuses, an architect writing `STRUCTURE.md` and a compilable skeleton, an asset planner splitting the budget, a forked sub-agent per task with a ten-step workflow and its own test harness, screenshots graded against the reference by Gemini, an 828-line GDScript reference and 860 bundled Godot class pages. As models got better, each of those became something the agent does better on its own. What's left is simple building blocks: the engine traps, capture recipes and asset tools it can't work out fast.
 

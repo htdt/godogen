@@ -6,7 +6,6 @@ This repository holds two agent skills in the open Agent Skills format, which Cl
 
 - `skills/engine-guide/` — `SKILL.md` (choosing an engine, uses beyond games), `setup.md` (installing each toolchain), and one guide per engine: `godot.md` (C#), `godot-gdscript.md`, `bevy.md`, `babylon.md`, `threejs.md`, `html.md` (stack, project sketch, capture recipe, silent-failure traps)
 - `skills/asset-gen/` — asset generation: local through [godogen_assets](https://github.com/htdt/godogen_assets) (`SKILL.md`, with its own Setup), paid APIs (`api.md`), game-side animation (`motion.md`), `scripts/`
-- `docs/` — overview, demo prompts
 
 ## Editing Rules
 
