@@ -19,6 +19,7 @@ import base64
 import hashlib
 import io
 import json
+import os
 import re
 import subprocess
 import sys
@@ -406,6 +407,13 @@ def _speech_turns(args, text: str) -> tuple[list, dict | list]:
     return turns, config
 
 
+def _gemini() -> genai.Client:
+    """TTS, voices and Lyria are served only on v1beta; google-genai defaults the Gemini API to v1."""
+    if os.environ.get("GOOGLE_GENAI_API_VERSION"):
+        return genai.Client()
+    return genai.Client(http_options=types.HttpOptions(api_version="v1beta"))
+
+
 def cmd_speech(args):
     output = Path(args.output)
     _check_audio_output(output)
@@ -417,7 +425,7 @@ def cmd_speech(args):
 
     label = f"speakers {args.speakers}" if args.speakers else f"voice {args.voice}"
     print(f"Generating speech ({args.model}, {label})...", file=sys.stderr)
-    client = genai.Client()
+    client = _gemini()
     try:
         resp = client.interactions.create(
             model=args.model, input=[{"type": "user_input", "content": turns}],
@@ -447,7 +455,7 @@ def cmd_voice_design(args):
         voice["language_code"] = args.language
 
     print(f"Designing voice {args.name!r} ({args.model})...", file=sys.stderr)
-    client = genai.Client()  # keep a reference: a temporary Client closes its connection before the call
+    client = _gemini()  # keep a reference: a temporary Client closes its connection before the call
     try:
         created = client.voices.create(store=True, voice=voice)
     except Exception as e:
@@ -472,7 +480,7 @@ def cmd_voice_list(args):
         filters["search"] = args.search
     if args.mine:
         filters["type_"] = ["prompted", "replicated"]
-    client = genai.Client()
+    client = _gemini()
     try:
         resp = client.voices.list(**filters)
     except Exception as e:
@@ -489,7 +497,7 @@ def cmd_voice_list(args):
 
 
 def cmd_voice_delete(args):
-    client = genai.Client()
+    client = _gemini()
     try:
         client.voices.delete(id=args.voice_id)
     except Exception as e:
@@ -512,7 +520,7 @@ def cmd_music(args):
     contents.append(args.prompt)
 
     print(f"Generating music ({model})...", file=sys.stderr)
-    client = genai.Client()  # keep a reference: a temporary Client closes its connection before the call
+    client = _gemini()  # keep a reference: a temporary Client closes its connection before the call
     try:
         resp = client.models.generate_content(
             model=model, contents=contents,

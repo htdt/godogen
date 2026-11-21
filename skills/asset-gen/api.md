@@ -2,7 +2,7 @@
 
 Images by default, plus what the local tools can't make (SKILL.md, Where assets come from). Every call costs real money; record it in the asset manifest.
 
-Keys, which the user creates: `OPENAI_API_KEY` (images, animated GIF sprites; platform.openai.com/api-keys), `XAI_API_KEY` (sprite video; console.x.ai), `GOOGLE_API_KEY` (Gemini TTS, Lyria; aistudio.google.com), `TRIPO_API_KEY` (the `tripo` CLI; developers.tripo3d.ai). Images, video and audio go through `scripts/asset_gen.py`; 3D goes through the `tripo` CLI.
+Keys, which the user creates: `OPENAI_API_KEY` (images, animated GIF sprites; platform.openai.com/api-keys), `XAI_API_KEY` (sprite video; console.x.ai), `GEMINI_API_KEY` or `GOOGLE_API_KEY` (Gemini TTS, Lyria; aistudio.google.com), `TRIPO_API_KEY` (the `tripo` CLI; developers.tripo3d.ai). Images, video and audio go through `scripts/asset_gen.py`; 3D goes through the `tripo` CLI.
 
 ## Images — GPT-Image-2.6 Sunburst
 

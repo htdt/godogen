@@ -21,7 +21,7 @@ The [skills CLI](https://github.com/vercel-labs/skills) asks which agents you us
 
 The agent installs what the chosen engine and the assets need, at current versions. Only you can provide:
 
-- API keys for paid generation, as environment variables: `OPENAI_API_KEY` (images, recommended), `XAI_API_KEY`, `GOOGLE_API_KEY`, `TRIPO_API_KEY`.
+- API keys for paid generation, as environment variables: `OPENAI_API_KEY` (images, recommended), `XAI_API_KEY`, `GEMINI_API_KEY` (or `GOOGLE_API_KEY`), `TRIPO_API_KEY`.
 - For free local 3D, sound and voice: an NVIDIA GPU, on which the agent sets up [godogen_assets](https://github.com/htdt/godogen_assets).
 
 <details>
